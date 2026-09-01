@@ -1,110 +1,103 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Betting Pro Mobile</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #f5f5f7;
-            margin: 0;
-            padding: 16px;
-            color: #1d1d1f;
-        }
-        .brand { text-align: center; margin-bottom: 16px; }
-        .brand h1 { color: #0071e3; font-size: 20px; margin: 0; }
-        .brand .versione { font-size: 11px; color: #86868b; margin-top: 2px; }
-        button#btnEstrai {
-            width: 100%;
-            padding: 14px;
-            background-color: #2cd158;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 700;
-            margin-bottom: 14px;
-        }
-        button#btnEstrai:disabled { background-color: #a5e8bb; }
-        #stato { text-align: center; font-size: 13px; color: #86868b; margin-bottom: 12px; }
-        .match-card {
-            background: white;
-            border-radius: 14px;
-            padding: 14px;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            border: 1px solid #e5e5ea;
-        }
-        .match-card .campionato { font-size: 10px; font-weight: 800; color: #007aff; text-transform: uppercase; margin-bottom: 4px; }
-        .match-card .squadre { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
-        .match-card .data { font-size: 11px; color: #86868b; margin-bottom: 8px; }
-        .stat-riga { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-top: 1px solid #f0f0f0; }
-        .stat-riga span:first-child { color: #8e8e93; }
-        .stat-riga span:last-child { font-weight: 600; }
-    </style>
-</head>
-<body>
-    <div class="brand">
-        <h1>⚽ Betting Pro Mobile</h1>
-        <div class="versione">Versione 0.48</div>
-    </div>
+// CODICE PER CLOUDFLARE WORKERS (Versione con Classifiche Reali)
+const API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"; // La tua API Key di Football-Data
+const CAMPIONATI = ["WC", "CL", "BL1", "DED", "FL1", "PD", "SA", "PL", "ELC", "PPL", "BSA", "CLI"];
 
-    <button id="btnEstrai">Estrai Partite (prossimi 4 giorni)</button>
-    <div id="stato"></div>
-    <div id="risultati"></div>
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Content-Type": "application/json"
+};
 
-    <script>
-        var WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
-        var btn = document.getElementById("btnEstrai");
-        var stato = document.getElementById("stato");
-        var risultati = document.getElementById("risultati");
+export default {
+  async fetch(request, env, ctx) {
+    if (request.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders });
+    }
 
-        function formattaData(isoString) {
-            var d = new Date(isoString);
-            return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-        }
+    try {
+      const dateFrom = new Date().toISOString().split('T')[0];
+      const dateTo = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-        function mostraPartite(partite) {
-            risultati.innerHTML = "";
-            if (partite.length === 0) {
-                risultati.innerHTML = "<p style='text-align:center; color:#86868b; font-size:13px;'>Nessuna partita trovata nei prossimi 4 giorni.</p>";
-                return;
+      let tutteLePartite = [];
+
+      for (const cod of CAMPIONATI) {
+        try {
+          // 1. Scarichiamo la classifica del campionato
+          const resStandings = await fetch(`https://api.football-data.org/v4/competitions/${cod}/standings`, {
+            headers: { "X-Auth-Token": API_KEY }
+          });
+          
+          let tabellaMappa = {};
+          if (resStandings.ok) {
+            const dataStandings = await resStandings.json();
+            // Creiamo una mappa rapida per cercare le squadre in base al loro ID
+            if (dataStandings.standings && dataStandings.standings[0]) {
+              const table = dataStandings.standings[0].table || [];
+              table.forEach(row => {
+                tabellaMappa[row.team.id] = {
+                  posizione: row.position,
+                  punti: row.points,
+                  giocate: row.playedGames,
+                  golFatti: row.goalsFor,
+                  golSubiti: row.goalsAgainst
+                };
+              });
             }
-            for (var i = 0; i < partite.length; i++) {
-                var p = partite[i];
-                var card = document.createElement("div");
-                card.className = "match-card";
-                card.innerHTML = "<div class='campionato'>" + p.campionato + "</div>" + "<div class='squadre'>" + p.squadraCasa + " - " + p.squadraOspite + "</div>" + "<div class='data'>" + formattaData(p.dataOraUTC) + "</div>" + "<div class='stat-riga'><span>Punti</span><span>" + p.puntiCasa + " vs " + p.puntiOspite + "</span></div>" + "<div class='stat-riga'><span>Posizione</span><span>" + p.posizioneCasa + " vs " + p.posizioneOspite + "</span></div>" + "<div class='stat-riga'><span>Partite giocate</span><span>" + p.giocateCasa + " vs " + p.giocateOspite + "</span></div>" + "<div class='stat-riga'><span>Gol fatti</span><span>" + p.golFattiCasa + " vs " + p.golFattiOspite + "</span></div>" + "<div class='stat-riga'><span>Gol subiti</span><span>" + p.golSubitiCasa + " vs " + p.golSubitiOspite + "</span></div>";
-                risultati.appendChild(card);
-            }
+          }
+
+          // 2. Scarichiamo le partite dei prossimi 4 giorni per questo campionato
+          const resMatches = await fetch(`https://api.football-data.org/v4/competitions/${cod}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`, {
+            headers: { "X-Auth-Token": API_KEY }
+          });
+
+          if (resMatches.ok) {
+            const dataMatches = await resMatches.json();
+            const matches = (dataMatches.matches || []).filter(m => {
+              const st = (m.status || "").toUpperCase();
+              return st === "TIMED" || st === "SCHEDULED";
+            });
+
+            // 3. Uniamo i dati della partita con le statistiche reali di classifica
+            matches.forEach(m => {
+              const statsCasa = tabellaMappa[m.homeTeam.id] || { punti: "N/D", posizione: "N/D", giocate: "N/D", golFatti: "N/D", golSubiti: "N/D" };
+              const statsOspite = tabellaMappa[m.awayTeam.id] || { punti: "N/D", posizione: "N/D", giocate: "N/D", golFatti: "N/D", golSubiti: "N/D" };
+
+              tutteLePartite.push({
+                campionato: m.competition ? m.competition.name : "N/D",
+                squadraCasa: m.homeTeam.name,
+                squadraOspite: m.awayTeam.name,
+                dataOraUTC: m.utcDate,
+                puntiCasa: statsCasa.punti,
+                puntiOspite: statsOspite.punti,
+                posizioneCasa: statsCasa.posizione,
+                posizioneOspite: statsOspite.posizione,
+                giocateCasa: statsCasa.giocate,
+                giocateOspite: statsOspite.giocate,
+                golFattiCasa: statsCasa.golFatti,
+                golFattiOspite: statsOspite.golFatti,
+                golSubitiCasa: statsCasa.golSubiti,
+                golSubitiOspite: statsOspite.golSubiti
+              });
+            });
+          }
+
+        } catch (e) {
+          console.log(`Errore nel campionato ${cod}:`, e);
         }
+      }
 
-        btn.addEventListener("click", function() {
-            btn.disabled = true;
-            btn.textContent = "Estrazione in corso...";
-            stato.textContent = "Attendere circa 2-2,5 minuti (12 campionati, con pause per rispettare i limiti API)";
-            risultati.innerHTML = "";
+      return new Response(JSON.stringify({
+        errore: false,
+        totalePartiteTrovate: tutteLePartite.length,
+        partite: tutteLePartite
+      }), { headers: corsHeaders });
 
-            fetch(WORKER_URL)
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    if (data.errore) {
-                        stato.textContent = "Errore: " + (data.messaggio || "richiesta fallita");
-                    } else {
-                        stato.textContent = "Trovate " + data.totalePartiteTrovate + " partite";
-                        mostraPartite(data.partite);
-                    }
-                })
-                .catch(function(e) {
-                    stato.textContent = "Errore di connessione: " + e.message;
-                })
-                .finally(function() {
-                    btn.disabled = false;
-                    btn.textContent = "Estrai Partite (prossimi 4 giorni)";
-                });
-        });
-    </script>
-</body>
-</html>
+    } catch (err) {
+      return new Response(JSON.stringify({
+        errore: true,
+        messaggio: err.message
+      }), { status: 500, headers: corsHeaders });
+    }
+  }
+};
