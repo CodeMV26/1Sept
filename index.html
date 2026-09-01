@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Football & Odds Hub</title>
+  <!-- Tailwind CSS per la grafica -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-12">
+
+  <!-- Header / Navbar -->
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <div class="bg-emerald-500 text-slate-950 p-2 rounded-lg font-bold text-xl">⚽</div>
+        <h1 class="text-xl font-bold tracking-tight">SoccerStats <span class="text-emerald-400">& Odds</span></h1>
+      </div>
+      <button onclick="fetchMatches()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm transition-all flex items-center gap-2">
+        <span>🔄 Aggiorna Match</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-6xl mx-auto px-4 mt-8">
+    
+    <!-- Hero / Status Banner -->
+    <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <h2 class="text-2xl font-bold text-white mb-1">Partite in programma Oggi</h2>
+        <p class="text-slate-400 text-sm">Dati estratti in tempo reale da <code class="text-emerald-400 bg-slate-900 px-2 py-0.5 rounded">football-data.org</code></p>
+      </div>
+      <div id="status-badge" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+        <span>⏳ Caricamento dati...</span>
+      </div>
+    </div>
+
+    <!-- Contenitore Partite -->
+    <div id="matches-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Le schede delle partite verranno inserite qui dinamicamente via JS -->
+    </div>
+
+  </main>
+
+  <!-- Script Integrazione API -->
+  <script>
+    const API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0";
+    const API_URL = "https://api.football-data.org/v4/matches";
+
+    async function fetchMatches() {
+      const container = document.getElementById("matches-container");
+      const badge = document.getElementById("status-badge");
+      
+      badge.className = "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20";
+      badge.innerHTML = "<span>⏳ Chiamata API in corso...</span>";
+
+      try {
+        // NOTA: football-data.org richiede un proxy CORS se chiamato direttamente da browser locale/GitHub Pages.
+        // Utilizziamo un proxy pubblico per il testing frontend client-side.
+        const proxyUrl = "https://corsproxy.io/?";
+        const response = await fetch(proxyUrl + encodeURIComponent(API_URL), {
+          headers: {
+            "X-Auth-Token": API_KEY
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Errore HTTP: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const matches = data.matches || [];
+
+        badge.className = "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+        badge.innerHTML = `<span>✅ ${matches.length} Partite trovate oggi</span>`;
+
+        renderMatches(matches);
+
+      } catch (error) {
+        console.error("Errore nel recupero dati:", error);
+        badge.className = "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20";
+        badge.innerHTML = "<span>❌ Errore durante il caricamento</span>";
+        
+        container.innerHTML = `
+          <div class="col-span-full bg-rose-950/30 border border-rose-800 text-rose-200 p-6 rounded-xl text-center">
+            <p class="font-semibold">Impossibile recuperare i dati in tempo reale.</p>
+            <p class="text-xs text-rose-400 mt-1">${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function renderMatches(matches) {
+      const container = document.getElementById("matches-container");
+      container.innerHTML = "";
+
+      if (matches.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full bg-slate-800/30 border border-slate-700/50 text-slate-400 p-8 rounded-xl text-center">
+            Nessuna partita in programma oggi nelle competizioni coperte dal piano free.
+          </div>
+        `;
+        return;
+      }
+
+      matches.forEach(match => {
+        const time = new Date(match.utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        const card = document.createElement("div");
+        card.className = "bg-slate-800/80 border border-slate-700/60 rounded-xl p-5 hover:border-emerald-500/40 transition-all flex flex-col justify-between";
+        
+        card.innerHTML = `
+          <div>
+            <!-- Campionato e Ora -->
+            <div class="flex justify-between items-center text-xs text-slate-400 mb-4 pb-2 border-b border-slate-700/50">
+              <span class="font-semibold text-emerald-400 uppercase tracking-wider">${match.competition.name}</span>
+              <span class="bg-slate-900 px-2 py-1 rounded border border-slate-700">${time}</span>
+            </div>
+
+            <!-- Squadre -->
+            <div class="space-y-3 mb-6">
+              <div class="flex justify-between items-center">
+                <span class="font-semibold text-white text-lg">${match.homeTeam.name}</span>
+                <span class="text-slate-500 font-bold">${match.score.fullTime.home ?? '-'}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="font-semibold text-white text-lg">${match.awayTeam.name}</span>
+                <span class="text-slate-500 font-bold">${match.score.fullTime.away ?? '-'}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sezione Quote (Mock-up UI pronta per The Odds API) -->
+          <div class="pt-3 border-t border-slate-700/50">
+            <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Quote 1X2 (Esempio UI)</div>
+            <div class="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
+              <div class="bg-slate-900 hover:bg-slate-700 p-2 rounded border border-slate-700 cursor-pointer transition-colors">
+                <span class="block text-slate-400 text-[10px]">1</span>
+                <span class="text-emerald-400">--</span>
+              </div>
+              <div class="bg-slate-900 hover:bg-slate-700 p-2 rounded border border-slate-700 cursor-pointer transition-colors">
+                <span class="block text-slate-400 text-[10px]">X</span>
+                <span class="text-emerald-400">--</span>
+              </div>
+              <div class="bg-slate-900 hover:bg-slate-700 p-2 rounded border border-slate-700 cursor-pointer transition-colors">
+                <span class="block text-slate-400 text-[10px]">2</span>
+                <span class="text-emerald-400">--</span>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        container.appendChild(card);
+      });
+    }
+
+    // Carica le partite al primo caricamento della pagina
+    fetchMatches();
+  </script>
+</body>
+</html>
