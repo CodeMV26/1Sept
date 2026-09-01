@@ -1,235 +1,110 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SoccerStats & Odds Hub</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Font Inter -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  <style> body { font-family: 'Inter', sans-serif; } </style>
-</head>
-<body class="bg-slate-900 text-slate-100 min-h-screen pb-12">
-
-  <!-- Header / Navbar -->
-  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <div class="bg-emerald-500 text-slate-950 p-2 rounded-lg font-bold text-xl">⚽</div>
-        <h1 class="text-xl font-bold tracking-tight">SoccerStats <span class="text-emerald-400">& Odds</span></h1>
-      </div>
-      <button onclick="fetchMatches()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm transition-all flex items-center gap-2">
-        <span>🔄 Aggiorna Match</span>
-      </button>
-    </div>
-  </header>
-
-  <!-- Main Content -->
-  <main class="max-w-6xl mx-auto px-4 mt-8">
-    
-    <!-- Banner Controlli -->
-    <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-      <div>
-        <h2 class="text-2xl font-bold text-white mb-1">Partite in programma</h2>
-        <p class="text-slate-400 text-sm">Consultazione delle 12 competizioni del Tier Gratuito</p>
-      </div>
-      
-      <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-        <!-- Selettore Competizioni Free -->
-        <select id="league" onchange="fetchMatches()" class="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-emerald-500 block w-full sm:w-auto">
-          <option value="ALL" selected>🌐 TUTTE le 12 Competizioni Free</option>
-          <option value="SA">🇮🇹 Serie A (Italia)</option>
-          <option value="PL">🇬🇧 Premier League (Inghilterra)</option>
-          <option value="PD">🇪🇸 La Liga (Spagna)</option>
-          <option value="BL1">🇩🇪 Bundesliga (Germania)</option>
-          <option value="FL1">🇫🇷 Ligue 1 (Francia)</option>
-          <option value="CL">🏆 UEFA Champions League</option>
-          <option value="DED">🇳🇱 Eredivisie (Olanda)</option>
-          <option value="PPL">🇵🇹 Primeira Liga (Portogallo)</option>
-          <option value="BSA">🇧🇷 Campeonato Brasileiro (Brasile)</option>
-          <option value="ELC">🇬🇧 Championship (Inghilterra)</option>
-          <option value="CLI">🌎 Copa Libertadores</option>
-          <option value="WC">🌍 World Cup / Nazionali</option>
-        </select>
-
-        <!-- Selettore Giorni -->
-        <select id="timeframe" onchange="fetchMatches()" class="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-emerald-500 block w-full sm:w-auto">
-          <option value="0">Solo Oggi</option>
-          <option value="3">Prossimi 3 giorni</option>
-          <option value="4" selected>Prossimi 4 giorni</option>
-          <option value="7">Prossimi 7 giorni</option>
-          <option value="14">Prossimi 14 giorni</option>
-        </select>
-
-        <div id="status-badge" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
-          <span>⏳ Attesa...</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Contenitore Partite -->
-    <div id="matches-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-
-  </main>
-
-  <script>
-    const API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0";
-    const BASE_URL = "https://api.football-data.org/v4/";
-
-    // Mappatura dei 12 Campionati ufficiali dallo script Python
-    const CAMPIONATI = {
-      "WC": "FIFA World Cup", 
-      "CL": "UEFA Champions League", 
-      "BL1": "Bundesliga",
-      "DED": "Eredivisie", 
-      "FL1": "Ligue 1", 
-      "PD": "Primera Division",
-      "SA": "Serie A", 
-      "PL": "Premier League", 
-      "ELC": "Championship",
-      "PPL": "Primeira Liga", 
-      "BSA": "Campeonato Brasileiro Série A", 
-      "CLI": "Copa Libertadores"
-    };
-
-    function getFormattedDate(offsetDays = 0) {
-      const d = new Date();
-      d.setDate(d.getDate() + offsetDays);
-      return d.toISOString().split('T')[0];
-    }
-
-    // Funzione helper per evitare rate limit del proxy
-    const delay = ms => new Promise(res => setTimeout(res, ms));
-
-    async function fetchMatchesForLeague(codCamp, dateFrom, dateTo) {
-      const targetUrl = `${BASE_URL}competitions/${codCamp}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
-
-      try {
-        const response = await fetch(proxyUrl, {
-          headers: { "X-Auth-Token": API_KEY }
-        });
-        if (!response.ok) return [];
-        const data = await response.json();
-        return data.matches || [];
-      } catch (err) {
-        console.warn(`Impossibile recuperare i dati per ${codCamp}:`, err);
-        return [];
-      }
-    }
-
-    async function fetchMatches() {
-      const container = document.getElementById("matches-container");
-      const badge = document.getElementById("status-badge");
-      const daysAhead = parseInt(document.getElementById("timeframe").value, 10);
-      const selectedLeague = document.getElementById("league").value;
-
-      const dateFrom = getFormattedDate(0);
-      const dateTo = getFormattedDate(daysAhead);
-
-      badge.className = "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20";
-      badge.innerHTML = "<span>⏳ Scarico Palinsesto...</span>";
-      container.innerHTML = `<div class="col-span-full text-center text-slate-400 py-12">Caricamento partite in corso...</div>`;
-
-      let allMatches = [];
-      const leaguesToFetch = selectedLeague === "ALL" ? Object.keys(CAMPIONATI) : [selectedLeague];
-
-      for (let i = 0; i < leaguesToFetch.length; i++) {
-        const codCamp = leaguesToFetch[i];
-        const matches = await fetchMatchesForLeague(codCamp, dateFrom, dateTo);
-        allMatches = allMatches.concat(matches);
-        
-        // Piccola pausa tra richieste se si scaricano tutte le leghe
-        if (leaguesToFetch.length > 1 && i < leaguesToFetch.length - 1) {
-          await delay(200);
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Betting Pro Mobile</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f5f5f7;
+            margin: 0;
+            padding: 16px;
+            color: #1d1d1f;
         }
-      }
+        .brand { text-align: center; margin-bottom: 16px; }
+        .brand h1 { color: #0071e3; font-size: 20px; margin: 0; }
+        .brand .versione { font-size: 11px; color: #86868b; margin-top: 2px; }
+        button#btnEstrai {
+            width: 100%;
+            padding: 14px;
+            background-color: #2cd158;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+        button#btnEstrai:disabled { background-color: #a5e8bb; }
+        #stato { text-align: center; font-size: 13px; color: #86868b; margin-bottom: 12px; }
+        .match-card {
+            background: white;
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e5e5ea;
+        }
+        .match-card .campionato { font-size: 10px; font-weight: 800; color: #007aff; text-transform: uppercase; margin-bottom: 4px; }
+        .match-card .squadre { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+        .match-card .data { font-size: 11px; color: #86868b; margin-bottom: 8px; }
+        .stat-riga { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-top: 1px solid #f0f0f0; }
+        .stat-riga span:first-child { color: #8e8e93; }
+        .stat-riga span:last-child { font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="brand">
+        <h1>⚽ Betting Pro Mobile</h1>
+        <div class="versione">Versione 0.48</div>
+    </div>
 
-      // Filtro identico allo script Python: Solo TIMED e SCHEDULED
-      const filteredMatches = allMatches.filter(m => {
-        const status = (m.status || "").toUpperCase();
-        return status === "TIMED" || status === "SCHEDULED";
-      });
+    <button id="btnEstrai">Estrai Partite (prossimi 4 giorni)</button>
+    <div id="stato"></div>
+    <div id="risultati"></div>
 
-      // Ordina i match per data crescente
-      filteredMatches.sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+    <script>
+        var WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
+        var btn = document.getElementById("btnEstrai");
+        var stato = document.getElementById("stato");
+        var risultati = document.getElementById("risultati");
 
-      if (filteredMatches.length > 0) {
-        badge.className = "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-        badge.innerHTML = `<span>✅ ${filteredMatches.length} Match Trovati</span>`;
-      } else {
-        badge.className = "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20";
-        badge.innerHTML = `<span>ℹ️ 0 Match Trovati</span>`;
-      }
+        function formattaData(isoString) {
+            var d = new Date(isoString);
+            return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        }
 
-      renderMatches(filteredMatches);
-    }
+        function mostraPartite(partite) {
+            risultati.innerHTML = "";
+            if (partite.length === 0) {
+                risultati.innerHTML = "<p style='text-align:center; color:#86868b; font-size:13px;'>Nessuna partita trovata nei prossimi 4 giorni.</p>";
+                return;
+            }
+            for (var i = 0; i < partite.length; i++) {
+                var p = partite[i];
+                var card = document.createElement("div");
+                card.className = "match-card";
+                card.innerHTML = "<div class='campionato'>" + p.campionato + "</div>" + "<div class='squadre'>" + p.squadraCasa + " - " + p.squadraOspite + "</div>" + "<div class='data'>" + formattaData(p.dataOraUTC) + "</div>" + "<div class='stat-riga'><span>Punti</span><span>" + p.puntiCasa + " vs " + p.puntiOspite + "</span></div>" + "<div class='stat-riga'><span>Posizione</span><span>" + p.posizioneCasa + " vs " + p.posizioneOspite + "</span></div>" + "<div class='stat-riga'><span>Partite giocate</span><span>" + p.giocateCasa + " vs " + p.giocateOspite + "</span></div>" + "<div class='stat-riga'><span>Gol fatti</span><span>" + p.golFattiCasa + " vs " + p.golFattiOspite + "</span></div>" + "<div class='stat-riga'><span>Gol subiti</span><span>" + p.golSubitiCasa + " vs " + p.golSubitiOspite + "</span></div>";
+                risultati.appendChild(card);
+            }
+        }
 
-    function renderMatches(matches) {
-      const container = document.getElementById("matches-container");
-      container.innerHTML = "";
+        btn.addEventListener("click", function() {
+            btn.disabled = true;
+            btn.textContent = "Estrazione in corso...";
+            stato.textContent = "Attendere circa 2-2,5 minuti (12 campionati, con pause per rispettare i limiti API)";
+            risultati.innerHTML = "";
 
-      if (matches.length === 0) {
-        container.innerHTML = `
-          <div class="col-span-full bg-slate-800/30 border border-slate-700/50 text-slate-400 p-8 rounded-xl text-center">
-            Nessuna partita in programma trovata per le competizioni selezionate nelle prossime date.
-          </div>
-        `;
-        return;
-      }
-
-      matches.forEach(match => {
-        const matchDate = new Date(match.utcDate);
-        const dateStr = matchDate.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
-        const timeStr = matchDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-        const compName = match.competition ? match.competition.name : 'Match';
-        
-        const card = document.createElement("div");
-        card.className = "bg-slate-800/80 border border-slate-700/60 rounded-xl p-5 hover:border-emerald-500/40 transition-all flex flex-col justify-between";
-        
-        card.innerHTML = `
-          <div>
-            <!-- Campionato, Data e Ora -->
-            <div class="flex justify-between items-center text-xs text-slate-400 mb-4 pb-2 border-b border-slate-700/50">
-              <span class="font-semibold text-emerald-400 uppercase tracking-wider">${compName}</span>
-              <span class="bg-slate-900 px-2 py-1 rounded border border-slate-700 text-slate-300 font-medium">${dateStr} ore ${timeStr}</span>
-            </div>
-
-            <!-- Squadre -->
-            <div class="space-y-2 mb-6">
-              <div class="font-semibold text-white text-lg">${match.homeTeam.name}</div>
-              <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">VS</div>
-              <div class="font-semibold text-white text-lg">${match.awayTeam.name}</div>
-            </div>
-          </div>
-
-          <!-- Sezione Quote Mockup -->
-          <div class="pt-3 border-t border-slate-700/50">
-            <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Quote 1X2</div>
-            <div class="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
-              <div class="bg-slate-900 p-2 rounded border border-slate-700">
-                <span class="block text-slate-400 text-[10px]">1</span>
-                <span class="text-emerald-400">--</span>
-              </div>
-              <div class="bg-slate-900 p-2 rounded border border-slate-700">
-                <span class="block text-slate-400 text-[10px]">X</span>
-                <span class="text-emerald-400">--</span>
-              </div>
-              <div class="bg-slate-900 p-2 rounded border border-slate-700">
-                <span class="block text-slate-400 text-[10px]">2</span>
-                <span class="text-emerald-400">--</span>
-              </div>
-            </div>
-          </div>
-        `;
-        
-        container.appendChild(card);
-      });
-    }
-
-    // Esegui la prima ricerca al caricamento
-    fetchMatches();
-  </script>
+            fetch(WORKER_URL)
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.errore) {
+                        stato.textContent = "Errore: " + (data.messaggio || "richiesta fallita");
+                    } else {
+                        stato.textContent = "Trovate " + data.totalePartiteTrovate + " partite";
+                        mostraPartite(data.partite);
+                    }
+                })
+                .catch(function(e) {
+                    stato.textContent = "Errore di connessione: " + e.message;
+                })
+                .finally(function() {
+                    btn.disabled = false;
+                    btn.textContent = "Estrai Partite (prossimi 4 giorni)";
+                });
+        });
+    </script>
 </body>
 </html>
