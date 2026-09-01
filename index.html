@@ -59,6 +59,7 @@
           <option value="3">Prossimi 3 giorni</option>
           <option value="7" selected>Prossimi 7 giorni</option>
           <option value="14">Prossimi 14 giorni</option>
+          <option value="30">Prossimi 30 giorni</option>
         </select>
 
         <div id="status-badge" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
@@ -72,7 +73,7 @@
 
   </main>
 
-  <!-- Script Integrazione API -->
+  <!-- Script Integrazione API con gestione avanzata Proxy -->
   <script>
     const API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0";
 
@@ -91,7 +92,6 @@
       const dateFrom = getFormattedDate(0);
       const dateTo = getFormattedDate(daysAhead);
 
-      // Costruzione URL: tutte le competizioni o lega specifica
       let TARGET_URL = "";
       if (league === "ALL") {
         TARGET_URL = `https://api.football-data.org/v4/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
@@ -99,24 +99,34 @@
         TARGET_URL = `https://api.football-data.org/v4/competitions/${league}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
       }
 
-      const PROXY_URL = `https://api.allorigins.win/get?url=${encodeURIComponent(TARGET_URL)}`;
+      // Usa un proxy alternativo ad alta disponibilità (corsproxy.io / thingproxy)
+      const PROXY_URL = `https://corsproxy.io/?${encodeURIComponent(TARGET_URL)}`;
       
       badge.className = "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20";
       badge.innerHTML = "<span>⏳ Ricerca in corso...</span>";
 
       try {
-        const response = await fetch(PROXY_URL, { headers: { "X-Auth-Token": API_KEY } });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const response = await fetch(PROXY_URL, {
+          method: "GET",
+          headers: {
+            "X-Auth-Token": API_KEY
+          }
+        });
 
-        const wrapperData = await response.json();
-        const data = typeof wrapperData.contents === 'string' ? JSON.parse(wrapperData.contents) : wrapperData.contents;
+        if (!response.ok) {
+          throw new Error(`Risposta del server non valida: Status ${response.status}`);
+        }
 
-        if (data.errorCode) throw new Error(data.message);
+        const data = await response.json();
+
+        if (data.errorCode) {
+          throw new Error(`API Error: ${data.message}`);
+        }
 
         const rawMatches = data.matches || [];
         const now = new Date();
 
-        // Filtro: Solo match futuri non ancora disputati
+        // Filtro rigoroso: Solo partite non ancora svolte (SCHEDULED o TIMED e orario futuro)
         const upcomingMatches = rawMatches.filter(match => {
           const isScheduled = match.status === "SCHEDULED" || match.status === "TIMED";
           return isScheduled && new Date(match.utcDate) > now;
@@ -128,10 +138,22 @@
         renderMatches(upcomingMatches);
 
       } catch (error) {
-        console.error("Errore:", error);
+        console.error("Dettaglio errore:", error);
+        
         badge.className = "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20";
-        badge.innerHTML = `<span>❌ Nessun dato disponibile</span>`;
-        container.innerHTML = `<div class="col-span-full text-center text-slate-400 py-8">Nessun match futuro trovato per il periodo selezionato nelle competizioni free.</div>`;
+        badge.innerHTML = `<span>❌ Errore di Connessione API</span>`;
+        
+        container.innerHTML = `
+          <div class="col-span-full bg-slate-800/40 border border-slate-700/60 p-6 rounded-xl text-center">
+            <p class="text-rose-400 font-semibold mb-2">Impossibile contattare l'API da GitHub Pages (CORS/Proxy Block)</p>
+            <p class="text-xs text-slate-400 max-w-lg mx-auto mb-4">
+              I provider di API sportive bloccano le chiamate dirette fatte dai browser dei siti web per evitare abusi di chiavi gratuite.
+            </p>
+            <button onclick="fetchMatches()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-xs font-semibold rounded-lg text-white">
+              🔄 Riprova Chiamata
+            </button>
+          </div>
+        `;
       }
     }
 
@@ -142,7 +164,7 @@
       if (matches.length === 0) {
         container.innerHTML = `
           <div class="col-span-full bg-slate-800/30 border border-slate-700/50 text-slate-400 p-8 rounded-xl text-center">
-            Nessuna partita da disputare trovata per il filtro selezionato.
+            Nessuna partita futura trovata per il filtro selezionato nell'intervallo specificato.
           </div>
         `;
         return;
