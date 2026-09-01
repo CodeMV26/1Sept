@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Football & Odds Hub - 1Sept</title>
+  <title>SoccerStats & Odds Hub</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Font Inter -->
@@ -32,7 +32,7 @@
     <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
         <h2 class="text-2xl font-bold text-white mb-1">Partite in programma</h2>
-        <p class="text-slate-400 text-sm">Consultazione di tutte le competizioni del Tier Gratuito</p>
+        <p class="text-slate-400 text-sm">Consultazione delle 12 competizioni del Tier Gratuito</p>
       </div>
       
       <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
@@ -57,9 +57,9 @@
         <select id="timeframe" onchange="fetchMatches()" class="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-emerald-500 block w-full sm:w-auto">
           <option value="0">Solo Oggi</option>
           <option value="3">Prossimi 3 giorni</option>
-          <option value="7" selected>Prossimi 7 giorni</option>
+          <option value="4" selected>Prossimi 4 giorni</option>
+          <option value="7">Prossimi 7 giorni</option>
           <option value="14">Prossimi 14 giorni</option>
-          <option value="30">Prossimi 30 giorni</option>
         </select>
 
         <div id="status-badge" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
@@ -73,9 +73,25 @@
 
   </main>
 
-  <!-- Script Integrazione API con gestione avanzata Proxy -->
   <script>
     const API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0";
+    const BASE_URL = "https://api.football-data.org/v4/";
+
+    // Mappatura dei 12 Campionati ufficiali dallo script Python
+    const CAMPIONATI = {
+      "WC": "FIFA World Cup", 
+      "CL": "UEFA Champions League", 
+      "BL1": "Bundesliga",
+      "DED": "Eredivisie", 
+      "FL1": "Ligue 1", 
+      "PD": "Primera Division",
+      "SA": "Serie A", 
+      "PL": "Premier League", 
+      "ELC": "Championship",
+      "PPL": "Primeira Liga", 
+      "BSA": "Campeonato Brasileiro Série A", 
+      "CLI": "Copa Libertadores"
+    };
 
     function getFormattedDate(offsetDays = 0) {
       const d = new Date();
@@ -83,78 +99,71 @@
       return d.toISOString().split('T')[0];
     }
 
+    // Funzione helper per evitare rate limit del proxy
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+
+    async function fetchMatchesForLeague(codCamp, dateFrom, dateTo) {
+      const targetUrl = `${BASE_URL}competitions/${codCamp}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+
+      try {
+        const response = await fetch(proxyUrl, {
+          headers: { "X-Auth-Token": API_KEY }
+        });
+        if (!response.ok) return [];
+        const data = await response.json();
+        return data.matches || [];
+      } catch (err) {
+        console.warn(`Impossibile recuperare i dati per ${codCamp}:`, err);
+        return [];
+      }
+    }
+
     async function fetchMatches() {
       const container = document.getElementById("matches-container");
       const badge = document.getElementById("status-badge");
       const daysAhead = parseInt(document.getElementById("timeframe").value, 10);
-      const league = document.getElementById("league").value;
+      const selectedLeague = document.getElementById("league").value;
 
       const dateFrom = getFormattedDate(0);
       const dateTo = getFormattedDate(daysAhead);
 
-      let TARGET_URL = "";
-      if (league === "ALL") {
-        TARGET_URL = `https://api.football-data.org/v4/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
-      } else {
-        TARGET_URL = `https://api.football-data.org/v4/competitions/${league}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
-      }
-
-      // Usa un proxy alternativo ad alta disponibilità (corsproxy.io / thingproxy)
-      const PROXY_URL = `https://corsproxy.io/?${encodeURIComponent(TARGET_URL)}`;
-      
       badge.className = "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20";
-      badge.innerHTML = "<span>⏳ Ricerca in corso...</span>";
+      badge.innerHTML = "<span>⏳ Scarico Palinsesto...</span>";
+      container.innerHTML = `<div class="col-span-full text-center text-slate-400 py-12">Caricamento partite in corso...</div>`;
 
-      try {
-        const response = await fetch(PROXY_URL, {
-          method: "GET",
-          headers: {
-            "X-Auth-Token": API_KEY
-          }
-        });
+      let allMatches = [];
+      const leaguesToFetch = selectedLeague === "ALL" ? Object.keys(CAMPIONATI) : [selectedLeague];
 
-        if (!response.ok) {
-          throw new Error(`Risposta del server non valida: Status ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data.errorCode) {
-          throw new Error(`API Error: ${data.message}`);
-        }
-
-        const rawMatches = data.matches || [];
-        const now = new Date();
-
-        // Filtro rigoroso: Solo partite non ancora svolte (SCHEDULED o TIMED e orario futuro)
-        const upcomingMatches = rawMatches.filter(match => {
-          const isScheduled = match.status === "SCHEDULED" || match.status === "TIMED";
-          return isScheduled && new Date(match.utcDate) > now;
-        });
-
-        badge.className = "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-        badge.innerHTML = `<span>✅ ${upcomingMatches.length} Match Trovati</span>`;
-
-        renderMatches(upcomingMatches);
-
-      } catch (error) {
-        console.error("Dettaglio errore:", error);
+      for (let i = 0; i < leaguesToFetch.length; i++) {
+        const codCamp = leaguesToFetch[i];
+        const matches = await fetchMatchesForLeague(codCamp, dateFrom, dateTo);
+        allMatches = allMatches.concat(matches);
         
-        badge.className = "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20";
-        badge.innerHTML = `<span>❌ Errore di Connessione API</span>`;
-        
-        container.innerHTML = `
-          <div class="col-span-full bg-slate-800/40 border border-slate-700/60 p-6 rounded-xl text-center">
-            <p class="text-rose-400 font-semibold mb-2">Impossibile contattare l'API da GitHub Pages (CORS/Proxy Block)</p>
-            <p class="text-xs text-slate-400 max-w-lg mx-auto mb-4">
-              I provider di API sportive bloccano le chiamate dirette fatte dai browser dei siti web per evitare abusi di chiavi gratuite.
-            </p>
-            <button onclick="fetchMatches()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-xs font-semibold rounded-lg text-white">
-              🔄 Riprova Chiamata
-            </button>
-          </div>
-        `;
+        // Piccola pausa tra richieste se si scaricano tutte le leghe
+        if (leaguesToFetch.length > 1 && i < leaguesToFetch.length - 1) {
+          await delay(200);
+        }
       }
+
+      // Filtro identico allo script Python: Solo TIMED e SCHEDULED
+      const filteredMatches = allMatches.filter(m => {
+        const status = (m.status || "").toUpperCase();
+        return status === "TIMED" || status === "SCHEDULED";
+      });
+
+      // Ordina i match per data crescente
+      filteredMatches.sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+
+      if (filteredMatches.length > 0) {
+        badge.className = "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+        badge.innerHTML = `<span>✅ ${filteredMatches.length} Match Trovati</span>`;
+      } else {
+        badge.className = "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-500/10 text-slate-400 border border-slate-500/20";
+        badge.innerHTML = `<span>ℹ️ 0 Match Trovati</span>`;
+      }
+
+      renderMatches(filteredMatches);
     }
 
     function renderMatches(matches) {
@@ -164,7 +173,7 @@
       if (matches.length === 0) {
         container.innerHTML = `
           <div class="col-span-full bg-slate-800/30 border border-slate-700/50 text-slate-400 p-8 rounded-xl text-center">
-            Nessuna partita futura trovata per il filtro selezionato nell'intervallo specificato.
+            Nessuna partita in programma trovata per le competizioni selezionate nelle prossime date.
           </div>
         `;
         return;
@@ -172,8 +181,9 @@
 
       matches.forEach(match => {
         const matchDate = new Date(match.utcDate);
-        const dateStr = matchDate.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' });
-        const timeStr = matchDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const dateStr = matchDate.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
+        const timeStr = matchDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        const compName = match.competition ? match.competition.name : 'Match';
         
         const card = document.createElement("div");
         card.className = "bg-slate-800/80 border border-slate-700/60 rounded-xl p-5 hover:border-emerald-500/40 transition-all flex flex-col justify-between";
@@ -182,8 +192,8 @@
           <div>
             <!-- Campionato, Data e Ora -->
             <div class="flex justify-between items-center text-xs text-slate-400 mb-4 pb-2 border-b border-slate-700/50">
-              <span class="font-semibold text-emerald-400 uppercase tracking-wider">${match.competition ? match.competition.name : 'Match'}</span>
-              <span class="bg-slate-900 px-2 py-1 rounded border border-slate-700 text-slate-300 font-medium">${dateStr} - ${timeStr}</span>
+              <span class="font-semibold text-emerald-400 uppercase tracking-wider">${compName}</span>
+              <span class="bg-slate-900 px-2 py-1 rounded border border-slate-700 text-slate-300 font-medium">${dateStr} ore ${timeStr}</span>
             </div>
 
             <!-- Squadre -->
@@ -194,9 +204,9 @@
             </div>
           </div>
 
-          <!-- Sezione Quote (Mock-up UI pronta per The Odds API) -->
+          <!-- Sezione Quote Mockup -->
           <div class="pt-3 border-t border-slate-700/50">
-            <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Quote 1X2 (In attesa del provider quote)</div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Quote 1X2</div>
             <div class="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
               <div class="bg-slate-900 p-2 rounded border border-slate-700">
                 <span class="block text-slate-400 text-[10px]">1</span>
@@ -218,7 +228,7 @@
       });
     }
 
-    // Caricamento iniziale
+    // Esegui la prima ricerca al caricamento
     fetchMatches();
   </script>
 </body>
