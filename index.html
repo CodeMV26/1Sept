@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Football & Odds Hub</title>
-  <!-- Tailwind CSS per la grafica -->
+  <title>Football & Odds Hub - 1Sept</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Font Inter -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -51,7 +51,38 @@
   <!-- Script Integrazione API -->
   <script>
     const API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0";
-    const API_URL = "https://api.football-data.org/v4/matches";
+    const TARGET_URL = "https://api.football-data.org/v4/matches";
+    
+    // Proxy AllOrigins con encodeURIComponent per aggirare il blocco CORS/403
+    const PROXY_URL = `https://api.allorigins.win/get?url=${encodeURIComponent(TARGET_URL)}`;
+
+    // Dati di backup (Fallback) in caso di blocco rigido dell'API lato browser
+    const MOCK_MATCHES = [
+      {
+        id: 101,
+        competition: { name: "Serie A" },
+        utcDate: new Date().toISOString(),
+        homeTeam: { name: "Roma" },
+        awayTeam: { name: "Lazio" },
+        score: { fullTime: { home: null, away: null } }
+      },
+      {
+        id: 102,
+        competition: { name: "Premier League" },
+        utcDate: new Date().toISOString(),
+        homeTeam: { name: "Arsenal" },
+        awayTeam: { name: "Chelsea" },
+        score: { fullTime: { home: null, away: null } }
+      },
+      {
+        id: 103,
+        competition: { name: "La Liga" },
+        utcDate: new Date().toISOString(),
+        homeTeam: { name: "Real Madrid" },
+        awayTeam: { name: "Siviglia" },
+        score: { fullTime: { home: null, away: null } }
+      }
+    ];
 
     async function fetchMatches() {
       const container = document.getElementById("matches-container");
@@ -61,20 +92,31 @@
       badge.innerHTML = "<span>⏳ Chiamata API in corso...</span>";
 
       try {
-        // NOTA: football-data.org richiede un proxy CORS se chiamato direttamente da browser locale/GitHub Pages.
-        // Utilizziamo un proxy pubblico per il testing frontend client-side.
-        const proxyUrl = "https://corsproxy.io/?";
-        const response = await fetch(proxyUrl + encodeURIComponent(API_URL), {
+        const response = await fetch(PROXY_URL, {
           headers: {
             "X-Auth-Token": API_KEY
           }
         });
 
         if (!response.ok) {
-          throw new Error(`Errore HTTP: ${response.status}`);
+          throw new Error(`Errore HTTP Server Proxy: ${response.status}`);
         }
 
-        const data = await response.json();
+        const wrapperData = await response.json();
+        
+        // AllOrigins restituisce il JSON del target dentro una stringa "contents"
+        let data;
+        try {
+          data = typeof wrapperData.contents === 'string' ? JSON.parse(wrapperData.contents) : wrapperData.contents;
+        } catch (e) {
+          throw new Error("Impossibile decodificare i dati dell'API");
+        }
+
+        // Verifica se l'API ha restituito un errore di permessi/chiave nel body
+        if (data.errorCode) {
+          throw new Error(`API Error ${data.errorCode}: ${data.message}`);
+        }
+
         const matches = data.matches || [];
 
         badge.className = "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
@@ -83,16 +125,13 @@
         renderMatches(matches);
 
       } catch (error) {
-        console.error("Errore nel recupero dati:", error);
-        badge.className = "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20";
-        badge.innerHTML = "<span>❌ Errore durante il caricamento</span>";
+        console.warn("Errore chiamata API live. Utilizzo dati di riserva:", error);
         
-        container.innerHTML = `
-          <div class="col-span-full bg-rose-950/30 border border-rose-800 text-rose-200 p-6 rounded-xl text-center">
-            <p class="font-semibold">Impossibile recuperare i dati in tempo reale.</p>
-            <p class="text-xs text-rose-400 mt-1">${error.message}</p>
-          </div>
-        `;
+        // Avviso visivo che siamo in modalità Fallback senza bloccare l'interfaccia
+        badge.className = "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20";
+        badge.innerHTML = `<span>⚠️ Modalità Demo (API usata direttamente da browser bloccata da CORS)</span>`;
+        
+        renderMatches(MOCK_MATCHES);
       }
     }
 
@@ -119,7 +158,7 @@
           <div>
             <!-- Campionato e Ora -->
             <div class="flex justify-between items-center text-xs text-slate-400 mb-4 pb-2 border-b border-slate-700/50">
-              <span class="font-semibold text-emerald-400 uppercase tracking-wider">${match.competition.name}</span>
+              <span class="font-semibold text-emerald-400 uppercase tracking-wider">${match.competition ? match.competition.name : 'Match'}</span>
               <span class="bg-slate-900 px-2 py-1 rounded border border-slate-700">${time}</span>
             </div>
 
@@ -127,16 +166,16 @@
             <div class="space-y-3 mb-6">
               <div class="flex justify-between items-center">
                 <span class="font-semibold text-white text-lg">${match.homeTeam.name}</span>
-                <span class="text-slate-500 font-bold">${match.score.fullTime.home ?? '-'}</span>
+                <span class="text-slate-500 font-bold">${match.score && match.score.fullTime ? (match.score.fullTime.home ?? '-') : '-'}</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="font-semibold text-white text-lg">${match.awayTeam.name}</span>
-                <span class="text-slate-500 font-bold">${match.score.fullTime.away ?? '-'}</span>
+                <span class="text-slate-500 font-bold">${match.score && match.score.fullTime ? (match.score.fullTime.away ?? '-') : '-'}</span>
               </div>
             </div>
           </div>
 
-          <!-- Sezione Quote (Mock-up UI pronta per The Odds API) -->
+          <!-- Sezione Quote (Mock-up UI per fase 2) -->
           <div class="pt-3 border-t border-slate-700/50">
             <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Quote 1X2 (Esempio UI)</div>
             <div class="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
@@ -160,7 +199,7 @@
       });
     }
 
-    // Carica le partite al primo caricamento della pagina
+    // Carica le partite al caricamento della pagina
     fetchMatches();
   </script>
 </body>
