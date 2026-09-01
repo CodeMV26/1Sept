@@ -4,48 +4,61 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Football & Odds Hub - 1Sept</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Inter -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style> body { font-family: 'Inter', sans-serif; } </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen pb-12">
 
+  <!-- Header / Navbar -->
   <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
     <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
       <div class="flex items-center gap-3">
         <div class="bg-emerald-500 text-slate-950 p-2 rounded-lg font-bold text-xl">⚽</div>
         <h1 class="text-xl font-bold tracking-tight">SoccerStats <span class="text-emerald-400">& Odds</span></h1>
       </div>
-      <button onclick="fetchMatches()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm transition-all">
-        🔄 Aggiorna
+      <button onclick="fetchMatches()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm transition-all flex items-center gap-2">
+        <span>🔄 Aggiorna Match</span>
       </button>
     </div>
   </header>
 
+  <!-- Main Content -->
   <main class="max-w-6xl mx-auto px-4 mt-8">
+    
+    <!-- Banner Controlli -->
     <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <div>
-        <h2 class="text-2xl font-bold text-white mb-1">Filtra Partite Futura</h2>
-        <p class="text-slate-400 text-sm">Seleziona lega e intervallo temporale</p>
+        <h2 class="text-2xl font-bold text-white mb-1">Partite in programma</h2>
+        <p class="text-slate-400 text-sm">Consultazione di tutte le competizioni del Tier Gratuito</p>
       </div>
       
       <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-        <!-- Selettore Campionato -->
+        <!-- Selettore Competizioni Free -->
         <select id="league" onchange="fetchMatches()" class="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-emerald-500 block w-full sm:w-auto">
-          <option value="SA" selected>🇮🇹 Serie A (Italia)</option>
-          <option value="PL">🇬🇧 Premier League</option>
-          <option value="PD">🇪🇸 La Liga</option>
-          <option value="BL1">🇩🇪 Bundesliga</option>
-          <option value="CL">🏆 Champions League</option>
-          <option value="ALL">🌐 Tutte le competizioni Free</option>
+          <option value="ALL" selected>🌐 TUTTE le 12 Competizioni Free</option>
+          <option value="SA">🇮🇹 Serie A (Italia)</option>
+          <option value="PL">🇬🇧 Premier League (Inghilterra)</option>
+          <option value="PD">🇪🇸 La Liga (Spagna)</option>
+          <option value="BL1">🇩🇪 Bundesliga (Germania)</option>
+          <option value="FL1">🇫🇷 Ligue 1 (Francia)</option>
+          <option value="CL">🏆 UEFA Champions League</option>
+          <option value="DED">🇳🇱 Eredivisie (Olanda)</option>
+          <option value="PPL">🇵🇹 Primeira Liga (Portogallo)</option>
+          <option value="BSA">🇧🇷 Campeonato Brasileiro (Brasile)</option>
+          <option value="ELC">🇬🇧 Championship (Inghilterra)</option>
+          <option value="CLI">🌎 Copa Libertadores</option>
+          <option value="WC">🌍 World Cup / Nazionali</option>
         </select>
 
         <!-- Selettore Giorni -->
         <select id="timeframe" onchange="fetchMatches()" class="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg p-2.5 focus:ring-emerald-500 block w-full sm:w-auto">
+          <option value="0">Solo Oggi</option>
           <option value="3">Prossimi 3 giorni</option>
           <option value="7" selected>Prossimi 7 giorni</option>
           <option value="14">Prossimi 14 giorni</option>
-          <option value="30">Prossimi 30 giorni</option>
         </select>
 
         <div id="status-badge" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
@@ -54,9 +67,12 @@
       </div>
     </div>
 
+    <!-- Contenitore Partite -->
     <div id="matches-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
   </main>
 
+  <!-- Script Integrazione API -->
   <script>
     const API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0";
 
@@ -75,7 +91,7 @@
       const dateFrom = getFormattedDate(0);
       const dateTo = getFormattedDate(daysAhead);
 
-      // Costruzione URL in base alla lega selezionata
+      // Costruzione URL: tutte le competizioni o lega specifica
       let TARGET_URL = "";
       if (league === "ALL") {
         TARGET_URL = `https://api.football-data.org/v4/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
@@ -100,7 +116,7 @@
         const rawMatches = data.matches || [];
         const now = new Date();
 
-        // Filtro per sole partite non ancora giocate
+        // Filtro: Solo match futuri non ancora disputati
         const upcomingMatches = rawMatches.filter(match => {
           const isScheduled = match.status === "SCHEDULED" || match.status === "TIMED";
           return isScheduled && new Date(match.utcDate) > now;
@@ -114,8 +130,8 @@
       } catch (error) {
         console.error("Errore:", error);
         badge.className = "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20";
-        badge.innerHTML = `<span>❌ Errore API o nessun dato</span>`;
-        container.innerHTML = `<div class="col-span-full text-center text-slate-400 py-8">Nessun dato reale disponibile per l'intervallo selezionato.</div>`;
+        badge.innerHTML = `<span>❌ Nessun dato disponibile</span>`;
+        container.innerHTML = `<div class="col-span-full text-center text-slate-400 py-8">Nessun match futuro trovato per il periodo selezionato nelle competizioni free.</div>`;
       }
     }
 
@@ -126,7 +142,7 @@
       if (matches.length === 0) {
         container.innerHTML = `
           <div class="col-span-full bg-slate-800/30 border border-slate-700/50 text-slate-400 p-8 rounded-xl text-center">
-            Nessuna partita ufficiale in programma per questa lega nell'intervallo di giorni selezionato.
+            Nessuna partita da disputare trovata per il filtro selezionato.
           </div>
         `;
         return;
@@ -142,20 +158,37 @@
         
         card.innerHTML = `
           <div>
+            <!-- Campionato, Data e Ora -->
             <div class="flex justify-between items-center text-xs text-slate-400 mb-4 pb-2 border-b border-slate-700/50">
-              <span class="font-semibold text-emerald-400 uppercase tracking-wider">${match.competition ? match.competition.name : 'Campionato'}</span>
+              <span class="font-semibold text-emerald-400 uppercase tracking-wider">${match.competition ? match.competition.name : 'Match'}</span>
               <span class="bg-slate-900 px-2 py-1 rounded border border-slate-700 text-slate-300 font-medium">${dateStr} - ${timeStr}</span>
             </div>
 
-            <div class="space-y-3 mb-6">
+            <!-- Squadre -->
+            <div class="space-y-2 mb-6">
               <div class="font-semibold text-white text-lg">${match.homeTeam.name}</div>
-              <div class="text-xs text-slate-500 font-bold">VS</div>
+              <div class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">VS</div>
               <div class="font-semibold text-white text-lg">${match.awayTeam.name}</div>
             </div>
           </div>
 
-          <div class="pt-3 border-t border-slate-700/50 text-xs text-slate-500">
-            Stato: <span class="text-emerald-400 font-semibold">${match.status}</span>
+          <!-- Sezione Quote (Mock-up UI pronta per The Odds API) -->
+          <div class="pt-3 border-t border-slate-700/50">
+            <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Quote 1X2 (In attesa del provider quote)</div>
+            <div class="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
+              <div class="bg-slate-900 p-2 rounded border border-slate-700">
+                <span class="block text-slate-400 text-[10px]">1</span>
+                <span class="text-emerald-400">--</span>
+              </div>
+              <div class="bg-slate-900 p-2 rounded border border-slate-700">
+                <span class="block text-slate-400 text-[10px]">X</span>
+                <span class="text-emerald-400">--</span>
+              </div>
+              <div class="bg-slate-900 p-2 rounded border border-slate-700">
+                <span class="block text-slate-400 text-[10px]">2</span>
+                <span class="text-emerald-400">--</span>
+              </div>
+            </div>
           </div>
         `;
         
@@ -163,6 +196,7 @@
       });
     }
 
+    // Caricamento iniziale
     fetchMatches();
   </script>
 </body>
