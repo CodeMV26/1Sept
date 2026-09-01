@@ -29,7 +29,7 @@
             cursor: pointer;
         }
         button#btnEstrai:disabled { background-color: #a5e8bb; cursor: not-allowed; }
-        #stato { text-align: center; font-size: 13px; color: #86868b; margin-bottom: 12px; }
+        #stato { text-align: center; font-size: 13px; color: #86868b; margin-bottom: 12px; line-height: 1.4; }
         .match-card {
             background: white;
             border-radius: 14px;
@@ -49,7 +49,7 @@
 <body>
     <div class="brand">
         <h1>⚽ Betting Pro Mobile</h1>
-        <div class="versione">Versione 0.48</div>
+        <div class="versione">Versione 0.49 (Direct API)</div>
     </div>
 
     <button id="btnEstrai">Estrai Partite (prossimi 4 giorni)</button>
@@ -96,12 +96,20 @@
         }
 
         async function fetchAPI(endpoint) {
-            const url = `https://corsproxy.io/?${encodeURIComponent('https://api.football-data.org/v4/' + endpoint)}`;
+            const targetUrl = 'https://api.football-data.org/v4/' + endpoint;
+            // Utilizzo di proxy alternativo più stabile per chiamate REST
+            const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl);
+            
             try {
-                const res = await fetch(url, { headers: { "X-Auth-Token": API_KEY } });
+                const res = await fetch(proxyUrl, {
+                    headers: { "X-Auth-Token": API_KEY }
+                });
                 if (!res.ok) return null;
-                return await res.json();
+                const wrapper = await res.json();
+                if (!wrapper.contents) return null;
+                return JSON.parse(wrapper.contents);
             } catch (e) {
+                console.error("Errore fetch:", e);
                 return null;
             }
         }
@@ -118,11 +126,11 @@
 
             for (let i = 0; i < CAMPIONATI.length; i++) {
                 const cod = CAMPIONATI[i];
-                stato.textContent = `Scansione campionato ${i + 1} di ${CAMPIONATI.length} (${cod})...`;
+                stato.textContent = `Scansione: ${cod} (${i + 1}/${CAMPIONATI.length}) - Partite trovate finora: ${listaPartite.length}`;
 
-                // 1. Prendi le partite
+                // 1. Prendi le partite del campionato
                 const dataMatches = await fetchAPI(`competitions/${cod}/matches?dateFrom=${dFrom}&dateTo=${dTo}`);
-                await delay(150);
+                await delay(300);
 
                 if (dataMatches && dataMatches.matches) {
                     const matches = dataMatches.matches.filter(m => {
@@ -131,9 +139,9 @@
                     });
 
                     if (matches.length > 0) {
-                        // 2. Prendi la classifica solo se ci sono partite
+                        // 2. Prendi la classifica solo se sono presenti partite in programma
                         const dataStandings = await fetchAPI(`competitions/${cod}/standings`);
-                        await delay(150);
+                        await delay(300);
 
                         let mappaClassifica = {};
                         if (dataStandings && dataStandings.standings && dataStandings.standings[0]) {
@@ -173,7 +181,7 @@
                 }
             }
 
-            stato.textContent = "Trovate " + listaPartite.length + " partite";
+            stato.textContent = "Estrazione completata. Trovate " + listaPartite.length + " partite.";
             mostraPartite(listaPartite);
 
             btn.disabled = false;
