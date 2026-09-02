@@ -30,6 +30,19 @@
         }
         button#btnEstrai:disabled { background-color: #a5e8bb; cursor: not-allowed; }
         #stato { text-align: center; font-size: 13px; color: #86868b; margin-bottom: 12px; line-height: 1.4; }
+        
+        .box-riepilogo {
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 16px;
+            border: 1px solid #e5e5ea;
+            font-size: 12px;
+        }
+        .box-riepilogo h3 { margin: 0 0 8px 0; font-size: 13px; color: #0071e3; }
+        .riepilogo-riga { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
+        .riepilogo-riga:last-child { border-bottom: none; font-weight: bold; padding-top: 6px; }
+
         .match-card {
             background: white;
             border-radius: 14px;
@@ -49,19 +62,20 @@
 <body>
     <div class="brand">
         <h1>⚽ Betting Pro Mobile</h1>
-        <div class="versione">Versione 1Sept Dedicated</div>
+        <div class="versione">Versione 1Sept Multi-League Monitor</div>
     </div>
 
-    <button id="btnEstrai">Estrai Partite (prossimi 4 giorni)</button>
+    <button id="btnEstrai">Estrai Partite (prossimi 4-5 giorni)</button>
     <div id="stato"></div>
+    <div id="riepilogo"></div>
     <div id="risultati"></div>
 
     <script>
-        // URL puntato al nuovo Worker dedicato 1Sept
         var WORKER_URL = "https://betting-pro-1sept.mvmymail.workers.dev/";
         
         var btn = document.getElementById("btnEstrai");
         var stato = document.getElementById("stato");
+        var riepilogo = document.getElementById("riepilogo");
         var risultati = document.getElementById("risultati");
 
         function formattaData(isoString) {
@@ -70,10 +84,22 @@
             return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
 
+        function mostraRiepilogo(resoconto, totale) {
+            if (!resoconto || resoconto.length === 0) return;
+            var html = "<div class='box-riepilogo'><h3>📊 Resoconto 12 Campionati Free</h3>";
+            for (var i = 0; i < resoconto.length; i++) {
+                var c = resoconto[i];
+                var infoStato = c.stato !== "OK" ? " (" + c.stato + ")" : "";
+                html += "<div class='riepilogo-riga'><span>" + c.nome + infoStato + ":</span><span>" + c.trovate + " partite</span></div>";
+            }
+            html += "<div class='riepilogo-riga'><span>TOTALE COMPLESSIVO:</span><span>" + totale + " partite</span></div></div>";
+            riepilogo.innerHTML = html;
+        }
+
         function mostraPartite(partite) {
             risultati.innerHTML = "";
             if (!partite || partite.length === 0) {
-                risultati.innerHTML = "<p style='text-align:center; color:#86868b; font-size:13px;'>Nessuna partita trovata nei prossimi 4 giorni.</p>";
+                risultati.innerHTML = "<p style='text-align:center; color:#86868b; font-size:13px;'>Nessuna partita trovata nei prossimi giorni.</p>";
                 return;
             }
             for (var i = 0; i < partite.length; i++) {
@@ -97,22 +123,21 @@
         btn.addEventListener("click", function() {
             btn.disabled = true;
             btn.textContent = "Estrazione in corso...";
-            stato.textContent = "Attendere la scansione dei 12 campionati via Worker 1Sept...";
+            stato.textContent = "Scansione in corso dei 12 campionati (può richiedere fino a 30-40 secondi)...";
+            riepilogo.innerHTML = "";
             risultati.innerHTML = "";
 
             fetch(WORKER_URL)
                 .then(function(response) {
-                    if (!response.ok) {
-                        throw new Error("Errore HTTP " + response.status);
-                    }
+                    if (!response.ok) throw new Error("Errore HTTP " + response.status);
                     return response.json();
                 })
                 .then(function(data) {
                     if (data.errore) {
                         stato.textContent = "Errore: " + (data.messaggio || "Richiesta fallita");
                     } else {
-                        var totale = data.totalePartiteTrovate !== undefined ? data.totalePartiteTrovate : (data.partite ? data.partite.length : 0);
-                        stato.textContent = "Trovate " + totale + " partite";
+                        stato.textContent = "Estrazione completata!";
+                        mostraRiepilogo(data.resocontoCampionati, data.totalePartiteTrovate);
                         mostraPartite(data.partite || []);
                     }
                 })
@@ -121,7 +146,7 @@
                 })
                 .finally(function() {
                     btn.disabled = false;
-                    btn.textContent = "Estrai Partite (prossimi 4 giorni)";
+                    btn.textContent = "Estrai Partite (prossimi 4-5 giorni)";
                 });
         });
     </script>
