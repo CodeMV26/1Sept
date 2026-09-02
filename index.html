@@ -33,7 +33,6 @@
         
         #stato { text-align: center; font-size: 12px; color: #86868b; margin-bottom: 12px; line-height: 1.4; }
         
-        /* Layout del Riepilogo ottimizzato per iPhone */
         .box-riepilogo {
             background: #ffffff;
             border-radius: 12px;
@@ -73,15 +72,26 @@
         .match-card .campionato { font-size: 10px; font-weight: 800; color: #007aff; text-transform: uppercase; margin-bottom: 4px; }
         .match-card .squadre { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
         .match-card .data { font-size: 11px; color: #86868b; margin-bottom: 8px; }
+        
+        .section-divider { 
+            font-size: 10px; 
+            font-weight: 700; 
+            color: #0071e3; 
+            margin-top: 8px; 
+            padding-top: 4px; 
+            border-top: 1px dashed #d2d2d7; 
+            text-transform: uppercase;
+        }
+        
         .stat-riga { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-top: 1px solid #f0f0f0; }
         .stat-riga span:first-child { color: #8e8e93; }
-        .stat-riga span:last-child { font-weight: 600; }
+        .stat-riga span:last-child { font-weight: 600; text-align: right; }
     </style>
 </head>
 <body>
     <div class="brand">
         <h1>⚽ Betting Pro Mobile</h1>
-        <div class="versione">Versione 1Sept Cloud Sync</div>
+        <div class="versione">Versione 1Sept Advanced Stats</div>
     </div>
 
     <button id="btnEstrai">Nuova Estrazione Palinsesto</button>
@@ -130,12 +140,31 @@
                     "<div class='campionato'>" + (p.campionato || "Campionato") + "</div>" +
                     "<div class='squadre'>" + p.squadraCasa + " - " + p.squadraOspite + "</div>" +
                     "<div class='data'>" + formattaData(p.dataOraUTC) + "</div>" +
-                    "<div class='stat-riga'><span>Punti</span><span>" + p.puntiCasa + " vs " + p.puntiOspite + "</span></div>" +
-                    "<div class='stat-riga'><span>Posizione</span><span>" + p.posizioneCasa + " vs " + p.posizioneOspite + "</span></div>" +
+                    
+                    // Statistiche Generali
+                    "<div class='stat-riga'><span>Punti Generali</span><span>" + p.puntiCasa + " vs " + p.puntiOspite + "</span></div>" +
+                    "<div class='stat-riga'><span>Posizione Generale</span><span>" + p.posizioneCasa + " vs " + p.posizioneOspite + "</span></div>" +
                     "<div class='stat-riga'><span>Partite giocate</span><span>" + p.giocateCasa + " vs " + p.giocateOspite + "</span></div>" +
-                    "<div class='stat-riga'><span>V/P/S</span><span>" + p.vinteCasa + "/" + p.pareggiateCasa + "/" + p.perseCasa + " vs " + p.vinteOspite + "/" + p.pareggiateOspite + "/" + p.perseOspite + "</span></div>" +
-                    "<div class='stat-riga'><span>Gol fatti</span><span>" + p.golFattiCasa + " vs " + p.golFattiOspite + "</span></div>" +
-                    "<div class='stat-riga'><span>Gol subiti</span><span>" + p.golSubitiCasa + " vs " + p.golSubitiOspite + "</span></div>";
+                    "<div class='stat-riga'><span>V/P/S Generali</span><span>" + p.vinteCasa + "/" + p.pareggiateCasa + "/" + p.perseCasa + " vs " + p.vinteOspite + "/" + p.pareggiateOspite + "/" + p.perseOspite + "</span></div>" +
+                    "<div class='stat-riga'><span>Gol fatti / subiti</span><span>" + p.golFattiCasa + ":" + p.golSubitiCasa + " vs " + p.golFattiOspite + ":" + p.golSubitiOspite + "</span></div>" +
+                    
+                    // Rendimento Casa vs Trasferta
+                    "<div class='section-divider'>Rendimento Casa / Trasferta</div>" +
+                    "<div class='stat-riga'><span>Punti (Solo Casa / Solo Trasferta)</span><span>" + p.puntiCasaSoloCasa + " vs " + p.puntiOspiteSoloTrasferta + "</span></div>" +
+                    "<div class='stat-riga'><span>V/P/S (Solo Casa / Solo Trasferta)</span><span>" + p.vpsCasaSoloCasa + " vs " + p.vpsOspiteSoloTrasferta + "</span></div>" +
+
+                    // Forma e Indice Forma
+                    "<div class='section-divider'>Forma Recente & Indice</div>" +
+                    "<div class='stat-riga'><span>Trend " + p.squadraCasa + "</span><span>" + (p.simboliFormaCasa || "-") + "</span></div>" +
+                    "<div class='stat-riga'><span>Indice Forma Casa</span><span>" + p.indiceFormaCasa + "</span></div>" +
+                    "<div class='stat-riga'><span>Trend " + p.squadraOspite + "</span><span>" + (p.simboliFormaOspite || "-") + "</span></div>" +
+                    "<div class='stat-riga'><span>Indice Forma Ospite</span><span>" + p.indiceFormaOspite + "</span></div>" +
+
+                    // Top Scorer
+                    "<div class='section-divider'>Top Scorer in Campionato</div>" +
+                    "<div class='stat-riga'><span>" + p.squadraCasa + "</span><span>" + p.topScorerCasa + "</span></div>" +
+                    "<div class='stat-riga'><span>" + p.squadraOspite + "</span><span>" + p.topScorerOspite + "</span></div>";
+                
                 risultati.appendChild(card);
             }
         }
@@ -160,7 +189,7 @@
         btn.addEventListener("click", function() {
             btn.disabled = true;
             btn.textContent = "Estrazione in corso...";
-            stato.textContent = "Scansione 12 campionati e sincronizzazione cloud in corso...";
+            stato.textContent = "Scansione avanzata 12 campionati e sincronizzazione cloud in corso...";
 
             fetch(WORKER_URL + "?force=true")
                 .then(function(response) {
@@ -185,7 +214,6 @@
                 });
         });
 
-        // Al primo avvio carica automaticamente l'ultimo palinsesto salvato
         caricaPalinsestoSalvato();
     </script>
 </body>
