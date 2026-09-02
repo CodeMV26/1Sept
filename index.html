@@ -49,7 +49,7 @@
 <body>
     <div class="brand">
         <h1>⚽ Betting Pro Mobile</h1>
-        <div class="versione">Versione 0.49 (Direct API)</div>
+        <div class="versione">Versione 0.51 (Standalone GitHub)</div>
     </div>
 
     <button id="btnEstrai">Estrai Partite (prossimi 4 giorni)</button>
@@ -58,12 +58,14 @@
 
     <script>
         const API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0";
+        // I 12 campionati abilitati per il piano free
         const CAMPIONATI = ["SA", "PL", "PD", "BL1", "FL1", "CL", "DED", "PPL", "BSA", "ELC", "CLI", "WC"];
         
         var btn = document.getElementById("btnEstrai");
         var stato = document.getElementById("stato");
         var risultati = document.getElementById("risultati");
 
+        // Pausa forzata tra una chiamata e l'altra per evitare blocchi rate-limit (6 secondi)
         const delay = ms => new Promise(res => setTimeout(res, ms));
 
         function formattaData(isoString) {
@@ -95,19 +97,17 @@
             }
         }
 
+        // Funzione per effettuare la chiamata HTTP inoltrando la chiave API
         async function fetchAPI(endpoint) {
             const targetUrl = 'https://api.football-data.org/v4/' + endpoint;
-            // Utilizzo di proxy alternativo più stabile per chiamate REST
-            const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl);
+            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
             
             try {
                 const res = await fetch(proxyUrl, {
                     headers: { "X-Auth-Token": API_KEY }
                 });
                 if (!res.ok) return null;
-                const wrapper = await res.json();
-                if (!wrapper.contents) return null;
-                return JSON.parse(wrapper.contents);
+                return await res.json();
             } catch (e) {
                 console.error("Errore fetch:", e);
                 return null;
@@ -126,12 +126,11 @@
 
             for (let i = 0; i < CAMPIONATI.length; i++) {
                 const cod = CAMPIONATI[i];
-                stato.textContent = `Scansione: ${cod} (${i + 1}/${CAMPIONATI.length}) - Partite trovate finora: ${listaPartite.length}`;
+                stato.textContent = `Scansione ${cod} (${i + 1}/${CAMPIONATI.length}) - Partite trovate: ${listaPartite.length}`;
 
-                // 1. Prendi le partite del campionato
+                // 1. Scarica le partite del campionato
                 const dataMatches = await fetchAPI(`competitions/${cod}/matches?dateFrom=${dFrom}&dateTo=${dTo}`);
-                await delay(300);
-
+                
                 if (dataMatches && dataMatches.matches) {
                     const matches = dataMatches.matches.filter(m => {
                         const st = (m.status || "").toUpperCase();
@@ -139,10 +138,12 @@
                     });
 
                     if (matches.length > 0) {
-                        // 2. Prendi la classifica solo se sono presenti partite in programma
-                        const dataStandings = await fetchAPI(`competitions/${cod}/standings`);
-                        await delay(300);
+                        // Attesa di rispetto per l'API prima della seconda chiamata per la classifica
+                        await delay(6000);
 
+                        // 2. Scarica la classifica solo se ci sono partite
+                        const dataStandings = await fetchAPI(`competitions/${cod}/standings`);
+                        
                         let mappaClassifica = {};
                         if (dataStandings && dataStandings.standings && dataStandings.standings[0]) {
                             (dataStandings.standings[0].table || []).forEach(row => {
@@ -178,6 +179,11 @@
                             });
                         });
                     }
+                }
+
+                // Pausa di 6 secondi tra un campionato e l'altro per rispettare il limite di 10 richieste/minuto
+                if (i < CAMPIONATI.length - 1) {
+                    await delay(6000);
                 }
             }
 
