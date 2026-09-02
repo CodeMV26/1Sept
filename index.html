@@ -26,10 +26,9 @@
             font-size: 15px;
             font-weight: 700;
             margin-bottom: 14px;
-            cursor: pointer;
         }
-        button#btnEstrai:disabled { background-color: #a5e8bb; cursor: not-allowed; }
-        #stato { text-align: center; font-size: 13px; color: #86868b; margin-bottom: 12px; line-height: 1.4; }
+        button#btnEstrai:disabled { background-color: #a5e8bb; }
+        #stato { text-align: center; font-size: 13px; color: #86868b; margin-bottom: 12px; }
         .match-card {
             background: white;
             border-radius: 14px;
@@ -49,7 +48,7 @@
 <body>
     <div class="brand">
         <h1>⚽ Betting Pro Mobile</h1>
-        <div class="versione">Versione 0.54 (Direct Native API)</div>
+        <div class="versione">Versione 0.48</div>
     </div>
 
     <button id="btnEstrai">Estrai Partite (prossimi 4 giorni)</button>
@@ -57,27 +56,19 @@
     <div id="risultati"></div>
 
     <script>
-        // Campionati supportati con ID nativi
-        const LEAGUES = [
-            { id: "4328", nome: "Serie A" },
-            { id: "4329", nome: "Premier League" },
-            { id: "4335", nome: "La Liga" },
-            { id: "4331", nome: "Bundesliga" },
-            { id: "4334", nome: "Ligue 1" }
-        ];
-
+        var WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
         var btn = document.getElementById("btnEstrai");
         var stato = document.getElementById("stato");
         var risultati = document.getElementById("risultati");
 
-        function formattaData(strData, strOra) {
-            if (!strData) return "N/D";
-            return strData + (strOra ? " " + strOra.substring(0, 5) : "");
+        function formattaData(isoString) {
+            var d = new Date(isoString);
+            return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
 
         function mostraPartite(partite) {
             risultati.innerHTML = "";
-            if (!partite || partite.length === 0) {
+            if (partite.length === 0) {
                 risultati.innerHTML = "<p style='text-align:center; color:#86868b; font-size:13px;'>Nessuna partita trovata nei prossimi 4 giorni.</p>";
                 return;
             }
@@ -85,62 +76,34 @@
                 var p = partite[i];
                 var card = document.createElement("div");
                 card.className = "match-card";
-                card.innerHTML = 
-                    "<div class='campionato'>" + p.campionato + "</div>" +
-                    "<div class='squadre'>" + p.squadraCasa + " - " + p.squadraOspite + "</div>" +
-                    "<div class='data'>" + formattaData(p.data, p.ora) + "</div>" +
-                    "<div class='stat-riga'><span>Stadio</span><span>" + p.stadio + "</span></div>" +
-                    "<div class='stat-riga'><span>Turno</span><span>Giornata " + p.turno + "</span></div>";
+                card.innerHTML = "<div class='campionato'>" + p.campionato + "</div>" + "<div class='squadre'>" + p.squadraCasa + " - " + p.squadraOspite + "</div>" + "<div class='data'>" + formattaData(p.dataOraUTC) + "</div>" + "<div class='stat-riga'><span>Punti</span><span>" + p.puntiCasa + " vs " + p.puntiOspite + "</span></div>" + "<div class='stat-riga'><span>Posizione</span><span>" + p.posizioneCasa + " vs " + p.posizioneOspite + "</span></div>" + "<div class='stat-riga'><span>Partite giocate</span><span>" + p.giocateCasa + " vs " + p.giocateOspite + "</span></div>" + "<div class='stat-riga'><span>Gol fatti</span><span>" + p.golFattiCasa + " vs " + p.golFattiOspite + "</span></div>" + "<div class='stat-riga'><span>Gol subiti</span><span>" + p.golSubitiCasa + " vs " + p.golSubitiOspite + "</span></div>";
                 risultati.appendChild(card);
             }
         }
 
-        btn.addEventListener("click", async function() {
+        btn.addEventListener("click", function() {
             btn.disabled = true;
             btn.textContent = "Estrazione in corso...";
+            stato.textContent = "Attendere circa 2-2,5 minuti (12 campionati, con pause per rispettare i limiti API)";
             risultati.innerHTML = "";
 
-            const oggi = new Date();
-            const limite = new Date();
-            limite.setDate(oggi.getDate() + 4);
-
-            let listaPartite = [];
-
-            for (let i = 0; i < LEAGUES.length; i++) {
-                const l = LEAGUES[i];
-                stato.textContent = `Scansione ${l.nome} (${i + 1}/${LEAGUES.length})...`;
-
-                try {
-                    const res = await fetch(`https://www.thesportsdb.com/api/v1/json/3/eventsnextleague.php?id=${l.id}`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data && data.events) {
-                            data.events.forEach(ev => {
-                                const dataEvent = new Date(ev.dateEvent);
-                                if (dataEvent >= oggi && dataEvent <= limite) {
-                                    listaPartite.push({
-                                        campionato: l.nome,
-                                        squadraCasa: ev.strHomeTeam,
-                                        squadraOspite: ev.strAwayTeam,
-                                        data: ev.dateEvent,
-                                        ora: ev.strTime,
-                                        stadio: ev.strVenue || "N/D",
-                                        turno: ev.intRound || "-"
-                                    });
-                                }
-                            });
-                        }
+            fetch(WORKER_URL)
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.errore) {
+                        stato.textContent = "Errore: " + (data.messaggio || "richiesta fallita");
+                    } else {
+                        stato.textContent = "Trovate " + data.totalePartiteTrovate + " partite";
+                        mostraPartite(data.partite);
                     }
-                } catch (e) {
-                    console.error("Errore recupero dati:", e);
-                }
-            }
-
-            stato.textContent = "Estrazione completata. Trovate " + listaPartite.length + " partite.";
-            mostraPartite(listaPartite);
-
-            btn.disabled = false;
-            btn.textContent = "Estrai Partite (prossimi 4 giorni)";
+                })
+                .catch(function(e) {
+                    stato.textContent = "Errore di connessione: " + e.message;
+                })
+                .finally(function() {
+                    btn.disabled = false;
+                    btn.textContent = "Estrai Partite (prossimi 4 giorni)";
+                });
         });
     </script>
 </body>
