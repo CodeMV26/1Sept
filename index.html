@@ -4,11 +4,15 @@
   <meta charset="UTF-8">
   <title>Estrazione Palinsesto</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .box { margin-bottom: 15px; }
-    input[type="number"] { width: 80px; padding: 5px; font-size: 16px; }
-    button { padding: 7px 15px; font-size: 16px; cursor: pointer; }
-    #status { font-weight: bold; margin-top: 10px; }
+    body { font-family: Arial, sans-serif; margin: 30px; line-height: 1.6; }
+    .box { margin-bottom: 20px; }
+    input[type="number"] { width: 80px; padding: 6px; font-size: 16px; }
+    button { padding: 8px 16px; font-size: 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
+    button:disabled { background-color: #ccc; cursor: not-allowed; }
+    #status { font-weight: bold; margin-top: 15px; }
+    .error { color: #d9534f; }
+    .success { color: #5cb85c; }
+    pre { background-color: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; max-height: 500px; }
   </style>
 </head>
 <body>
@@ -16,46 +20,71 @@
   <h2>Estrazione Palinsesto Partite</h2>
 
   <div class="box">
-    <!-- Campo per inserire i giorni (N) -->
     <label for="numGiorni"><strong>Numero di giorni da estrarre:</strong></label>
     <input type="number" id="numGiorni" value="7" min="1" max="30">
-    
-    <!-- Pulsante che attiva l'estrazione -->
-    <button onclick="avviaEstrazione()">Estrai Partite</button>
+    <button id="btnEstrai" onclick="avviaEstrazione()">Estrai Partite</button>
   </div>
 
   <div id="status"></div>
   <pre id="risultato"></pre>
 
   <script>
-    // Inserisci qui l'URL reale del tuo Cloudflare Worker
+    // ⚠️ SOSTITUISCI CON IL TUO URL REALE DEL WORKER CLOUDFLARE
     const WORKER_URL = "https://tuo-worker.workers.dev";
 
     async function avviaEstrazione() {
-      // 1. Legge il numero di giorni inserito dall'utente nell'input
       const giorni = document.getElementById("numGiorni").value;
       const statusDiv = document.getElementById("status");
       const risultatoPre = document.getElementById("risultato");
+      const btn = document.getElementById("btnEstrai");
 
-      if (!giorni || giorni <= 0) {
-        alert("Inserisci un numero valido di giorni.");
+      if (!WORKER_URL || WORKER_URL.includes("tuo-worker.workers.dev")) {
+        statusDiv.className = "error";
+        statusDiv.innerHTML = "Errore: inserisci l'URL reale del Worker all'interno del file JavaScript (variabile WORKER_URL).";
         return;
       }
 
-      statusDiv.innerHTML = `Estrazione in corso per i prossimi ${giorni} giorni... (può richiedere un po' di tempo)`;
+      if (!giorni || giorni <= 0) {
+        alert("Inserisci un numero di giorni valido (maggiore di 0).");
+        return;
+      }
+
+      btn.disabled = true;
+      statusDiv.className = "";
+      statusDiv.innerHTML = `⏳ Estrazione in corso per i prossimi ${giorni} giorni... L'operazione richiede 1-2 minuti.`;
       risultatoPre.textContent = "";
 
       try {
-        // 2. Chiamata HTTP dinamica passando il parametro ?giorni=N
-        const response = await fetch(`${WORKER_URL}/?giorni=${giorni}&force=true`);
+        const controller = new AbortController();
+        // Imposta un timeout lungo (5 minuti) per evitare che il browser chiuda la connessione prima del termine dell'estrazione
+        const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+        const response = await fetch(`${WORKER_URL}/?giorni=${giorni}&force=true`, {
+          method: "GET",
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`Errore Server HTTP ${response.status}: ${response.statusText}`);
+        }
+
         const data = await response.json();
 
-        statusDiv.innerHTML = `Estrazione completata! Trovate ${data.totalePartiteTrovate} partite.`;
+        statusDiv.className = "success";
+        statusDiv.innerHTML = `✅ Estrazione completata con successo! Partite trovate: ${data.totalePartiteTrovate}`;
         risultatoPre.textContent = JSON.stringify(data, null, 2);
 
       } catch (error) {
-        statusDiv.innerHTML = "Errore durante l'estrazione.";
-        risultatoPre.textContent = error.message;
+        statusDiv.className = "error";
+        if (error.name === 'AbortError') {
+          statusDiv.innerHTML = "❌ Richiesta annullata: il server ha impiegato troppo tempo a rispondere (Timeout).";
+        } else {
+          statusDiv.innerHTML = `❌ Errore durante l'estrazione: ${error.message}`;
+        }
+      } finally {
+        btn.disabled = false;
       }
     }
   </script>
