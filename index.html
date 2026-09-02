@@ -49,7 +49,7 @@
 <body>
     <div class="brand">
         <h1>⚽ Betting Pro Mobile</h1>
-        <div class="versione">Versione 0.53</div>
+        <div class="versione">Versione 0.54 (Direct Native API)</div>
     </div>
 
     <button id="btnEstrai">Estrai Partite (prossimi 4 giorni)</button>
@@ -57,19 +57,22 @@
     <div id="risultati"></div>
 
     <script>
-        const API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0";
-        const CAMPIONATI = ["SA", "PL", "PD", "BL1", "FL1", "CL", "DED", "PPL", "BSA", "ELC", "CLI", "WC"];
-        
+        // Campionati supportati con ID nativi
+        const LEAGUES = [
+            { id: "4328", nome: "Serie A" },
+            { id: "4329", nome: "Premier League" },
+            { id: "4335", nome: "La Liga" },
+            { id: "4331", nome: "Bundesliga" },
+            { id: "4334", nome: "Ligue 1" }
+        ];
+
         var btn = document.getElementById("btnEstrai");
         var stato = document.getElementById("stato");
         var risultati = document.getElementById("risultati");
 
-        const delay = ms => new Promise(res => setTimeout(res, ms));
-
-        function formattaData(isoString) {
-            if (!isoString) return "N/D";
-            var d = new Date(isoString);
-            return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        function formattaData(strData, strOra) {
+            if (!strData) return "N/D";
+            return strData + (strOra ? " " + strOra.substring(0, 5) : "");
         }
 
         function mostraPartite(partite) {
@@ -85,29 +88,10 @@
                 card.innerHTML = 
                     "<div class='campionato'>" + p.campionato + "</div>" +
                     "<div class='squadre'>" + p.squadraCasa + " - " + p.squadraOspite + "</div>" +
-                    "<div class='data'>" + formattaData(p.dataOraUTC) + "</div>" +
-                    "<div class='stat-riga'><span>Punti</span><span>" + p.puntiCasa + " vs " + p.puntiOspite + "</span></div>" +
-                    "<div class='stat-riga'><span>Posizione</span><span>" + p.posizioneCasa + " vs " + p.posizioneOspite + "</span></div>" +
-                    "<div class='stat-riga'><span>Partite giocate</span><span>" + p.giocateCasa + " vs " + p.giocateOspite + "</span></div>" +
-                    "<div class='stat-riga'><span>Gol fatti</span><span>" + p.golFattiCasa + " vs " + p.golFattiOspite + "</span></div>" +
-                    "<div class='stat-riga'><span>Gol subiti</span><span>" + p.golSubitiCasa + " vs " + p.golSubitiOspite + "</span></div>";
+                    "<div class='data'>" + formattaData(p.data, p.ora) + "</div>" +
+                    "<div class='stat-riga'><span>Stadio</span><span>" + p.stadio + "</span></div>" +
+                    "<div class='stat-riga'><span>Turno</span><span>Giornata " + p.turno + "</span></div>";
                 risultati.appendChild(card);
-            }
-        }
-
-        async function fetchAPI(endpoint) {
-            const targetUrl = 'https://api.football-data.org/v4/' + endpoint;
-            const proxyUrl = 'https://thingproxy.freeboard.io/fetch/' + targetUrl;
-            
-            try {
-                const res = await fetch(proxyUrl, {
-                    method: 'GET',
-                    headers: { "X-Auth-Token": API_KEY }
-                });
-                if (!res.ok) return null;
-                return await res.json();
-            } catch (e) {
-                return null;
             }
         }
 
@@ -116,64 +100,40 @@
             btn.textContent = "Estrazione in corso...";
             risultati.innerHTML = "";
 
-            const dFrom = new Date().toISOString().split('T')[0];
-            const dTo = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            const oggi = new Date();
+            const limite = new Date();
+            limite.setDate(oggi.getDate() + 4);
 
             let listaPartite = [];
 
-            for (let i = 0; i < CAMPIONATI.length; i++) {
-                const cod = CAMPIONATI[i];
-                stato.textContent = `Scansione ${cod} (${i + 1}/${CAMPIONATI.length}) - Trovate: ${listaPartite.length}`;
+            for (let i = 0; i < LEAGUES.length; i++) {
+                const l = LEAGUES[i];
+                stato.textContent = `Scansione ${l.nome} (${i + 1}/${LEAGUES.length})...`;
 
-                const dataMatches = await fetchAPI(`competitions/${cod}/matches?dateFrom=${dFrom}&dateTo=${dTo}`);
-                
-                if (dataMatches && dataMatches.matches) {
-                    const matches = dataMatches.matches.filter(m => {
-                        const st = (m.status || "").toUpperCase();
-                        return st === "TIMED" || st === "SCHEDULED";
-                    });
-
-                    if (matches.length > 0) {
-                        await delay(1500);
-                        const dataStandings = await fetchAPI(`competitions/${cod}/standings`);
-                        
-                        let mappaClassifica = {};
-                        if (dataStandings && dataStandings.standings && dataStandings.standings[0]) {
-                            (dataStandings.standings[0].table || []).forEach(row => {
-                                mappaClassifica[row.team.id] = {
-                                    pos: row.position,
-                                    pts: row.points,
-                                    pg: row.playedGames,
-                                    gf: row.goalsFor,
-                                    gs: row.goalsAgainst
-                                };
+                try {
+                    const res = await fetch(`https://www.thesportsdb.com/api/v1/json/3/eventsnextleague.php?id=${l.id}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.events) {
+                            data.events.forEach(ev => {
+                                const dataEvent = new Date(ev.dateEvent);
+                                if (dataEvent >= oggi && dataEvent <= limite) {
+                                    listaPartite.push({
+                                        campionato: l.nome,
+                                        squadraCasa: ev.strHomeTeam,
+                                        squadraOspite: ev.strAwayTeam,
+                                        data: ev.dateEvent,
+                                        ora: ev.strTime,
+                                        stadio: ev.strVenue || "N/D",
+                                        turno: ev.intRound || "-"
+                                    });
+                                }
                             });
                         }
-
-                        matches.forEach(m => {
-                            const c = mappaClassifica[m.homeTeam.id] || {};
-                            const o = mappaClassifica[m.awayTeam.id] || {};
-
-                            listaPartite.push({
-                                campionato: m.competition ? m.competition.name : cod,
-                                squadraCasa: m.homeTeam.name,
-                                squadraOspite: m.awayTeam.name,
-                                dataOraUTC: m.utcDate,
-                                puntiCasa: c.pts ?? "-",
-                                puntiOspite: o.pts ?? "-",
-                                posizioneCasa: c.pos ? c.pos + "°" : "-",
-                                posizioneOspite: o.pos ? o.pos + "°" : "-",
-                                giocateCasa: c.pg ?? "-",
-                                giocateOspite: o.pg ?? "-",
-                                golFattiCasa: c.gf ?? "-",
-                                golFattiOspite: o.gf ?? "-",
-                                golSubitiCasa: c.gs ?? "-",
-                                golSubitiOspite: o.gs ?? "-"
-                            });
-                        });
                     }
+                } catch (e) {
+                    console.error("Errore recupero dati:", e);
                 }
-                await delay(1500);
             }
 
             stato.textContent = "Estrazione completata. Trovate " + listaPartite.length + " partite.";
