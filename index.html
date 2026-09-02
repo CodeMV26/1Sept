@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Betting Pro Mobile (1Sept)</title>
+    <title>Betting Pro Mobile (1Sept Sync)</title>
     <style>
         * { box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: #f5f5f7;
             margin: 0;
-            padding: 16px;
+            padding: 12px;
             color: #1d1d1f;
         }
-        .brand { text-align: center; margin-bottom: 16px; }
+        .brand { text-align: center; margin-bottom: 12px; }
         .brand h1 { color: #0071e3; font-size: 20px; margin: 0; }
         .brand .versione { font-size: 11px; color: #86868b; margin-top: 2px; }
+        
         button#btnEstrai {
             width: 100%;
             padding: 14px;
@@ -25,23 +26,41 @@
             border-radius: 12px;
             font-size: 15px;
             font-weight: 700;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
             cursor: pointer;
         }
         button#btnEstrai:disabled { background-color: #a5e8bb; cursor: not-allowed; }
-        #stato { text-align: center; font-size: 13px; color: #86868b; margin-bottom: 12px; line-height: 1.4; }
         
+        #stato { text-align: center; font-size: 12px; color: #86868b; margin-bottom: 12px; line-height: 1.4; }
+        
+        /* Layout del Riepilogo ottimizzato per iPhone */
         .box-riepilogo {
-            background: white;
+            background: #ffffff;
             border-radius: 12px;
             padding: 12px;
             margin-bottom: 16px;
-            border: 1px solid #e5e5ea;
-            font-size: 12px;
+            border: 1px solid #d2d2d7;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            display: block !important;
+            visibility: visible !important;
         }
-        .box-riepilogo h3 { margin: 0 0 8px 0; font-size: 13px; color: #0071e3; }
-        .riepilogo-riga { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
-        .riepilogo-riga:last-child { border-bottom: none; font-weight: bold; padding-top: 6px; }
+        .box-riepilogo h3 { margin: 0 0 8px 0; font-size: 13px; color: #0071e3; text-transform: uppercase; }
+        .riepilogo-grid { display: flex; flex-direction: column; gap: 4px; }
+        .riepilogo-riga { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            font-size: 12px; 
+            padding: 4px 0; 
+            border-bottom: 1px solid #f2f2f7; 
+        }
+        .riepilogo-riga.totale { 
+            font-weight: 700; 
+            border-bottom: none; 
+            padding-top: 8px; 
+            color: #000000;
+            font-size: 13px;
+        }
 
         .match-card {
             background: white;
@@ -62,11 +81,11 @@
 <body>
     <div class="brand">
         <h1>⚽ Betting Pro Mobile</h1>
-        <div class="versione">Versione 1Sept Multi-League Monitor</div>
+        <div class="versione">Versione 1Sept Cloud Sync</div>
     </div>
 
-    <button id="btnEstrai">Estrai Partite (prossimi 4-5 giorni)</button>
-    <div id="stato"></div>
+    <button id="btnEstrai">Nuova Estrazione Palinsesto</button>
+    <div id="stato">Caricamento palinsesto salvato...</div>
     <div id="riepilogo"></div>
     <div id="risultati"></div>
 
@@ -84,22 +103,23 @@
             return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
 
-        function mostraRiepilogo(resoconto, totale) {
+        function mostraRiepilogo(resoconto, totale, dataAgg) {
             if (!resoconto || resoconto.length === 0) return;
-            var html = "<div class='box-riepilogo'><h3>📊 Resoconto 12 Campionati Free</h3>";
+            var infoData = dataAgg ? " (Aggiornato il " + formattaData(dataAgg) + ")" : "";
+            var html = "<div class='box-riepilogo'><h3>📊 Resoconto Campionati " + infoData + "</h3><div class='riepilogo-grid'>";
             for (var i = 0; i < resoconto.length; i++) {
                 var c = resoconto[i];
                 var infoStato = c.stato !== "OK" ? " (" + c.stato + ")" : "";
-                html += "<div class='riepilogo-riga'><span>" + c.nome + infoStato + ":</span><span>" + c.trovate + " partite</span></div>";
+                html += "<div class='riepilogo-riga'><span>" + c.nome + infoStato + "</span><span><b>" + c.trovate + "</b> partite</span></div>";
             }
-            html += "<div class='riepilogo-riga'><span>TOTALE COMPLESSIVO:</span><span>" + totale + " partite</span></div></div>";
+            html += "<div class='riepilogo-riga totale'><span>TOTALE COMPLESSIVO</span><span>" + totale + " partite</span></div></div></div>";
             riepilogo.innerHTML = html;
         }
 
         function mostraPartite(partite) {
             risultati.innerHTML = "";
             if (!partite || partite.length === 0) {
-                risultati.innerHTML = "<p style='text-align:center; color:#86868b; font-size:13px;'>Nessuna partita trovata nei prossimi giorni.</p>";
+                risultati.innerHTML = "<p style='text-align:center; color:#86868b; font-size:13px;'>Nessun palinsesto salvato. Clicca su 'Nuova Estrazione'.</p>";
                 return;
             }
             for (var i = 0; i < partite.length; i++) {
@@ -120,14 +140,29 @@
             }
         }
 
+        function caricaPalinsestoSalvato() {
+            fetch(WORKER_URL)
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data && data.partite) {
+                        stato.textContent = "Palinsesto caricato (Sincronizzato Cloud)";
+                        mostraRiepilogo(data.resocontoCampionati, data.totalePartiteTrovate, data.dataAggiornamento);
+                        mostraPartite(data.partite);
+                    } else {
+                        stato.textContent = "Nessun palinsesto salvato presente.";
+                    }
+                })
+                .catch(function(e) {
+                    stato.textContent = "Errore durante il recupero dei dati condivisi.";
+                });
+        }
+
         btn.addEventListener("click", function() {
             btn.disabled = true;
             btn.textContent = "Estrazione in corso...";
-            stato.textContent = "Scansione in corso dei 12 campionati (può richiedere fino a 30-40 secondi)...";
-            riepilogo.innerHTML = "";
-            risultati.innerHTML = "";
+            stato.textContent = "Scansione 12 campionati e sincronizzazione cloud in corso...";
 
-            fetch(WORKER_URL)
+            fetch(WORKER_URL + "?force=true")
                 .then(function(response) {
                     if (!response.ok) throw new Error("Errore HTTP " + response.status);
                     return response.json();
@@ -136,8 +171,8 @@
                     if (data.errore) {
                         stato.textContent = "Errore: " + (data.messaggio || "Richiesta fallita");
                     } else {
-                        stato.textContent = "Estrazione completata!";
-                        mostraRiepilogo(data.resocontoCampionati, data.totalePartiteTrovate);
+                        stato.textContent = "Estrazione completata e salvata su tutti i dispositivi!";
+                        mostraRiepilogo(data.resocontoCampionati, data.totalePartiteTrovate, data.dataAggiornamento);
                         mostraPartite(data.partite || []);
                     }
                 })
@@ -146,9 +181,12 @@
                 })
                 .finally(function() {
                     btn.disabled = false;
-                    btn.textContent = "Estrai Partite (prossimi 4-5 giorni)";
+                    btn.textContent = "Nuova Estrazione Palinsesto";
                 });
         });
+
+        // Al primo avvio carica automaticamente l'ultimo palinsesto salvato
+        caricaPalinsestoSalvato();
     </script>
 </body>
 </html>
