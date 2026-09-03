@@ -2,50 +2,203 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Palinsesto & Validazione Risultati</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Palinsesto & Calcio Analisi</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; background: #f4f4f9; color: #333; }
-    .actions { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-    button { padding: 12px 20px; font-size: 15px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
-    .btn-load { background-color: #007aff; color: white; }
-    .btn-validate { background-color: #34c759; color: white; }
-    .btn-refresh { background-color: #ff9500; color: white; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    
-    .status-panel { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .match-card { background: white; padding: 15px; margin-bottom: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
-    .score { font-size: 18px; font-weight: bold; padding: 6px 12px; border-radius: 6px; background: #e5e5ea; }
-    .score.finished { background: #34c759; color: white; }
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #eee; }
+    :root {
+      --bg-color: #f2f2f7;
+      --card-bg: #ffffff;
+      --primary: #007aff;
+      --success: #34c759;
+      --warning: #ff9500;
+      --text-main: #1c1c1e;
+      --text-muted: #8e8e93;
+      --border-color: #e5e5ea;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 12px;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    /* BARRA AZIONI RESPONSIVA */
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    button {
+      padding: 10px 6px;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      color: white;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    button:active { opacity: 0.8; }
+    .btn-load { background-color: var(--primary); }
+    .btn-validate { background-color: var(--success); }
+    .btn-refresh { background-color: var(--warning); }
+
+    /* PANNELLO STATO */
+    .status-panel {
+      background: var(--card-bg);
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-bottom: 15px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border-left: 4px solid var(--primary);
+    }
+
+    /* SCHEDA PARTITA */
+    .match-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    .match-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .badge-league {
+      background: #e5e5ea;
+      color: #3a3a3c;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .match-time {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* SEZIONE SQUADRE E RISULTATO */
+    .teams-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .team-names {
+      flex: 1;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    /* FIX RISULTATO: Evita che vada a capo su righi separati */
+    .score-badge {
+      font-size: 15px;
+      font-weight: 800;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: #e5e5ea;
+      color: var(--text-main);
+      white-space: nowrap; /* Impedisce che '1 - 1' si spezzi su due righe */
+      text-align: center;
+      min-width: 65px;
+      flex-shrink: 0;
+    }
+    .score-badge.finished {
+      background: var(--success);
+      color: white;
+    }
+
+    /* GRIGLIA STATISTICHE E ANALISI COMPLETA */
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    .stats-table th {
+      background: #f8f8fa;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-align: center;
+      padding: 4px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .stats-table td {
+      padding: 5px 4px;
+      text-align: center;
+      border-bottom: 1px dashed var(--border-color);
+    }
+    .stats-table td.label {
+      text-align: left;
+      font-weight: 600;
+      color: #48484a;
+      width: 40%;
+    }
+
+    .form-symbols {
+      font-size: 10px;
+      letter-spacing: -1px;
+      display: block;
+    }
+    .top-scorer-box {
+      background: #f8f8fa;
+      padding: 6px 8px;
+      border-radius: 6px;
+      margin-top: 8px;
+      font-size: 11px;
+    }
   </style>
 </head>
 <body>
 
-  <h1>Palinsesto & Calcio Analisi</h1>
+  <h1>Palinsesto & Analisi</h1>
 
-  <div class="actions">
-    <button class="btn-load" onclick="caricaPalinsesto()">📁 Carica Palinsesto</button>
+  <!-- TRE PULSANTI BEN VISIBILI E ADATTABILI -->
+  <div class="actions-grid">
+    <button class="btn-load" onclick="caricaPalinsesto()">📁 Carica</button>
     <button class="btn-validate" onclick="validaRisultati()">✅ Valida Risultati</button>
-    <button class="btn-refresh" onclick="caricaPalinsesto(true)">🔄 Forzatura Nuovo Palinsesto</button>
+    <button class="btn-refresh" onclick="caricaPalinsesto(true)">🔄 Nuovo Palinsesto</button>
   </div>
 
   <div class="status-panel" id="statusPanel">
-    Stato: In attesa di comandi...
+    Stato: In attesa di caricamento...
   </div>
 
   <div id="listaPartite"></div>
 
   <script>
-    // INSERITO IL TUO WORKER REALE
     const WORKER_URL = "https://betting-pro-1sept.mvmymail.workers.dev";
 
     const statusPanel = document.getElementById("statusPanel");
     const listaPartite = document.getElementById("listaPartite");
 
-    // 1. Lettura Palinsesto da Cache KV o Generazione
     async function caricaPalinsesto(force = false) {
-      statusPanel.innerHTML = "⏳ Caricamento in corso...";
+      statusPanel.innerHTML = force ? "⏳ Generazione nuovo palinsesto (oggi + 3 giorni)..." : "⏳ Caricamento palinsesto...";
       listaPartite.innerHTML = "";
       
       const endpoint = force ? `${WORKER_URL}?force=true` : WORKER_URL;
@@ -55,13 +208,12 @@
         const data = await res.json();
         mostraDati(data);
       } catch (e) {
-        statusPanel.innerHTML = "❌ Errore nel caricamento: " + e.message;
+        statusPanel.innerHTML = "❌ Errore durante il caricamento: " + e.message;
       }
     }
 
-    // 2. Chiamata di Validazione Risultati
     async function validaRisultati() {
-      statusPanel.innerHTML = "⏳ Recupero risultati in corso... L'operazione potrebbe richiedere alcuni secondi.";
+      statusPanel.innerHTML = "⏳ Validazione risultati in corso...";
       
       try {
         const res = await fetch(`${WORKER_URL}?validate=true`);
@@ -78,36 +230,106 @@
       }
     }
 
-    // Renderizza la UI
     function mostraDati(data) {
+      const dataAgg = data.dataAggiornamento ? new Date(data.dataAggiornamento).toLocaleString('it-IT') : 'N/D';
+      const dataVal = data.dataUltimaValidazione ? new Date(data.dataUltimaValidazione).toLocaleString('it-IT') : 'Mai effettuata';
+
       statusPanel.innerHTML = `
-        <strong>Partite Trovate:</strong> ${data.totalePartiteTrovate} | 
-        <strong>Ultimo Aggiornamento:</strong> ${new Date(data.dataAggiornamento).toLocaleString('it-IT')} <br>
-        <strong>Ultima Validazione Risultati:</strong> ${data.dataUltimaValidazione ? new Date(data.dataUltimaValidazione).toLocaleString('it-IT') : 'Mai effettuata'}
+        <strong>Partite:</strong> ${data.totalePartiteTrovate || 0} | 
+        <strong>Aggiornato:</strong> ${dataAgg}<br>
+        <strong>Ultima Validazione:</strong> ${dataVal}
       `;
 
       if (!data.partite || data.partite.length === 0) {
-        listaPartite.innerHTML = "<p>Nessuna partita presente nel palinsesto.</p>";
+        listaPartite.innerHTML = "<p style='text-align:center; padding: 20px;'>Nessuna partita presente nel palinsesto.</p>";
         return;
       }
 
-      listaPartite.innerHTML = data.partite.map(p => `
-        <div class="match-card">
-          <div>
-            <span class="badge">${p.campionato}</span>
-            <p style="margin: 5px 0; font-weight: bold;">${p.squadraCasa} vs ${p.squadraOspite}</p>
-            <small>Data: ${new Date(p.dataOraUTC).toLocaleString('it-IT')}</small>
+      listaPartite.innerHTML = data.partite.map(p => {
+        const dataOra = new Date(p.dataOraUTC).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+        return `
+          <div class="match-card">
+            <div class="match-header">
+              <span class="badge-league">${p.campionato || p.codiceCampionato}</span>
+              <span class="match-time">📅 ${dataOra}</span>
+            </div>
+
+            <div class="teams-container">
+              <div class="team-names">
+                <div>${p.squadraCasa}</div>
+                <div style="color: #666; font-size: 13px; font-weight: normal; margin-top:2px;">vs ${p.squadraOspite}</div>
+              </div>
+              <div class="score-badge ${p.completata ? 'finished' : ''}">
+                ${p.risultatoFinale || 'In attesa'}
+              </div>
+            </div>
+
+            <!-- TABELLA COMPLETA DI CONFRONTO E STATISTICHE -->
+            <table class="stats-table">
+              <thead>
+                <tr>
+                  <th style="text-align:left;">Dato</th>
+                  <th>${p.squadraCasa.substring(0, 10)}</th>
+                  <th>${p.squadraOspite.substring(0, 10)}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="label">Punti / Posizione</td>
+                  <td><b>${p.puntiCasa}</b> (${p.posizioneCasa})</td>
+                  <td><b>${p.puntiOspite}</b> (${p.posizioneOspite})</td>
+                </tr>
+                <tr>
+                  <td class="label">Partite Giocate</td>
+                  <td>${p.giocateCasa}</td>
+                  <td>${p.giocateOspite}</td>
+                </tr>
+                <tr>
+                  <td class="label">V / P / S Generali</td>
+                  <td>${p.vinteCasa}/${p.pareggiateCasa}/${p.perseCasa}</td>
+                  <td>${p.vinteOspite}/${p.pareggiateOspite}/${p.perseOspite}</td>
+                </tr>
+                <tr>
+                  <td class="label">Gol Fatti / Subiti</td>
+                  <td>${p.golFattiCasa} / ${p.golSubitiCasa}</td>
+                  <td>${p.golFattiOspite} / ${p.golSubitiOspite}</td>
+                </tr>
+                <tr>
+                  <td class="label">Punti (Casa / Trasferta)</td>
+                  <td>${p.puntiCasaSoloCasa} (Casa)</td>
+                  <td>${p.puntiOspiteSoloTrasferta} (Trasf.)</td>
+                </tr>
+                <tr>
+                  <td class="label">V/P/S (Casa / Trasferta)</td>
+                  <td>${p.vpsCasaSoloCasa}</td>
+                  <td>${p.vpsOspiteSoloTrasferta}</td>
+                </tr>
+                <tr>
+                  <td class="label">Indice Forma & Trend</td>
+                  <td>
+                    <span>${p.indiceFormaCasa}</span>
+                    <span class="form-symbols">${p.simboliFormaCasa}</span>
+                  </td>
+                  <td>
+                    <span>${p.indiceFormaOspite}</span>
+                    <span class="form-symbols">${p.simboliFormaOspite}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="top-scorer-box">
+              🎯 <b>Top Scorer:</b><br>
+              • ${p.squadraCasa}: ${p.topScorerCasa}<br>
+              • ${p.squadraOspite}: ${p.topScorerOspite}
+            </div>
           </div>
-          <div>
-            <span class="score ${p.completata ? 'finished' : ''}">
-              ${p.risultatoFinale || 'In attesa'}
-            </span>
-          </div>
-        </div>
-      `).map(String).join('');
+        `;
+      }).join('');
     }
 
-    // Caricamento automatico all'apertura
+    // Caricamento automatico all'avvio
     caricaPalinsesto();
   </script>
 </body>
