@@ -1,220 +1,114 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Betting Pro Mobile (1Sept Sync)</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #f5f5f7;
-            margin: 0;
-            padding: 12px;
-            color: #1d1d1f;
-        }
-        .brand { text-align: center; margin-bottom: 12px; }
-        .brand h1 { color: #0071e3; font-size: 20px; margin: 0; }
-        .brand .versione { font-size: 11px; color: #86868b; margin-top: 2px; }
-        
-        button#btnEstrai {
-            width: 100%;
-            padding: 14px;
-            background-color: #2cd158;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 700;
-            margin-bottom: 12px;
-            cursor: pointer;
-        }
-        button#btnEstrai:disabled { background-color: #a5e8bb; cursor: not-allowed; }
-        
-        #stato { text-align: center; font-size: 12px; color: #86868b; margin-bottom: 12px; line-height: 1.4; }
-        
-        .box-riepilogo {
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 16px;
-            border: 1px solid #d2d2d7;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-            display: block !important;
-            visibility: visible !important;
-        }
-        .box-riepilogo h3 { margin: 0 0 8px 0; font-size: 13px; color: #0071e3; text-transform: uppercase; }
-        .riepilogo-grid { display: flex; flex-direction: column; gap: 4px; }
-        .riepilogo-riga { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            font-size: 12px; 
-            padding: 4px 0; 
-            border-bottom: 1px solid #f2f2f7; 
-        }
-        .riepilogo-riga.totale { 
-            font-weight: 700; 
-            border-bottom: none; 
-            padding-top: 8px; 
-            color: #000000;
-            font-size: 13px;
-        }
-
-        .match-card {
-            background: white;
-            border-radius: 14px;
-            padding: 14px;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            border: 1px solid #e5e5ea;
-        }
-        .match-card .campionato { font-size: 10px; font-weight: 800; color: #007aff; text-transform: uppercase; margin-bottom: 4px; }
-        .match-card .squadre { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
-        .match-card .data { font-size: 11px; color: #86868b; margin-bottom: 8px; }
-        
-        .section-divider { 
-            font-size: 10px; 
-            font-weight: 700; 
-            color: #0071e3; 
-            margin-top: 8px; 
-            padding-top: 4px; 
-            border-top: 1px dashed #d2d2d7; 
-            text-transform: uppercase;
-        }
-        
-        .stat-riga { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-top: 1px solid #f0f0f0; }
-        .stat-riga span:first-child { color: #8e8e93; }
-        .stat-riga span:last-child { font-weight: 600; text-align: right; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Palinsesto & Validazione Risultati</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; background: #f4f4f9; color: #333; }
+    .actions { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    button { padding: 12px 20px; font-size: 15px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+    .btn-load { background-color: #007aff; color: white; }
+    .btn-validate { background-color: #34c759; color: white; }
+    .btn-refresh { background-color: #ff9500; color: white; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .status-panel { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .match-card { background: white; padding: 15px; margin-bottom: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+    .score { font-size: 18px; font-weight: bold; padding: 6px 12px; border-radius: 6px; background: #e5e5ea; }
+    .score.finished { background: #34c759; color: white; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #eee; }
+  </style>
 </head>
 <body>
-    <div class="brand">
-        <h1>⚽ Betting Pro Mobile</h1>
-        <div class="versione">Versione 1Sept Advanced Stats</div>
-    </div>
 
-    <button id="btnEstrai">Nuova Estrazione Palinsesto</button>
-    <div id="stato">Caricamento palinsesto salvato...</div>
-    <div id="riepilogo"></div>
-    <div id="risultati"></div>
+  <h1>Palinsesto & Calcio Analisi</h1>
 
-    <script>
-        var WORKER_URL = "https://betting-pro-1sept.mvmymail.workers.dev/";
-        
-        var btn = document.getElementById("btnEstrai");
-        var stato = document.getElementById("stato");
-        var riepilogo = document.getElementById("riepilogo");
-        var risultati = document.getElementById("risultati");
+  <div class="actions">
+    <button class="btn-load" onclick="caricaPalinsesto()">📁 Carica Palinsesto</button>
+    <button class="btn-validate" onclick="validaRisultati()">✅ Valida Risultati</button>
+    <button class="btn-refresh" onclick="caricaPalinsesto(true)">🔄 Forzatura Nuovo Palinsesto</button>
+  </div>
 
-        function formattaData(isoString) {
-            if (!isoString) return "N/D";
-            var d = new Date(isoString);
-            return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  <div class="status-panel" id="statusPanel">
+    Stato: In attesa di comandi...
+  </div>
+
+  <div id="listaPartite"></div>
+
+  <script>
+    // INSERITO IL TUO WORKER REALE
+    const WORKER_URL = "https://betting-pro-1sept.mvmymail.workers.dev";
+
+    const statusPanel = document.getElementById("statusPanel");
+    const listaPartite = document.getElementById("listaPartite");
+
+    // 1. Lettura Palinsesto da Cache KV o Generazione
+    async function caricaPalinsesto(force = false) {
+      statusPanel.innerHTML = "⏳ Caricamento in corso...";
+      listaPartite.innerHTML = "";
+      
+      const endpoint = force ? `${WORKER_URL}?force=true` : WORKER_URL;
+
+      try {
+        const res = await fetch(endpoint);
+        const data = await res.json();
+        mostraDati(data);
+      } catch (e) {
+        statusPanel.innerHTML = "❌ Errore nel caricamento: " + e.message;
+      }
+    }
+
+    // 2. Chiamata di Validazione Risultati
+    async function validaRisultati() {
+      statusPanel.innerHTML = "⏳ Recupero risultati in corso... L'operazione potrebbe richiedere alcuni secondi.";
+      
+      try {
+        const res = await fetch(`${WORKER_URL}?validate=true`);
+        const data = await res.json();
+
+        if (data.errore) {
+          statusPanel.innerHTML = "⚠️ " + data.messaggio;
+          return;
         }
 
-        function mostraRiepilogo(resoconto, totale, dataAgg) {
-            if (!resoconto || resoconto.length === 0) return;
-            var infoData = dataAgg ? " (Aggiornato il " + formattaData(dataAgg) + ")" : "";
-            var html = "<div class='box-riepilogo'><h3>📊 Resoconto Campionati " + infoData + "</h3><div class='riepilogo-grid'>";
-            for (var i = 0; i < resoconto.length; i++) {
-                var c = resoconto[i];
-                var infoStato = c.stato !== "OK" ? " (" + c.stato + ")" : "";
-                html += "<div class='riepilogo-riga'><span>" + c.nome + infoStato + "</span><span><b>" + c.trovate + "</b> partite</span></div>";
-            }
-            html += "<div class='riepilogo-riga totale'><span>TOTALE COMPLESSIVO</span><span>" + totale + " partite</span></div></div></div>";
-            riepilogo.innerHTML = html;
-        }
+        mostraDati(data);
+      } catch (e) {
+        statusPanel.innerHTML = "❌ Errore durante la validazione: " + e.message;
+      }
+    }
 
-        function mostraPartite(partite) {
-            risultati.innerHTML = "";
-            if (!partite || partite.length === 0) {
-                risultati.innerHTML = "<p style='text-align:center; color:#86868b; font-size:13px;'>Nessun palinsesto salvato. Clicca su 'Nuova Estrazione'.</p>";
-                return;
-            }
-            for (var i = 0; i < partite.length; i++) {
-                var p = partite[i];
-                var card = document.createElement("div");
-                card.className = "match-card";
-                card.innerHTML = 
-                    "<div class='campionato'>" + (p.campionato || "Campionato") + "</div>" +
-                    "<div class='squadre'>" + p.squadraCasa + " - " + p.squadraOspite + "</div>" +
-                    "<div class='data'>" + formattaData(p.dataOraUTC) + "</div>" +
-                    
-                    // Statistiche Generali
-                    "<div class='stat-riga'><span>Punti Generali</span><span>" + p.puntiCasa + " vs " + p.puntiOspite + "</span></div>" +
-                    "<div class='stat-riga'><span>Posizione Generale</span><span>" + p.posizioneCasa + " vs " + p.posizioneOspite + "</span></div>" +
-                    "<div class='stat-riga'><span>Partite giocate</span><span>" + p.giocateCasa + " vs " + p.giocateOspite + "</span></div>" +
-                    "<div class='stat-riga'><span>V/P/S Generali</span><span>" + p.vinteCasa + "/" + p.pareggiateCasa + "/" + p.perseCasa + " vs " + p.vinteOspite + "/" + p.pareggiateOspite + "/" + p.perseOspite + "</span></div>" +
-                    "<div class='stat-riga'><span>Gol fatti / subiti</span><span>" + p.golFattiCasa + ":" + p.golSubitiCasa + " vs " + p.golFattiOspite + ":" + p.golSubitiOspite + "</span></div>" +
-                    
-                    // Rendimento Casa vs Trasferta
-                    "<div class='section-divider'>Rendimento Casa / Trasferta</div>" +
-                    "<div class='stat-riga'><span>Punti (Solo Casa / Solo Trasferta)</span><span>" + p.puntiCasaSoloCasa + " vs " + p.puntiOspiteSoloTrasferta + "</span></div>" +
-                    "<div class='stat-riga'><span>V/P/S (Solo Casa / Solo Trasferta)</span><span>" + p.vpsCasaSoloCasa + " vs " + p.vpsOspiteSoloTrasferta + "</span></div>" +
+    // Renderizza la UI
+    function mostraDati(data) {
+      statusPanel.innerHTML = `
+        <strong>Partite Trovate:</strong> ${data.totalePartiteTrovate} | 
+        <strong>Ultimo Aggiornamento:</strong> ${new Date(data.dataAggiornamento).toLocaleString('it-IT')} <br>
+        <strong>Ultima Validazione Risultati:</strong> ${data.dataUltimaValidazione ? new Date(data.dataUltimaValidazione).toLocaleString('it-IT') : 'Mai effettuata'}
+      `;
 
-                    // Forma e Indice Forma
-                    "<div class='section-divider'>Forma Recente & Indice</div>" +
-                    "<div class='stat-riga'><span>Trend " + p.squadraCasa + "</span><span>" + (p.simboliFormaCasa || "-") + "</span></div>" +
-                    "<div class='stat-riga'><span>Indice Forma Casa</span><span>" + p.indiceFormaCasa + "</span></div>" +
-                    "<div class='stat-riga'><span>Trend " + p.squadraOspite + "</span><span>" + (p.simboliFormaOspite || "-") + "</span></div>" +
-                    "<div class='stat-riga'><span>Indice Forma Ospite</span><span>" + p.indiceFormaOspite + "</span></div>" +
+      if (!data.partite || data.partite.length === 0) {
+        listaPartite.innerHTML = "<p>Nessuna partita presente nel palinsesto.</p>";
+        return;
+      }
 
-                    // Top Scorer
-                    "<div class='section-divider'>Top Scorer in Campionato</div>" +
-                    "<div class='stat-riga'><span>" + p.squadraCasa + "</span><span>" + p.topScorerCasa + "</span></div>" +
-                    "<div class='stat-riga'><span>" + p.squadraOspite + "</span><span>" + p.topScorerOspite + "</span></div>";
-                
-                risultati.appendChild(card);
-            }
-        }
+      listaPartite.innerHTML = data.partite.map(p => `
+        <div class="match-card">
+          <div>
+            <span class="badge">${p.campionato}</span>
+            <p style="margin: 5px 0; font-weight: bold;">${p.squadraCasa} vs ${p.squadraOspite}</p>
+            <small>Data: ${new Date(p.dataOraUTC).toLocaleString('it-IT')}</small>
+          </div>
+          <div>
+            <span class="score ${p.completata ? 'finished' : ''}">
+              ${p.risultatoFinale || 'In attesa'}
+            </span>
+          </div>
+        </div>
+      `).map(String).join('');
+    }
 
-        function caricaPalinsestoSalvato() {
-            fetch(WORKER_URL)
-                .then(function(res) { return res.json(); })
-                .then(function(data) {
-                    if (data && data.partite) {
-                        stato.textContent = "Palinsesto caricato (Sincronizzato Cloud)";
-                        mostraRiepilogo(data.resocontoCampionati, data.totalePartiteTrovate, data.dataAggiornamento);
-                        mostraPartite(data.partite);
-                    } else {
-                        stato.textContent = "Nessun palinsesto salvato presente.";
-                    }
-                })
-                .catch(function(e) {
-                    stato.textContent = "Errore durante il recupero dei dati condivisi.";
-                });
-        }
-
-        btn.addEventListener("click", function() {
-            btn.disabled = true;
-            btn.textContent = "Estrazione in corso...";
-            stato.textContent = "Scansione avanzata 12 campionati e sincronizzazione cloud in corso...";
-
-            fetch(WORKER_URL + "?force=true")
-                .then(function(response) {
-                    if (!response.ok) throw new Error("Errore HTTP " + response.status);
-                    return response.json();
-                })
-                .then(function(data) {
-                    if (data.errore) {
-                        stato.textContent = "Errore: " + (data.messaggio || "Richiesta fallita");
-                    } else {
-                        stato.textContent = "Estrazione completata e salvata su tutti i dispositivi!";
-                        mostraRiepilogo(data.resocontoCampionati, data.totalePartiteTrovate, data.dataAggiornamento);
-                        mostraPartite(data.partite || []);
-                    }
-                })
-                .catch(function(e) {
-                    stato.textContent = "Errore di connessione: " + e.message;
-                })
-                .finally(function() {
-                    btn.disabled = false;
-                    btn.textContent = "Nuova Estrazione Palinsesto";
-                });
-        });
-
-        caricaPalinsestoSalvato();
-    </script>
+    // Caricamento automatico all'apertura
+    caricaPalinsesto();
+  </script>
 </body>
 </html>
