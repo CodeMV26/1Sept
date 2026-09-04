@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Palinsesto & Calcio Analisi</title>
-  <!-- LIBRERIA SHEETJS PER GENERARE VERE SCHEDE EXCEL NATIVE (.XLSX) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root {
       --bg-color: #f2f2f7;
@@ -185,12 +183,12 @@
 
   <h1>Palinsesto & Analisi</h1>
 
-  <!-- BARRA AZIONI CON ESPORTAZIONE EXCEL NATIVA -->
+  <!-- BARRA AZIONI CON IL NUOVO PULSANTE ESPORTA -->
   <div class="actions-grid">
     <button class="btn-load" onclick="caricaPalinsesto()">📁 Carica Ultimo Palinsesto</button>
     <button class="btn-validate" onclick="validaRisultati()">✅ Valida Risultati</button>
     <button class="btn-refresh" onclick="caricaPalinsesto(true)">🔄 Nuovo Palinsesto</button>
-    <button class="btn-export" onclick="esportaExcel()">📊 Esporta Excel (.xlsx)</button>
+    <button class="btn-export" onclick="esportaCSV()">📊 Esporta CSV/Excel</button>
   </div>
 
   <div class="status-panel" id="statusPanel">
@@ -205,6 +203,7 @@
     const statusPanel = document.getElementById("statusPanel");
     const listaPartite = document.getElementById("listaPartite");
     
+    // Variabile globale per salvare i dati correnti per l'esportazione
     let datiCorrenti = null;
 
     async function caricaPalinsesto(force = false) {
@@ -339,66 +338,60 @@
       }).join('');
     }
 
-    // FUNZIONE DI ESPORTAZIONE EXCEL NATIVA (.XLSX)
-    function esportaExcel() {
+    // FUNZIONE DI ESPORTAZIONE CSV / EXCEL
+    function esportaCSV() {
       if (!datiCorrenti || !datiCorrenti.partite || datiCorrenti.partite.length === 0) {
         alert("Nessun palinsesto caricato da esportare!");
         return;
       }
 
-      if (typeof XLSX === 'undefined') {
-        alert("Libreria Excel in caricamento... Riprova tra 3 secondi.");
-        return;
-      }
+      const intestazioni = [
+        "Campionato", "Data Ora", "Squadra Casa", "Squadra Ospite", "Risultato Finale",
+        "Punti Casa", "Posizione Casa", "Partite Giocate Casa", "V/P/S Casa", "Gol Fatti/Subiti Casa", "Punti Solo Casa", "V/P/S Solo Casa", "Indice Forma Casa", "Top Scorer Casa",
+        "Punti Ospite", "Posizione Ospite", "Partite Giocate Ospite", "V/P/S Ospite", "Gol Fatti/Subiti Ospite", "Punti Solo Trasferta", "V/P/S Solo Trasferta", "Indice Forma Ospite", "Top Scorer Ospite"
+      ];
 
-      const convertiNumero = (v) => {
-        if (v === null || v === undefined || v === '-' || v === '') return 0;
-        const n = Number(v);
-        return isNaN(n) ? v : n;
-      };
+      let righe = [intestazioni.join(";")];
 
-      const righe = datiCorrenti.partite.map(p => {
-        return {
-          "Campionato": String(p.campionato || ''),
-          "Data Ora": new Date(p.dataOraUTC).toLocaleString('it-IT'),
-          "Squadra Casa": String(p.squadraCasa || ''),
-          "Squadra Ospite": String(p.squadraOspite || ''),
-          "Risultato Finale": String(p.risultatoFinale || 'In attesa'),
-          
-          // Dati Squadra Casa (Numeri puri per formule + Testo per frazioni)
-          "Punti Casa": convertiNumero(p.puntiCasa),
-          "Posizione Casa": String(p.posizioneCasa || '-'),
-          "Giocate Casa": convertiNumero(p.giocateCasa),
-          "V/P/S Casa": String(`${p.vinteCasa ?? 0}/${p.pareggiateCasa ?? 0}/${p.perseCasa ?? 0}`),
-          "Gol Fatti Casa": convertiNumero(p.golFattiCasa),
-          "Gol Subiti Casa": convertiNumero(p.golSubitiCasa),
-          "Punti Solo Casa": convertiNumero(p.puntiCasaSoloCasa),
-          "V/P/S Solo Casa": String(p.vpsCasaSoloCasa || '0/0/0'),
-          "Indice Forma Casa": String(p.indiceFormaCasa || '-'),
-          "Top Scorer Casa": String(p.topScorerCasa || '-'),
-
-          // Dati Squadra Ospite
-          "Punti Ospite": convertiNumero(p.puntiOspite),
-          "Posizione Ospite": String(p.posizioneOspite || '-'),
-          "Giocate Ospite": convertiNumero(p.giocateOspite),
-          "V/P/S Ospite": String(`${p.vinteOspite ?? 0}/${p.pareggiateOspite ?? 0}/${p.perseOspite ?? 0}`),
-          "Gol Fatti Ospite": convertiNumero(p.golFattiOspite),
-          "Gol Subiti Ospite": convertiNumero(p.golSubitiOspite),
-          "Punti Solo Trasferta": convertiNumero(p.puntiOspiteSoloTrasferta),
-          "V/P/S Solo Trasferta": String(p.vpsOspiteSoloTrasferta || '0/0/0'),
-          "Indice Forma Ospite": String(p.indiceFormaOspite || '-'),
-          "Top Scorer Ospite": String(p.topScorerOspite || '-')
-        };
+      datiCorrenti.partite.forEach(p => {
+        const riga = [
+          `"${p.campionato || ''}"`,
+          `"${new Date(p.dataOraUTC).toLocaleString('it-IT')}"`,
+          `"${p.squadraCasa || ''}"`,
+          `"${p.squadraOspite || ''}"`,
+          `"${p.risultatoFinale || 'In attesa'}"`,
+          `"${p.puntiCasa || '-'}"`,
+          `"${p.posizioneCasa || '-'}"`,
+          `"${p.giocateCasa || '-'}"`,
+          `"${p.vinteCasa}/${p.pareggiateCasa}/${p.perseCasa}"`,
+          `"${p.golFattiCasa}/${p.golSubitiCasa}"`,
+          `"${p.puntiCasaSoloCasa || 0}"`,
+          `"${p.vpsCasaSoloCasa || '-'}"`,
+          `"${p.indiceFormaCasa || '-'}"`,
+          `"${p.topScorerCasa || '-'}"`,
+          `"${p.puntiOspite || '-'}"`,
+          `"${p.posizioneOspite || '-'}"`,
+          `"${p.giocateOspite || '-'}"`,
+          `"${p.vinteOspite}/${p.pareggiateOspite}/${p.perseOspite}"`,
+          `"${p.golFattiOspite}/${p.golSubitiOspite}"`,
+          `"${p.puntiOspiteSoloTrasferta || 0}"`,
+          `"${p.vpsOspiteSoloTrasferta || '-'}"`,
+          `"${p.indiceFormaOspite || '-'}"`,
+          `"${p.topScorerOspite || '-'}"`
+        ];
+        righe.push(riga.join(";"));
       });
 
-      // Creazione del foglio di lavoro nativo Excel
-      const worksheet = XLSX.utils.json_to_sheet(righe);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Palinsesto");
-
-      // Download del file .xlsx
-      const nomeFile = `Palinsesto_Analisi_${new Date().toISOString().split('T')[0]}.xlsx`;
-      XLSX.writeFile(workbook, nomeFile);
+      const contenutoCSV = "\uFEFF" + righe.join("\n"); // BOM per codifica UTF-8 corretta su Excel
+      const blob = new Blob([contenutoCSV], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Palinsesto_Analisi_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
 
     caricaPalinsesto();
