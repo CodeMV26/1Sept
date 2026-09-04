@@ -85,7 +85,6 @@
       border-radius: 6px;
     }
 
-    /* Box Riassunto Giornaliero Tabella */
     .summary-card {
       background: var(--bg-secondary);
       border: 1px solid var(--border-color);
@@ -122,7 +121,6 @@
       border: 1px solid var(--border-color);
     }
 
-    /* Partite List/Cards */
     .match-card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
@@ -138,7 +136,6 @@
       justify-content: space-between;
       align-items: center;
       cursor: pointer;
-      border-bottom: 1px solid transparent;
     }
 
     .match-header:hover {
@@ -190,7 +187,6 @@
     .badge-green { background: #065f46; color: #34d399; }
     .badge-blue { background: #1e3a8a; color: #60a5fa; }
 
-    /* Live Loader */
     #boxStatusLive {
       display: none;
       background: var(--bg-secondary);
@@ -240,7 +236,6 @@
     </div>
   </div>
 
-  <!-- Box Status Live Durante il caricamento -->
   <div id="boxStatusLive">
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <span id="testoStatusLive" style="font-weight: bold; color: var(--accent-blue);">🔄 Connessione al Worker Cloudflare...</span>
@@ -251,24 +246,22 @@
     </div>
   </div>
 
-  <!-- Tabella Riassunto Giornaliero -->
   <div class="summary-card" id="sezioneRiassunto">
     <h3>📊 Riassunto Partite Trovate per Campionato e Giorno</h3>
     <div style="overflow-x: auto;">
       <table class="summary-table" id="tabellaRiassunto">
         <tbody>
-          <tr><td style="color: var(--text-muted);">Nessun dato disponibile in memoria. Clicca su Aggiorna Palinsesto.</td></tr>
+          <tr><td style="color: var(--text-muted);">Nessun dato disponibile in memoria. Clicca su Aggiorna Palinsesto Completo.</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- Lista Partite -->
   <div id="listaPartite"></div>
 </div>
 
 <script>
-  // INDIRIZZO CLOUDFLARE WORKER AGGIORNATO
+  // URL WORKER CORRETTO
   const WORKER_URL = "https://betting-pro-1sept.mvmymail.workers.dev";
 
   let datiPalinsestoGlobale = null;
@@ -284,7 +277,7 @@
     labelPartite.innerText = "Partite Trovate: ...";
     
     if (param.includes("force=true")) {
-      testoLive.innerText = "⏳ Estrazione e analisi completa dei 12 campionati in corso (può richiedere fino a 1-2 min)...";
+      testoLive.innerText = "⏳ Estrazione e analisi completa dei 12 campionati in corso...";
     } else if (param.includes("validate=true")) {
       testoLive.innerText = "⏳ Recupero e validazione risultati reali in corso...";
     } else {
@@ -299,34 +292,28 @@
       progressBar.style.width = "100%";
 
       if (data.errore) {
-        alert("Errore dal server: " + data.messaggio);
+        alert("Messaggio dal server: " + data.messaggio);
         boxLive.style.display = "none";
         return;
       }
 
       datiPalinsestoGlobale = data;
       
-      // Aggiornamento Info Header
-      let infoText = `Ultimo Aggiornamento Palinsesto: ${data.dataAggiornamento ? new Date(data.dataAggiornamento).toLocaleString('it-IT') : 'N/D'}`;
+      let infoText = `Ultimo Aggiornamento Palinsesto: ${data.dataAggiornamento ? new Date(data.dataAggiornamento).toLocaleString('it-IT') : 'Mai eseguito'}`;
       if (data.dataUltimaValidazione) {
-        infoText += ` | Ultima Validazione Risultati: ${new Date(data.dataUltimaValidazione).toLocaleString('it-IT')}`;
+        infoText += ` | Ultima Validazione: ${new Date(data.dataUltimaValidazione).toLocaleString('it-IT')}`;
       }
       document.getElementById("infoUltimoAggiornamento").innerText = infoText;
 
       labelPartite.innerText = `Partite Totali Trovate: ${data.totalePartiteTrovate || 0}`;
 
-      // Popola Filtro Campionati
       popolaSelectCampionati(data.resocontoCampionati);
-
-      // Renderizza Tabella Riassuntiva
       renderizzaTabellaRiassuntiva(data);
-
-      // Renderizza Lista Partite
       applicaFiltri();
 
       setTimeout(() => {
         boxLive.style.display = "none";
-      }, 1200);
+      }, 1000);
 
     } catch (err) {
       console.error(err);
@@ -336,7 +323,7 @@
   }
 
   function forzaRigenerazione() {
-    if (confirm("Vuoi forzare la rigenerazione completa del palinsesto da API Football? L'operazione richiederà circa 60-90 secondi.")) {
+    if (confirm("Vuoi forzare la rigenerazione completa del palinsesto?")) {
       caricaDati("?force=true");
     }
   }
@@ -363,14 +350,15 @@
 
   function renderizzaTabellaRiassuntiva(dati) {
     const container = document.getElementById("tabellaRiassunto");
-    if (!container || !dati.resocontoCampionati) return;
+    if (!container) return;
+
+    if (!dati.resocontoCampionati || dati.resocontoCampionati.length === 0) {
+      container.innerHTML = `<tbody><tr><td style="color: var(--text-muted);">Nessun dato disponibile in memoria. Clicca su Aggiorna Palinsesto Completo.</td></tr></tbody>`;
+      return;
+    }
 
     const giorni = dati.giorniAnalizzati || [];
-    
-    let html = `
-      <thead>
-        <tr>
-          <th style="text-align: left;">Campionato</th>`;
+    let html = `<thead><tr><th style="text-align: left;">Campionato</th>`;
     
     giorni.forEach(g => {
       const dObj = new Date(g);
@@ -378,19 +366,14 @@
       html += `<th>${dataFormattata}</th>`;
     });
     
-    html += `<th style="color: var(--accent-blue);">Totale</th>
-        </tr>
-      </thead>
-      <tbody>`;
+    html += `<th style="color: var(--accent-blue);">Totale</th></tr></thead><tbody>`;
 
     let totaliGiorno = {};
     giorni.forEach(g => totaliGiorno[g] = 0);
     let totaleGenerale = 0;
 
     dati.resocontoCampionati.forEach((camp) => {
-      html += `<tr>
-        <td style="text-align: left; font-weight: bold;">${camp.nome}</td>`;
-      
+      html += `<tr><td style="text-align: left; font-weight: bold;">${camp.nome}</td>`;
       let sommaCamp = 0;
       giorni.forEach(g => {
         const qta = (camp.dettaglioGiorni && camp.dettaglioGiorni[g]) ? camp.dettaglioGiorni[g] : 0;
@@ -403,7 +386,6 @@
       html += `<td style="font-weight: bold; color: var(--accent-blue);">${sommaCamp}</td></tr>`;
     });
 
-    // Riga Totali
     html += `<tr style="background: #0f172a; font-weight: bold; border-top: 2px solid var(--accent-blue);">
       <td style="text-align: left;">TOTALE COMPLESSIVO</td>`;
     
@@ -412,7 +394,6 @@
     });
 
     html += `<td style="color: var(--accent-blue); font-size: 1.1rem;">${totaleGenerale}</td></tr></tbody>`;
-
     container.innerHTML = html;
   }
 
@@ -437,7 +418,7 @@
     container.innerHTML = "";
 
     if (partite.length === 0) {
-      container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-muted);">Nessuna partita trovata per i filtri selezionati.</div>`;
+      container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-muted);">Nessuna partita trovata.</div>`;
       return;
     }
 
@@ -459,27 +440,19 @@
             <span style="font-size:0.8rem; color:var(--text-muted); display:block;">${p.campionato} - ${dataFormatted}</span>
             <span class="match-title">${p.squadraCasa} vs ${p.squadraOspite}</span>
           </div>
-          <div>
-            ${statoBadge}
-          </div>
+          <div>${statoBadge}</div>
         </div>
         <div class="match-details">
           <div class="grid-2">
             <div class="stat-box">
               <strong style="color:var(--accent-blue);">${p.squadraCasa} (Casa)</strong><br>
               Posizione: <b>${p.posizioneCasa}</b> | Punti: <b>${p.puntiCasa}</b><br>
-              Statistiche Generali: G: ${p.giocateCasa} | V: ${p.vinteCasa} | P: ${p.pareggiateCasa} | S: ${p.perseCasa}<br>
-              Gol Fatti/Subiti: ${p.golFattiCasa} / ${p.golSubitiCasa}<br>
-              Forma Recente: ${p.simboliFormaCasa} (${p.indiceFormaCasa})<br>
-              Miglior Marcatore: ${p.topScorerCasa}
+              Forma: ${p.simboliFormaCasa} (${p.indiceFormaCasa})
             </div>
             <div class="stat-box">
               <strong style="color:var(--accent-blue);">${p.squadraOspite} (Ospite)</strong><br>
               Posizione: <b>${p.posizioneOspite}</b> | Punti: <b>${p.puntiOspite}</b><br>
-              Statistiche Generali: G: ${p.giocateOspite} | V: ${p.vinteOspite} | P: ${p.pareggiateOspite} | S: ${p.perseOspite}<br>
-              Gol Fatti/Subiti: ${p.golFattiOspite} / ${p.golSubitiOspite}<br>
-              Forma Recente: ${p.simboliFormaOspite} (${p.indiceFormaOspite})<br>
-              Miglior Marcatore: ${p.topScorerOspite}
+              Forma: ${p.simboliFormaOspite} (${p.indiceFormaOspite})
             </div>
           </div>
         </div>
@@ -489,7 +462,6 @@
     });
   }
 
-  // Avvio al caricamento della pagina
   window.onload = () => {
     caricaDati();
   };
