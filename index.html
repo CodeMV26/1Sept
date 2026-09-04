@@ -26,8 +26,8 @@
       background-color: var(--bg-main);
       color: var(--text-primary);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      padding: clamp(8px, 2vw, 20px);
-      line-height: 1.4;
+      padding: clamp(8px, 2vw, 16px);
+      line-height: 1.35;
       -webkit-font-smoothing: antialiased;
     }
 
@@ -37,170 +37,194 @@
       width: 100%;
     }
 
-    /* HEADER & CONTROLLI */
+    /* HEADER */
     header {
-      margin-bottom: 15px;
+      margin-bottom: 12px;
       border-bottom: 1px solid var(--card-border);
-      padding-bottom: 10px;
+      padding-bottom: 8px;
     }
 
     h1 {
-      font-size: clamp(1.2rem, 4vw, 1.8rem);
+      font-size: clamp(1.2rem, 4vw, 1.6rem);
       color: var(--accent-blue);
       margin-bottom: 4px;
     }
 
     .meta-info {
-      font-size: clamp(0.7rem, 2vw, 0.85rem);
+      font-size: 0.75rem;
       color: var(--text-secondary);
+      line-height: 1.4;
     }
 
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
+    /* TOOLBAR PULSANTI E FILTRI OPTIMIZED FOR IPHONE */
+    .toolbar-card {
       background: var(--card-bg);
-      padding: 12px;
-      border-radius: 8px;
       border: 1px solid var(--card-border);
-      margin-bottom: 20px;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
     }
 
     button {
-      padding: 10px 14px;
+      padding: 10px;
       border: none;
       border-radius: 6px;
       font-weight: 600;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       cursor: pointer;
       color: white;
-      transition: opacity 0.2s;
-      flex: 1 1 auto;
       text-align: center;
+      width: 100%;
     }
 
-    button:hover { opacity: 0.9; }
+    button:active { opacity: 0.8; }
     .btn-blue { background-color: #2563eb; }
     .btn-green { background-color: #059669; }
 
     .filter-group {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
-      flex: 2 1 280px;
-      width: 100%;
     }
 
     select, input {
       width: 100%;
-      padding: 8px 10px;
+      padding: 9px;
       background: #0f172a;
       border: 1px solid var(--card-border);
       color: white;
       border-radius: 6px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
+      appearance: none;
+      -webkit-appearance: none;
     }
 
-    /* TABELLA RIASSUNTIVA COMPATTA */
+    /* TABELLA CAMPIONATI COMPATTA SU IPHONE (GRIGLIA NO SCROLL) */
     .summary-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
 
     .summary-card h2 {
-      font-size: 1rem;
-      margin-bottom: 10px;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
       color: var(--accent-blue);
+      display: flex;
+      justify-content: space-between;
     }
 
-    .table-wrapper {
-      overflow-x: auto;
-      max-height: 280px;
-      -webkit-overflow-scrolling: touch;
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 6px;
     }
 
-    table.summary-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.8rem;
-      text-align: center;
-    }
-
-    table.summary-table th, table.summary-table td {
-      padding: 8px 6px;
-      border: 1px solid var(--card-border);
-      white-space: nowrap;
-    }
-
-    table.summary-table th {
+    .camp-item {
       background: #0f172a;
-      color: var(--text-secondary);
-      position: sticky;
-      top: 0;
-      z-index: 2;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 6px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+    }
+
+    .camp-item .name {
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100px;
+    }
+
+    .camp-item .count {
+      font-weight: bold;
+      color: var(--accent-green);
+    }
+
+    .total-box {
+      grid-column: 1 / -1;
+      background: #1e3a8a;
+      border: 1px solid var(--accent-blue);
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 0.85rem;
+      color: white;
+      margin-top: 4px;
     }
 
     /* CARTE PARTITA RESPONSIVE */
     .matches-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(clamp(290px, 100%, 360px), 1fr));
-      gap: 15px;
+      grid-template-columns: repeat(auto-fill, minmax(clamp(280px, 100%, 360px), 1fr));
+      gap: 12px;
     }
 
     .match-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 12px;
+      border-radius: 10px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
     }
 
     .match-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       color: var(--text-secondary);
       border-bottom: 1px solid var(--card-border);
-      padding-bottom: 6px;
+      padding-bottom: 4px;
     }
 
     .match-number {
       background: var(--accent-blue);
       color: #0f172a;
-      padding: 2px 7px;
+      padding: 1px 6px;
       border-radius: 4px;
       font-weight: bold;
     }
 
     .teams-title {
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-weight: bold;
       text-align: center;
-      margin: 4px 0;
+      margin: 2px 0;
       color: var(--text-primary);
     }
 
-    /* GRIGLIA STATISTICHE COMPLETA */
     .stats-table {
       width: 100%;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       border-collapse: collapse;
     }
 
     .stats-table th {
       color: var(--accent-blue);
-      padding-bottom: 4px;
+      padding-bottom: 2px;
       border-bottom: 1px solid var(--card-border);
     }
 
     .stats-table td {
-      padding: 4px 2px;
+      padding: 3px 2px;
       border-bottom: 1px dashed #334155;
     }
 
@@ -209,29 +233,18 @@
     .stats-table td:nth-child(3) { width: 28%; text-align: center; font-weight: 600; }
 
     .top-scorer-box {
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       background: #0f172a;
-      padding: 8px;
+      padding: 6px;
       border-radius: 6px;
       border: 1px solid var(--card-border);
       color: var(--accent-yellow);
     }
 
-    .badge-status {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.7rem;
-      font-weight: bold;
-    }
-    .badge-completed { background: #065f46; color: #34d399; }
-    .badge-scheduled { background: #1e3a8a; color: #60a5fa; }
-
     @media (max-width: 480px) {
-      body { padding: 6px; }
-      .toolbar { flex-direction: column; align-items: stretch; }
-      .filter-group { flex-direction: column; }
-      .stats-table { font-size: 0.7rem; }
+      .btn-group { grid-template-columns: 1fr; }
+      .filter-group { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
@@ -239,13 +252,15 @@
 
 <div class="container">
   <header>
-    <h1>⚽ Dashboard Analisi Pronostici Calcio</h1>
-    <div class="meta-info" id="metaInfo">Caricamento stato in corso...</div>
+    <h1>⚽ Dashboard Analisi Pronostici</h1>
+    <div class="meta-info" id="metaInfo">Caricamento in corso...</div>
   </header>
 
-  <div class="toolbar">
-    <button class="btn-blue" onclick="aggiornaPalinsesto(true)">🔄 Aggiorna Palinsesto Completo</button>
-    <button class="btn-green" onclick="aggiornaPalinsesto(false)">✅ Valida Risultati Reali</button>
+  <div class="toolbar-card">
+    <div class="btn-group">
+      <button class="btn-blue" onclick="aggiornaPalinsesto(true)">🔄 Aggiorna Palinsesto</button>
+      <button class="btn-green" onclick="aggiornaPalinsesto(false)">✅ Valida Risultati</button>
+    </div>
     <div class="filter-group">
       <select id="filterCampionato" onchange="renderData()">
         <option value="ALL">Tutti i Campionati</option>
@@ -255,13 +270,9 @@
   </div>
 
   <div class="summary-card">
-    <h2>📊 Riassunto Partite Trovate per Campionato e Giorno</h2>
-    <div class="table-wrapper">
-      <table class="summary-table" id="summaryTable">
-        <tbody>
-          <tr><td style="color: var(--text-secondary);">Caricamento dati in corso...</td></tr>
-        </tbody>
-      </table>
+    <h2>📊 Partite Trovate per Campionato</h2>
+    <div class="summary-grid" id="summaryGrid">
+      <div style="grid-column: 1/-1; color: var(--text-secondary); text-align: center;">In attesa di dati...</div>
     </div>
   </div>
 
@@ -269,14 +280,12 @@
 </div>
 
 <script>
-  // URL CLOUDFLARE WORKER CONFIGURATO
   const WORKER_URL = "https://betting-pro-1sept.mvmymail.workers.dev";
-
   let globalData = null;
 
   async function loadData(force = false) {
     const metaEl = document.getElementById('metaInfo');
-    metaEl.innerText = "Sincronizzazione dati con il server Cloudflare...";
+    metaEl.innerText = force ? "⏳ Connessione ed estrazione in corso..." : "Sincronizzazione dati...";
 
     try {
       const url = `${WORKER_URL}${force ? '?force=true' : ''}`;
@@ -287,15 +296,15 @@
         globalData = data;
         let infoStr = `Ultimo Aggiornamento: ${data.dataAggiornamento ? new Date(data.dataAggiornamento).toLocaleString('it-IT') : 'Mai eseguito'}`;
         if (data.dataUltimaValidazione) {
-          infoStr += ` | Ultima Validazione: ${new Date(data.dataUltimaValidazione).toLocaleString('it-IT')}`;
+          infoStr += ` | Validazione: ${new Date(data.dataUltimaValidazione).toLocaleString('it-IT')}`;
         }
         metaEl.innerText = infoStr;
 
         populateCampionatiFilter(data.resocontoCampionati || []);
-        renderSummaryTable(data);
+        renderSummaryGrid(data);
         renderData();
       } else {
-        metaEl.innerText = "Messaggio: " + (data ? data.messaggio : "Nessun dato disponibile.");
+        metaEl.innerText = "Messaggio: " + (data ? data.messaggio : "Nessun dato.");
       }
     } catch(err) {
       console.error(err);
@@ -319,54 +328,37 @@
     select.value = currVal;
   }
 
-  function renderSummaryTable(dati) {
-    const table = document.getElementById("summaryTable");
-    if (!table || !dati.resocontoCampionati) return;
+  function renderSummaryGrid(dati) {
+    const container = document.getElementById("summaryGrid");
+    if (!container) return;
 
-    const giorni = dati.giorniAnalizzati || [];
-    let html = `<thead><tr><th style="text-align: left;">Campionato</th>`;
-    
-    giorni.forEach(g => {
-      const dObj = new Date(g);
-      const dataFormatted = dObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', weekday: 'short' });
-      html += `<th>${dataFormatted}</th>`;
-    });
-    
-    html += `<th style="color: var(--accent-blue);">Totale</th></tr></thead><tbody>`;
+    if (!dati.resocontoCampionati || dati.resocontoCampionati.length === 0) {
+      container.innerHTML = '<div style="grid-column: 1/-1; color: var(--text-secondary); text-align: center;">Nessun dato in memoria. Clicca su Aggiorna Palinsesto.</div>';
+      return;
+    }
 
-    let totaliGiorno = {};
-    giorni.forEach(g => totaliGiorno[g] = 0);
+    let html = '';
     let totaleGenerale = 0;
 
-    dati.resocontoCampionati.forEach((camp) => {
-      html += `<tr><td style="text-align: left; font-weight: bold;">${camp.nome}</td>`;
-      let sommaCamp = 0;
-      giorni.forEach(g => {
-        const qta = (camp.dettaglioGiorni && camp.dettaglioGiorni[g]) ? camp.dettaglioGiorni[g] : 0;
-        sommaCamp += qta;
-        totaliGiorno[g] += qta;
-        html += `<td>${qta > 0 ? `<span style="color:var(--accent-green); font-weight:bold;">${qta}</span>` : '<span style="color:var(--text-secondary);">0</span>'}</td>`;
-      });
-
-      totaleGenerale += sommaCamp;
-      html += `<td style="font-weight: bold; color: var(--accent-blue);">${sommaCamp}</td></tr>`;
+    dati.resocontoCampionati.forEach(camp => {
+      const qta = camp.trovate || 0;
+      totaleGenerale += qta;
+      html += `
+        <div class="camp-item">
+          <span class="name">${camp.nome}</span>
+          <span class="count">${qta}</span>
+        </div>
+      `;
     });
 
-    html += `<tr style="background: #0f172a; font-weight: bold; border-top: 2px solid var(--accent-blue);">
-      <td style="text-align: left;">TOTALE COMPLESSIVO</td>`;
-    
-    giorni.forEach(g => {
-      html += `<td style="color: var(--accent-green);">${totaliGiorno[g]}</td>`;
-    });
-
-    html += `<td style="color: var(--accent-blue); font-size: 1rem;">${totaleGenerale}</td></tr></tbody>`;
-    table.innerHTML = html;
+    html += `<div class="total-box">TOTALE COMPLESSIVO: ${totaleGenerale} PARTITE</div>`;
+    container.innerHTML = html;
   }
 
   function renderData() {
     const matchesContainer = document.getElementById('matchesContainer');
     if (!globalData || !globalData.partite) {
-      matchesContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">Nessuna partita in memoria. Clicca su Aggiorna Palinsesto.</p>';
+      matchesContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">Nessuna partita in memoria.</p>';
       return;
     }
 
@@ -377,27 +369,19 @@
       const matchCamp = (selectedCamp === "ALL" || p.codiceCampionato === selectedCamp || p.campionato === selectedCamp);
       const sCasa = (p.squadraCasa || p.casa || "").toLowerCase();
       const sOspite = (p.squadraOspite || p.trasferta || "").toLowerCase();
-      const matchSearch = !search || sCasa.includes(search) || sOspite.includes(search);
-      return matchCamp && matchSearch;
+      return matchCamp && (!search || sCasa.includes(search) || sOspite.includes(search));
     });
 
     matchesContainer.innerHTML = '';
     if (filtered.length === 0) {
-      matchesContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">Nessuna partita corrisponde ai filtri selezionati.</p>';
+      matchesContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">Nessuna partita trovata.</p>';
       return;
     }
 
     filtered.forEach((p, idx) => {
       const card = document.createElement('div');
       card.className = 'match-card';
-
       const dataFormatted = p.dataOraUTC ? new Date(p.dataOraUTC).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : (p.ora || 'N/D');
-      const casa = p.squadraCasa || p.casa || 'Casa';
-      const ospite = p.squadraOspite || p.trasferta || 'Ospite';
-
-      let statoBadge = p.completata 
-        ? `<span class="badge-status badge-completed">FINALE: ${p.risultatoFinale || 'FT'}</span>` 
-        : `<span class="badge-status badge-scheduled">IN PROGRAMMA</span>`;
 
       card.innerHTML = `
         <div class="match-header">
@@ -405,72 +389,33 @@
           <span>${p.campionato || ''}</span>
           <span>${dataFormatted}</span>
         </div>
-        
-        <div class="teams-title">${casa} vs ${ospite}</div>
-        <div style="text-align:center; margin-bottom: 4px;">${statoBadge}</div>
-
+        <div class="teams-title">${p.squadraCasa || p.casa} vs ${p.squadraOspite || p.trasferta}</div>
         <table class="stats-table">
           <thead>
-            <tr>
-              <th>Dettaglio Statistiche</th>
-              <th>${casa}</th>
-              <th>${ospite}</th>
-            </tr>
+            <tr><th>Dettaglio</th><th>Casa</th><th>Ospite</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td>Posizione / Punti Generali</td>
-              <td><b>${p.posizioneCasa || '-'}</b> (${p.puntiCasa || 0}p)</td>
-              <td><b>${p.posizioneOspite || '-'}</b> (${p.puntiOspite || 0}p)</td>
-            </tr>
-            <tr>
-              <td>Partite Giocate (V/P/S)</td>
-              <td>${p.giocateCasa || 0} (${p.vinteCasa || 0}/${p.pareggiateCasa || 0}/${p.perseCasa || 0})</td>
-              <td>${p.giocateOspite || 0} (${p.vinteOspite || 0}/${p.pareggiateOspite || 0}/${p.perseOspite || 0})</td>
-            </tr>
-            <tr>
-              <td>Gol Fatti / Subiti Generali</td>
-              <td>${p.golFattiCasa || 0} / ${p.golSubitiCasa || 0}</td>
-              <td>${p.golFattiOspite || 0} / ${p.golSubitiOspite || 0}</td>
-            </tr>
-            <tr>
-              <td>Punti & V/P/S (Casa vs Trasf.)</td>
-              <td>${p.puntiSoloCasa || 0}p (${p.vpsSoloCasa || '0/0/0'})</td>
-              <td>${p.puntiSoloOspite || 0}p (${p.vpsSoloOspite || '0/0/0'})</td>
-            </tr>
-            <tr>
-              <td>Forma Recente (Indice)</td>
-              <td>${p.simboliFormaCasa || 'N/D'} (${p.indiceFormaCasa || '-'})</td>
-              <td>${p.simboliFormaOspite || 'N/D'} (${p.indiceFormaOspite || '-'})</td>
-            </tr>
-            <tr>
-              <td>Trend Recente</td>
-              <td>${p.trendCasa || '-----'}</td>
-              <td>${p.trendOspite || '-----'}</td>
-            </tr>
+            <tr><td>Pos. / Punti</td><td><b>${p.posizioneCasa || '-'}</b> (${p.puntiCasa || 0}p)</td><td><b>${p.posizioneOspite || '-'}</b> (${p.puntiOspite || 0}p)</td></tr>
+            <tr><td>Giocate (V/P/S)</td><td>${p.giocateCasa || 0} (${p.vinteCasa || 0}/${p.pareggiateCasa || 0}/${p.perseCasa || 0})</td><td>${p.giocateOspite || 0} (${p.vinteOspite || 0}/${p.pareggiateOspite || 0}/${p.perseOspite || 0})</td></tr>
+            <tr><td>Gol Fatti/Subiti</td><td>${p.golFattiCasa || 0}/${p.golSubitiCasa || 0}</td><td>${p.golFattiOspite || 0}/${p.golSubitiOspite || 0}</td></tr>
+            <tr><td>Casa / Trasf.</td><td>${p.puntiSoloCasa || 0}p (${p.vpsSoloCasa || '0/0/0'})</td><td>${p.puntiSoloOspite || 0}p (${p.vpsSoloOspite || '0/0/0'})</td></tr>
+            <tr><td>Forma Recente</td><td>${p.simboliFormaCasa || 'N/D'} (${p.indiceFormaCasa || '-'})</td><td>${p.simboliFormaOspite || 'N/D'} (${p.indiceFormaOspite || '-'})</td></tr>
+            <tr><td>Trend Recente</td><td>${p.trendCasa || '-----'}</td><td>${p.trendOspite || '-----'}</td></tr>
           </tbody>
         </table>
-
-        <div class="top-scorer-box">
-          ⭐ <b>Top Scorer Campionato:</b><br>
-          Casa: ${p.topScorerCasa || 'N/D'}<br>
-          Ospite: ${p.topScorerOspite || 'N/D'}
-        </div>
+        <div class="top-scorer-box">⭐ <b>Top Scorer:</b> C: ${p.topScorerCasa || 'N/D'} | O: ${p.topScorerOspite || 'N/D'}</div>
       `;
       matchesContainer.appendChild(card);
     });
   }
 
   function aggiornaPalinsesto(force) {
-    if (confirm(force ? "Vuoi forzare la rigenerazione completa del palinsesto da API Football?" : "Vuoi convalidare i risultati reali?")) {
+    if (confirm(force ? "Vuoi forzare l'aggiornamento completo del palinsesto?" : "Vuoi convalidare i risultati reali?")) {
       loadData(force);
     }
   }
 
-  // Caricamento automatico all'apertura
-  window.onload = () => {
-    loadData(false);
-  };
+  window.onload = () => loadData(false);
 </script>
 </body>
 </html>
