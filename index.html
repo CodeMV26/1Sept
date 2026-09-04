@@ -2,399 +2,498 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Palinsesto & Calcio Analisi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Analisi Pronostici Calcio</title>
   <style>
     :root {
-      --bg-color: #f2f2f7;
-      --card-bg: #ffffff;
-      --primary: #007aff;
-      --success: #34c759;
-      --warning: #ff9500;
-      --excel: #107c41;
-      --text-main: #1c1c1e;
-      --text-muted: #8e8e93;
-      --border-color: #e5e5ea;
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-card: #1e293b;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-green: #4ade80;
+      --accent-yellow: #facc15;
+      --accent-red: #f87171;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--bg-color);
+      background-color: var(--bg-primary);
       color: var(--text-main);
-      padding: 12px;
-      -webkit-text-size-adjust: 100%;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 25px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 15px;
     }
 
     h1 {
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      text-align: center;
+      margin: 0 0 10px 0;
+      font-size: 1.8rem;
+      color: var(--accent-blue);
     }
 
-    /* BARRA AZIONI RESPONSIVA */
-    .actions-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-      gap: 8px;
-      margin-bottom: 15px;
+    .controls-panel {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: var(--bg-secondary);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 20px;
+      align-items: center;
     }
 
     button {
-      padding: 10px 6px;
-      font-size: 12px;
-      font-weight: 600;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
+      background-color: #2563eb;
       color: white;
-      text-align: center;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.2s;
     }
-    button:active { opacity: 0.8; }
-    .btn-load { background-color: var(--primary); }
-    .btn-validate { background-color: var(--success); }
-    .btn-refresh { background-color: var(--warning); }
-    .btn-export { background-color: var(--excel); }
 
-    /* PANNELLO STATO */
-    .status-panel {
-      background: var(--card-bg);
-      padding: 12px;
-      border-radius: 10px;
-      font-size: 12px;
-      line-height: 1.5;
+    button:hover {
+      background-color: #1d4ed8;
+    }
+
+    button.btn-alt {
+      background-color: #059669;
+    }
+    button.btn-alt:hover {
+      background-color: #047857;
+    }
+
+    select, input {
+      background: #0f172a;
+      color: white;
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+
+    /* Box Riassunto Giornaliero Tabella */
+    .summary-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 25px;
+    }
+
+    .summary-card h3 {
+      margin-top: 0;
       margin-bottom: 15px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      border-left: 4px solid var(--primary);
+      color: var(--accent-blue);
+      font-size: 1.2rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
     }
 
-    /* SCHEDA PARTITA */
-    .match-card {
-      background: var(--card-bg);
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 14px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    table.summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+
+    table.summary-table th {
+      background-color: #0f172a;
+      color: var(--text-muted);
+      padding: 10px;
       border: 1px solid var(--border-color);
     }
 
-    .match-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid var(--border-color);
-    }
-    .badge-league {
-      background: #e5e5ea;
-      color: #3a3a3c;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 6px;
-      border-radius: 4px;
-      text-transform: uppercase;
-    }
-    .match-time {
-      font-size: 11px;
-      color: var(--text-muted);
+    table.summary-table td {
+      padding: 8px 10px;
+      border: 1px solid var(--border-color);
     }
 
-    /* SEZIONE SQUADRE SULLA STESSA RIGA IN GRASSETTO */
-    .teams-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    .team-names {
-      flex: 1;
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.3;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* RISULTATO SULLA STESSA RIGA */
-    .score-badge {
-      font-size: 15px;
-      font-weight: 800;
-      padding: 6px 10px;
+    /* Partite List/Cards */
+    .match-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
       border-radius: 8px;
-      background: #e5e5ea;
-      color: var(--text-main);
-      white-space: nowrap;
-      text-align: center;
-      min-width: 65px;
-      flex-shrink: 0;
-    }
-    .score-badge.finished {
-      background: var(--success);
-      color: white;
+      margin-bottom: 15px;
+      overflow: hidden;
     }
 
-    /* GRIGLIA STATISTICHE */
-    .stats-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-      margin-top: 8px;
-    }
-    .stats-table th {
-      background: #f8f8fa;
-      color: var(--text-muted);
-      font-weight: 600;
-      text-align: center;
-      padding: 4px;
-      border-bottom: 1px solid var(--border-color);
-    }
-    .stats-table td {
-      padding: 5px 4px;
-      text-align: center;
-      border-bottom: 1px dashed var(--border-color);
-    }
-    .stats-table td.label {
-      text-align: left;
-      font-weight: 600;
-      color: #48484a;
-      width: 40%;
+    .match-header {
+      padding: 12px 15px;
+      background: rgba(255, 255, 255, 0.03);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      border-bottom: 1px solid transparent;
     }
 
-    .form-symbols {
-      font-size: 10px;
-      letter-spacing: -1px;
+    .match-header:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .match-title {
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    .match-details {
+      padding: 15px;
+      display: none;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .match-card.open .match-details {
       display: block;
     }
-    .top-scorer-box {
-      background: #f8f8fa;
-      padding: 6px 8px;
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .stat-box {
+      background: #0f172a;
+      padding: 10px;
       border-radius: 6px;
+      font-size: 0.88rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      margin-left: 5px;
+    }
+    .badge-green { background: #065f46; color: #34d399; }
+    .badge-blue { background: #1e3a8a; color: #60a5fa; }
+
+    /* Live Loader */
+    #boxStatusLive {
+      display: none;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .progress-bar-bg {
+      background: #0f172a;
+      height: 10px;
+      border-radius: 5px;
+      overflow: hidden;
       margin-top: 8px;
-      font-size: 11px;
+    }
+
+    .progress-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: var(--accent-blue);
+      transition: width 0.4s ease;
     }
   </style>
 </head>
 <body>
 
-  <h1>Palinsesto & Analisi</h1>
+<div class="container">
+  <header>
+    <h1>⚽ Dashboard Analisi Pronostici Calcio</h1>
+    <div id="infoUltimoAggiornamento" style="font-size: 0.85rem; color: var(--text-muted);">
+      Caricamento stato...
+    </div>
+  </header>
 
-  <!-- BARRA AZIONI CON IL NUOVO PULSANTE ESPORTA -->
-  <div class="actions-grid">
-    <button class="btn-load" onclick="caricaPalinsesto()">📁 Carica Ultimo Palinsesto</button>
-    <button class="btn-validate" onclick="validaRisultati()">✅ Valida Risultati</button>
-    <button class="btn-refresh" onclick="caricaPalinsesto(true)">🔄 Nuovo Palinsesto</button>
-    <button class="btn-export" onclick="esportaCSV()">📊 Esporta CSV/Excel</button>
-  </div>
-
-  <div class="status-panel" id="statusPanel">
-    Stato: In attesa di caricamento...
-  </div>
-
-  <div id="listaPartite"></div>
-
-  <script>
-    const WORKER_URL = "https://betting-pro-1sept.mvmymail.workers.dev";
-
-    const statusPanel = document.getElementById("statusPanel");
-    const listaPartite = document.getElementById("listaPartite");
+  <div class="controls-panel">
+    <button onclick="forzaRigenerazione()">🔄 Aggiorna Palinsesto Completo</button>
+    <button class="btn-alt" onclick="validaRisultati()">✅ Valida Risultati Reali</button>
     
-    // Variabile globale per salvare i dati correnti per l'esportazione
-    let datiCorrenti = null;
+    <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+      <label for="filtroCampionato">Campionato:</label>
+      <select id="filtroCampionato" onchange="applicaFiltri()">
+        <option value="TUTTI">Tutti i Campionati</option>
+      </select>
 
-    async function caricaPalinsesto(force = false) {
-      statusPanel.innerHTML = force ? "⏳ Generazione nuovo palinsesto (oggi + 3 giorni)..." : "⏳ Caricamento ultimo palinsesto...";
-      listaPartite.innerHTML = "";
-      
-      const endpoint = force ? `${WORKER_URL}?force=true` : WORKER_URL;
+      <input type="text" id="ricercaSquadra" placeholder="Cerca squadra..." oninput="applicaFiltri()">
+    </div>
+  </div>
 
-      try {
-        const res = await fetch(endpoint);
-        const data = await res.json();
-        datiCorrenti = data;
-        mostraDati(data);
-      } catch (e) {
-        statusPanel.innerHTML = "❌ Errore durante il caricamento: " + e.message;
-      }
+  <!-- Box Status Live Durante il caricamento -->
+  <div id="boxStatusLive">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span id="testoStatusLive" style="font-weight: bold; color: var(--accent-blue);">🔄 Connessione al Worker Cloudflare...</span>
+      <span id="labelPartiteLive" style="font-size: 1.1rem; font-weight: bold; color: var(--accent-green);">Partite Trovate: 0</span>
+    </div>
+    <div class="progress-bar-bg">
+      <div id="progressBarLive" class="progress-bar-fill"></div>
+    </div>
+  </div>
+
+  <!-- Tabella Riassunto Giornaliero -->
+  <div class="summary-card" id="sezioneRiassunto">
+    <h3>📊 Riassunto Partite Trovate per Campionato e Giorno</h3>
+    <div style="overflow-x: auto;">
+      <table class="summary-table" id="tabellaRiassunto">
+        <tbody>
+          <tr><td style="color: var(--text-muted);">Nessun dato disponibile in memoria. Clicca su Aggiorna Palinsesto.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Lista Partite -->
+  <div id="listaPartite"></div>
+</div>
+
+<script>
+  // INSERISCI QUI L'URL DEL TUO WORKER CLOUDFLARE
+  const WORKER_URL = "https://tuo-worker.tuo-subdomain.workers.dev";
+
+  let datiPalinsestoGlobale = null;
+
+  async function caricaDati(param = "") {
+    const boxLive = document.getElementById("boxStatusLive");
+    const testoLive = document.getElementById("testoStatusLive");
+    const labelPartite = document.getElementById("labelPartiteLive");
+    const progressBar = document.getElementById("progressBarLive");
+
+    boxLive.style.display = "block";
+    progressBar.style.width = "15%";
+    labelPartite.innerText = "Partite Trovate: ...";
+    
+    if (param.includes("force=true")) {
+      testoLive.innerText = "⏳ Estrazione e analisi completa dei 12 campionati in corso (può richiedere fino a 1-2 min)...";
+    } else if (param.includes("validate=true")) {
+      testoLive.innerText = "⏳ Recupero e validazione risultati reali in corso...";
+    } else {
+      testoLive.innerText = "⚡ Caricamento dati da Cache KV...";
     }
 
-    async function validaRisultati() {
-      statusPanel.innerHTML = "⏳ Validazione risultati in corso...";
+    try {
+      progressBar.style.width = "50%";
+      const res = await fetch(`${WORKER_URL}${param}`);
+      const data = await res.json();
       
-      try {
-        const res = await fetch(`${WORKER_URL}?validate=true`);
-        const data = await res.json();
+      progressBar.style.width = "100%";
 
-        if (data.errore) {
-          statusPanel.innerHTML = "⚠️ " + data.messaggio;
-          return;
-        }
-
-        datiCorrenti = data;
-        mostraDati(data);
-      } catch (e) {
-        statusPanel.innerHTML = "❌ Errore durante la validazione: " + e.message;
-      }
-    }
-
-    function mostraDati(data) {
-      const dataAgg = data.dataAggiornamento ? new Date(data.dataAggiornamento).toLocaleString('it-IT') : 'N/D';
-      const dataVal = data.dataUltimaValidazione ? new Date(data.dataUltimaValidazione).toLocaleString('it-IT') : 'Mai effettuata';
-
-      statusPanel.innerHTML = `
-        <strong>Partite:</strong> ${data.totalePartiteTrovate || 0} | 
-        <strong>Aggiornato:</strong> ${dataAgg}<br>
-        <strong>Ultima Validazione:</strong> ${dataVal}
-      `;
-
-      if (!data.partite || data.partite.length === 0) {
-        listaPartite.innerHTML = "<p style='text-align:center; padding: 20px;'>Nessuna partita presente nel palinsesto.</p>";
+      if (data.errore) {
+        alert("Errore dal server: " + data.messaggio);
+        boxLive.style.display = "none";
         return;
       }
 
-      listaPartite.innerHTML = data.partite.map(p => {
-        const dataOra = new Date(p.dataOraUTC).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-
-        return `
-          <div class="match-card">
-            <div class="match-header">
-              <span class="badge-league">${p.campionato || p.codiceCampionato}</span>
-              <span class="match-time">📅 ${dataOra}</span>
-            </div>
-
-            <div class="teams-container">
-              <div class="team-names">
-                <b>${p.squadraCasa}</b> <span style="font-weight: normal; color: #8e8e93;">vs</span> <b>${p.squadraOspite}</b>
-              </div>
-              <div class="score-badge ${p.completata ? 'finished' : ''}">
-                ${p.risultatoFinale || 'In attesa'}
-              </div>
-            </div>
-
-            <table class="stats-table">
-              <thead>
-                <tr>
-                  <th style="text-align:left;">Dato</th>
-                  <th>${p.squadraCasa.substring(0, 10)}</th>
-                  <th>${p.squadraOspite.substring(0, 10)}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td class="label">Punti / Posizione</td>
-                  <td><b>${p.puntiCasa}</b> (${p.posizioneCasa})</td>
-                  <td><b>${p.puntiOspite}</b> (${p.posizioneOspite})</td>
-                </tr>
-                <tr>
-                  <td class="label">Partite Giocate</td>
-                  <td>${p.giocateCasa}</td>
-                  <td>${p.giocateOspite}</td>
-                </tr>
-                <tr>
-                  <td class="label">V / P / S Generali</td>
-                  <td>${p.vinteCasa}/${p.pareggiateCasa}/${p.perseCasa}</td>
-                  <td>${p.vinteOspite}/${p.pareggiateOspite}/${p.perseOspite}</td>
-                </tr>
-                <tr>
-                  <td class="label">Gol Fatti / Subiti</td>
-                  <td>${p.golFattiCasa} / ${p.golSubitiCasa}</td>
-                  <td>${p.golFattiOspite} / ${p.golSubitiOspite}</td>
-                </tr>
-                <tr>
-                  <td class="label">Punti (Casa / Trasferta)</td>
-                  <td>${p.puntiCasaSoloCasa} (Casa)</td>
-                  <td>${p.puntiOspiteSoloTrasferta} (Trasf.)</td>
-                </tr>
-                <tr>
-                  <td class="label">V/P/S (Casa / Trasferta)</td>
-                  <td>${p.vpsCasaSoloCasa}</td>
-                  <td>${p.vpsOspiteSoloTrasferta}</td>
-                </tr>
-                <tr>
-                  <td class="label">Indice Forma & Trend</td>
-                  <td>
-                    <span>${p.indiceFormaCasa}</span>
-                    <span class="form-symbols">${p.simboliFormaCasa}</span>
-                  </td>
-                  <td>
-                    <span>${p.indiceFormaOspite}</span>
-                    <span class="form-symbols">${p.simboliFormaOspite}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div class="top-scorer-box">
-              🎯 <b>Top Scorer:</b><br>
-              • ${p.squadraCasa}: ${p.topScorerCasa}<br>
-              • ${p.squadraOspite}: ${p.topScorerOspite}
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // FUNZIONE DI ESPORTAZIONE CSV / EXCEL
-    function esportaCSV() {
-      if (!datiCorrenti || !datiCorrenti.partite || datiCorrenti.partite.length === 0) {
-        alert("Nessun palinsesto caricato da esportare!");
-        return;
+      datiPalinsestoGlobale = data;
+      
+      // Aggiornamento Info Header
+      let infoText = `Ultimo Aggiornamento Palinsesto: ${data.dataAggiornamento ? new Date(data.dataAggiornamento).toLocaleString('it-IT') : 'N/D'}`;
+      if (data.dataUltimaValidazione) {
+        infoText += ` | Ultima Validazione Risultati: ${new Date(data.dataUltimaValidazione).toLocaleString('it-IT')}`;
       }
+      document.getElementById("infoUltimoAggiornamento").innerText = infoText;
 
-      const intestazioni = [
-        "Campionato", "Data Ora", "Squadra Casa", "Squadra Ospite", "Risultato Finale",
-        "Punti Casa", "Posizione Casa", "Partite Giocate Casa", "V/P/S Casa", "Gol Fatti/Subiti Casa", "Punti Solo Casa", "V/P/S Solo Casa", "Indice Forma Casa", "Top Scorer Casa",
-        "Punti Ospite", "Posizione Ospite", "Partite Giocate Ospite", "V/P/S Ospite", "Gol Fatti/Subiti Ospite", "Punti Solo Trasferta", "V/P/S Solo Trasferta", "Indice Forma Ospite", "Top Scorer Ospite"
-      ];
+      labelPartite.innerText = `Partite Totali Trovate: ${data.totalePartiteTrovate || 0}`;
 
-      let righe = [intestazioni.join(";")];
+      // Popola Filtro Campionati se vuoto
+      popolaSelectCampionati(data.resocontoCampionati);
 
-      datiCorrenti.partite.forEach(p => {
-        const riga = [
-          `"${p.campionato || ''}"`,
-          `"${new Date(p.dataOraUTC).toLocaleString('it-IT')}"`,
-          `"${p.squadraCasa || ''}"`,
-          `"${p.squadraOspite || ''}"`,
-          `"${p.risultatoFinale || 'In attesa'}"`,
-          `"${p.puntiCasa || '-'}"`,
-          `"${p.posizioneCasa || '-'}"`,
-          `"${p.giocateCasa || '-'}"`,
-          `"${p.vinteCasa}/${p.pareggiateCasa}/${p.perseCasa}"`,
-          `"${p.golFattiCasa}/${p.golSubitiCasa}"`,
-          `"${p.puntiCasaSoloCasa || 0}"`,
-          `"${p.vpsCasaSoloCasa || '-'}"`,
-          `"${p.indiceFormaCasa || '-'}"`,
-          `"${p.topScorerCasa || '-'}"`,
-          `"${p.puntiOspite || '-'}"`,
-          `"${p.posizioneOspite || '-'}"`,
-          `"${p.giocateOspite || '-'}"`,
-          `"${p.vinteOspite}/${p.pareggiateOspite}/${p.perseOspite}"`,
-          `"${p.golFattiOspite}/${p.golSubitiOspite}"`,
-          `"${p.puntiOspiteSoloTrasferta || 0}"`,
-          `"${p.vpsOspiteSoloTrasferta || '-'}"`,
-          `"${p.indiceFormaOspite || '-'}"`,
-          `"${p.topScorerOspite || '-'}"`
-        ];
-        righe.push(riga.join(";"));
+      // Renderizza Tabella Riassuntiva
+      renderizzaTabellaRiassuntiva(data);
+
+      // Renderizza Lista Partite
+      applicaFiltri();
+
+      setTimeout(() => {
+        boxLive.style.display = "none";
+      }, 1200);
+
+    } catch (err) {
+      console.error(err);
+      alert("Errore di connessione con il Worker Cloudflare.");
+      boxLive.style.display = "none";
+    }
+  }
+
+  function forzaRigenerazione() {
+    if (confirm("Vuoi forzare la rigenerazione completa del palinsesto da API Football? L'operazione richiederà circa 60-90 secondi.")) {
+      caricaDati("?force=true");
+    }
+  }
+
+  function validaRisultati() {
+    caricaDati("?validate=true");
+  }
+
+  function popolaSelectCampionati(resoconto) {
+    const select = document.getElementById("filtroCampionato");
+    const valCorrente = select.value;
+    select.innerHTML = `<option value="TUTTI">Tutti i Campionati</option>`;
+
+    if (resoconto) {
+      resoconto.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c.codice;
+        opt.innerText = `${c.nome} (${c.trovate})`;
+        select.appendChild(opt);
+      });
+    }
+    select.value = valCorrente;
+  }
+
+  function renderizzaTabellaRiassuntiva(dati) {
+    const container = document.getElementById("tabellaRiassunto");
+    if (!container || !dati.resocontoCampionati) return;
+
+    const giorni = dati.giorniAnalizzati || [];
+    
+    let html = `
+      <thead>
+        <tr>
+          <th style="text-align: left;">Campionato</th>`;
+    
+    giorni.forEach(g => {
+      const dObj = new Date(g);
+      const dataFormattata = dObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', weekday: 'short' });
+      html += `<th>${dataFormattata}</th>`;
+    });
+    
+    html += `<th style="color: var(--accent-blue);">Totale</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    let totaliGiorno = {};
+    giorni.forEach(g => totaliGiorno[g] = 0);
+    let totaleGenerale = 0;
+
+    dati.resocontoCampionati.forEach((camp) => {
+      html += `<tr>
+        <td style="text-align: left; font-weight: bold;">${camp.nome}</td>`;
+      
+      let sommaCamp = 0;
+      giorni.forEach(g => {
+        const qta = (camp.dettaglioGiorni && camp.dettaglioGiorni[g]) ? camp.dettaglioGiorni[g] : 0;
+        sommaCamp += qta;
+        totaliGiorno[g] += qta;
+        html += `<td>${qta > 0 ? `<span style="color:var(--accent-green); font-weight:bold;">${qta}</span>` : '<span style="color:var(--text-muted);">0</span>'}</td>`;
       });
 
-      const contenutoCSV = "\uFEFF" + righe.join("\n"); // BOM per codifica UTF-8 corretta su Excel
-      const blob = new Blob([contenutoCSV], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Palinsesto_Analisi_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      totaleGenerale += sommaCamp;
+      html += `<td style="font-weight: bold; color: var(--accent-blue);">${sommaCamp}</td></tr>`;
+    });
+
+    // Riga Totali
+    html += `<tr style="background: #0f172a; font-weight: bold; border-top: 2px solid var(--accent-blue);">
+      <td style="text-align: left;">TOTALE COMPLESSIVO</td>`;
+    
+    giorni.forEach(g => {
+      html += `<td style="color: var(--accent-green); font-size: 1rem;">${totaliGiorno[g]}</td>`;
+    });
+
+    html += `<td style="color: var(--accent-blue); font-size: 1.1rem;">${totaleGenerale}</td></tr></tbody>`;
+
+    container.innerHTML = html;
+  }
+
+  function applicaFiltri() {
+    if (!datiPalinsestoGlobale || !datiPalinsestoGlobale.partite) return;
+
+    const codCamp = document.getElementById("filtroCampionato").value;
+    const testoRicerca = document.getElementById("ricercaSquadra").value.toLowerCase().trim();
+
+    const partiteFiltrate = datiPalinsestoGlobale.partite.filter(p => {
+      const okCamp = (codCamp === "TUTTI" || p.codiceCampionato === codCamp);
+      const okCasa = p.squadraCasa.toLowerCase().includes(testoRicerca);
+      const okOspite = p.squadraOspite.toLowerCase().includes(testoRicerca);
+      return okCamp && (okCasa || okOspite);
+    });
+
+    renderizzaListaPartite(partiteFiltrate);
+  }
+
+  function renderizzaListaPartite(partite) {
+    const container = document.getElementById("listaPartite");
+    container.innerHTML = "";
+
+    if (partite.length === 0) {
+      container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-muted);">Nessuna partita trovata per i filtri selezionati.</div>`;
+      return;
     }
 
-    caricaPalinsesto();
-  </script>
+    partite.forEach(p => {
+      const card = document.createElement("div");
+      card.className = "match-card";
+
+      const dataFormatted = new Date(p.dataOraUTC).toLocaleString('it-IT', {
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+      });
+
+      let statoBadge = p.completata 
+        ? `<span class="badge badge-green">FINALE: ${p.risultatoFinale}</span>` 
+        : `<span class="badge badge-blue">IN PROGRAMMA</span>`;
+
+      card.innerHTML = `
+        <div class="match-header" onclick="this.parentElement.classList.toggle('open')">
+          <div>
+            <span style="font-size:0.8rem; color:var(--text-muted); display:block;">${p.campionato} - ${dataFormatted}</span>
+            <span class="match-title">${p.squadraCasa} vs ${p.squadraOspite}</span>
+          </div>
+          <div>
+            ${statoBadge}
+          </div>
+        </div>
+        <div class="match-details">
+          <div class="grid-2">
+            <div class="stat-box">
+              <strong style="color:var(--accent-blue);">${p.squadraCasa} (Casa)</strong><br>
+              Posizione: <b>${p.posizioneCasa}</b> | Punti: <b>${p.puntiCasa}</b><br>
+              Statistiche Generali: G: ${p.giocateCasa} | V: ${p.vinteCasa} | P: ${p.pareggiateCasa} | S: ${p.perseCasa}<br>
+              Gol Fatti/Subiti: ${p.golFattiCasa} / ${p.golSubitiCasa}<br>
+              Forma Recente: ${p.simboliFormaCasa} (${p.indiceFormaCasa})<br>
+              Miglior Marcatore: ${p.topScorerCasa}
+            </div>
+            <div class="stat-box">
+              <strong style="color:var(--accent-blue);">${p.squadraOspite} (Ospite)</strong><br>
+              Posizione: <b>${p.posizioneOspite}</b> | Punti: <b>${p.puntiOspite}</b><br>
+              Statistiche Generali: G: ${p.giocateOspite} | V: ${p.vinteOspite} | P: ${p.pareggiateOspite} | S: ${p.perseOspite}<br>
+              Gol Fatti/Subiti: ${p.golFattiOspite} / ${p.golSubitiOspite}<br>
+              Forma Recente: ${p.simboliFormaOspite} (${p.indiceFormaOspite})<br>
+              Miglior Marcatore: ${p.topScorerOspite}
+            </div>
+          </div>
+        </div>
+      `;
+
+      container.appendChild(card);
+    });
+  }
+
+  // Avvio al caricamento della pagina
+  window.onload = () => {
+    caricaDati();
+  };
+</script>
+
 </body>
 </html>
