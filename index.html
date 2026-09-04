@@ -2,420 +2,335 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Dashboard Analisi Pronostici Calcio</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Palinsesto & Calcio Analisi</title>
   <style>
     :root {
-      --bg-main: #0f172a;
-      --card-bg: #1e293b;
-      --card-border: #334155;
-      --accent-blue: #38bdf8;
-      --accent-green: #4ade80;
-      --accent-yellow: #facc15;
-      --text-primary: #f8fafc;
-      --text-secondary: #94a3b8;
+      --bg-color: #f2f2f7;
+      --card-bg: #ffffff;
+      --primary: #007aff;
+      --success: #34c759;
+      --warning: #ff9500;
+      --text-main: #1c1c1e;
+      --text-muted: #8e8e93;
+      --border-color: #e5e5ea;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background-color: var(--bg-main);
-      color: var(--text-primary);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      padding: clamp(8px, 2vw, 16px);
-      line-height: 1.35;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      width: 100%;
-    }
-
-    /* HEADER */
-    header {
-      margin-bottom: 12px;
-      border-bottom: 1px solid var(--card-border);
-      padding-bottom: 8px;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 12px;
+      -webkit-text-size-adjust: 100%;
     }
 
     h1 {
-      font-size: clamp(1.2rem, 4vw, 1.6rem);
-      color: var(--accent-blue);
-      margin-bottom: 4px;
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      text-align: center;
     }
 
-    .meta-info {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      line-height: 1.4;
-    }
-
-    /* TOOLBAR PULSANTI E FILTRI OPTIMIZED FOR IPHONE */
-    .toolbar-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
-      padding: 10px;
-      margin-bottom: 15px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .btn-group {
+    /* BARRA AZIONI RESPONSIVA */
+    .actions-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
       gap: 8px;
+      margin-bottom: 15px;
     }
 
     button {
-      padding: 10px;
-      border: none;
-      border-radius: 6px;
+      padding: 10px 6px;
+      font-size: 13px;
       font-weight: 600;
-      font-size: 0.8rem;
+      border: none;
+      border-radius: 10px;
       cursor: pointer;
       color: white;
       text-align: center;
-      width: 100%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
-
     button:active { opacity: 0.8; }
-    .btn-blue { background-color: #2563eb; }
-    .btn-green { background-color: #059669; }
+    .btn-load { background-color: var(--primary); }
+    .btn-validate { background-color: var(--success); }
+    .btn-refresh { background-color: var(--warning); }
 
-    .filter-group {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    select, input {
-      width: 100%;
-      padding: 9px;
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      color: white;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      appearance: none;
-      -webkit-appearance: none;
-    }
-
-    /* TABELLA CAMPIONATI COMPATTA SU IPHONE (GRIGLIA NO SCROLL) */
-    .summary-card {
+    /* PANNELLO STATO */
+    .status-panel {
       background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
       padding: 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.5;
       margin-bottom: 15px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border-left: 4px solid var(--primary);
     }
 
-    .summary-card h2 {
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-      color: var(--accent-blue);
-      display: flex;
-      justify-content: space-between;
-    }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 6px;
-    }
-
-    .camp-item {
-      background: #0f172a;
-      border: 1px solid var(--card-border);
-      border-radius: 6px;
-      padding: 6px 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.75rem;
-    }
-
-    .camp-item .name {
-      color: var(--text-primary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100px;
-    }
-
-    .camp-item .count {
-      font-weight: bold;
-      color: var(--accent-green);
-    }
-
-    .total-box {
-      grid-column: 1 / -1;
-      background: #1e3a8a;
-      border: 1px solid var(--accent-blue);
-      border-radius: 6px;
-      padding: 8px;
-      text-align: center;
-      font-weight: bold;
-      font-size: 0.85rem;
-      color: white;
-      margin-top: 4px;
-    }
-
-    /* CARTE PARTITA RESPONSIVE */
-    .matches-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(clamp(280px, 100%, 360px), 1fr));
-      gap: 12px;
-    }
-
+    /* SCHEDA PARTITA */
     .match-card {
       background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      border: 1px solid var(--border-color);
     }
 
     .match-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      border-bottom: 1px solid var(--card-border);
-      padding-bottom: 4px;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border-color);
     }
-
-    .match-number {
-      background: var(--accent-blue);
-      color: #0f172a;
-      padding: 1px 6px;
+    .badge-league {
+      background: #e5e5ea;
+      color: #3a3a3c;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 6px;
       border-radius: 4px;
-      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .match-time {
+      font-size: 11px;
+      color: var(--text-muted);
     }
 
-    .teams-title {
-      font-size: 0.95rem;
-      font-weight: bold;
+    /* SEZIONE SQUADRE E RISULTATO */
+    .teams-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .team-names {
+      flex: 1;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    /* FIX RISULTATO: Evita che vada a capo su righi separati */
+    .score-badge {
+      font-size: 15px;
+      font-weight: 800;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: #e5e5ea;
+      color: var(--text-main);
+      white-space: nowrap; /* Impedisce che '1 - 1' si spezzi su due righe */
       text-align: center;
-      margin: 2px 0;
-      color: var(--text-primary);
+      min-width: 65px;
+      flex-shrink: 0;
+    }
+    .score-badge.finished {
+      background: var(--success);
+      color: white;
     }
 
+    /* GRIGLIA STATISTICHE E ANALISI COMPLETA */
     .stats-table {
       width: 100%;
-      font-size: 0.72rem;
       border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px;
     }
-
     .stats-table th {
-      color: var(--accent-blue);
-      padding-bottom: 2px;
-      border-bottom: 1px solid var(--card-border);
+      background: #f8f8fa;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-align: center;
+      padding: 4px;
+      border-bottom: 1px solid var(--border-color);
     }
-
     .stats-table td {
-      padding: 3px 2px;
-      border-bottom: 1px dashed #334155;
+      padding: 5px 4px;
+      text-align: center;
+      border-bottom: 1px dashed var(--border-color);
+    }
+    .stats-table td.label {
+      text-align: left;
+      font-weight: 600;
+      color: #48484a;
+      width: 40%;
     }
 
-    .stats-table td:nth-child(1) { width: 44%; color: var(--text-secondary); }
-    .stats-table td:nth-child(2) { width: 28%; text-align: center; font-weight: 600; }
-    .stats-table td:nth-child(3) { width: 28%; text-align: center; font-weight: 600; }
-
+    .form-symbols {
+      font-size: 10px;
+      letter-spacing: -1px;
+      display: block;
+    }
     .top-scorer-box {
-      font-size: 0.7rem;
-      background: #0f172a;
-      padding: 6px;
+      background: #f8f8fa;
+      padding: 6px 8px;
       border-radius: 6px;
-      border: 1px solid var(--card-border);
-      color: var(--accent-yellow);
-    }
-
-    @media (max-width: 480px) {
-      .btn-group { grid-template-columns: 1fr; }
-      .filter-group { grid-template-columns: 1fr; }
-      .summary-grid { grid-template-columns: 1fr 1fr; }
+      margin-top: 8px;
+      font-size: 11px;
     }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <header>
-    <h1>⚽ Dashboard Analisi Pronostici</h1>
-    <div class="meta-info" id="metaInfo">Caricamento in corso...</div>
-  </header>
+  <h1>Palinsesto & Analisi</h1>
 
-  <div class="toolbar-card">
-    <div class="btn-group">
-      <button class="btn-blue" onclick="aggiornaPalinsesto(true)">🔄 Aggiorna Palinsesto</button>
-      <button class="btn-green" onclick="aggiornaPalinsesto(false)">✅ Valida Risultati</button>
-    </div>
-    <div class="filter-group">
-      <select id="filterCampionato" onchange="renderData()">
-        <option value="ALL">Tutti i Campionati</option>
-      </select>
-      <input type="text" id="searchTeam" placeholder="Cerca squadra..." oninput="renderData()">
-    </div>
+  <!-- TRE PULSANTI BEN VISIBILI E ADATTABILI -->
+  <div class="actions-grid">
+    <button class="btn-load" onclick="caricaPalinsesto()">📁 Carica</button>
+    <button class="btn-validate" onclick="validaRisultati()">✅ Valida Risultati</button>
+    <button class="btn-refresh" onclick="caricaPalinsesto(true)">🔄 Nuovo Palinsesto</button>
   </div>
 
-  <div class="summary-card">
-    <h2>📊 Partite Trovate per Campionato</h2>
-    <div class="summary-grid" id="summaryGrid">
-      <div style="grid-column: 1/-1; color: var(--text-secondary); text-align: center;">In attesa di dati...</div>
-    </div>
+  <div class="status-panel" id="statusPanel">
+    Stato: In attesa di caricamento...
   </div>
 
-  <div id="matchesContainer" class="matches-grid"></div>
-</div>
+  <div id="listaPartite"></div>
 
-<script>
-  const WORKER_URL = "https://betting-pro-1sept.mvmymail.workers.dev";
-  let globalData = null;
+  <script>
+    const WORKER_URL = "https://betting-pro-1sept.mvmymail.workers.dev";
 
-  async function loadData(force = false) {
-    const metaEl = document.getElementById('metaInfo');
-    metaEl.innerText = force ? "⏳ Connessione ed estrazione in corso..." : "Sincronizzazione dati...";
+    const statusPanel = document.getElementById("statusPanel");
+    const listaPartite = document.getElementById("listaPartite");
 
-    try {
-      const url = `${WORKER_URL}${force ? '?force=true' : ''}`;
-      const res = await fetch(url);
-      const data = await res.json();
+    async function caricaPalinsesto(force = false) {
+      statusPanel.innerHTML = force ? "⏳ Generazione nuovo palinsesto (oggi + 3 giorni)..." : "⏳ Caricamento palinsesto...";
+      listaPartite.innerHTML = "";
+      
+      const endpoint = force ? `${WORKER_URL}?force=true` : WORKER_URL;
 
-      if (data && !data.errore) {
-        globalData = data;
-        let infoStr = `Ultimo Aggiornamento: ${data.dataAggiornamento ? new Date(data.dataAggiornamento).toLocaleString('it-IT') : 'Mai eseguito'}`;
-        if (data.dataUltimaValidazione) {
-          infoStr += ` | Validazione: ${new Date(data.dataUltimaValidazione).toLocaleString('it-IT')}`;
-        }
-        metaEl.innerText = infoStr;
-
-        populateCampionatiFilter(data.resocontoCampionati || []);
-        renderSummaryGrid(data);
-        renderData();
-      } else {
-        metaEl.innerText = "Messaggio: " + (data ? data.messaggio : "Nessun dato.");
+      try {
+        const res = await fetch(endpoint);
+        const data = await res.json();
+        mostraDati(data);
+      } catch (e) {
+        statusPanel.innerHTML = "❌ Errore durante il caricamento: " + e.message;
       }
-    } catch(err) {
-      console.error(err);
-      metaEl.innerText = "Errore di connessione con il Worker Cloudflare.";
-    }
-  }
-
-  function populateCampionatiFilter(resoconto) {
-    const select = document.getElementById('filterCampionato');
-    const currVal = select.value;
-    select.innerHTML = '<option value="ALL">Tutti i Campionati</option>';
-    
-    if (resoconto) {
-      resoconto.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.codice || c.nome;
-        opt.textContent = `${c.nome} (${c.trovate || 0})`;
-        select.appendChild(opt);
-      });
-    }
-    select.value = currVal;
-  }
-
-  function renderSummaryGrid(dati) {
-    const container = document.getElementById("summaryGrid");
-    if (!container) return;
-
-    if (!dati.resocontoCampionati || dati.resocontoCampionati.length === 0) {
-      container.innerHTML = '<div style="grid-column: 1/-1; color: var(--text-secondary); text-align: center;">Nessun dato in memoria. Clicca su Aggiorna Palinsesto.</div>';
-      return;
     }
 
-    let html = '';
-    let totaleGenerale = 0;
+    async function validaRisultati() {
+      statusPanel.innerHTML = "⏳ Validazione risultati in corso...";
+      
+      try {
+        const res = await fetch(`${WORKER_URL}?validate=true`);
+        const data = await res.json();
 
-    dati.resocontoCampionati.forEach(camp => {
-      const qta = camp.trovate || 0;
-      totaleGenerale += qta;
-      html += `
-        <div class="camp-item">
-          <span class="name">${camp.nome}</span>
-          <span class="count">${qta}</span>
-        </div>
+        if (data.errore) {
+          statusPanel.innerHTML = "⚠️ " + data.messaggio;
+          return;
+        }
+
+        mostraDati(data);
+      } catch (e) {
+        statusPanel.innerHTML = "❌ Errore durante la validazione: " + e.message;
+      }
+    }
+
+    function mostraDati(data) {
+      const dataAgg = data.dataAggiornamento ? new Date(data.dataAggiornamento).toLocaleString('it-IT') : 'N/D';
+      const dataVal = data.dataUltimaValidazione ? new Date(data.dataUltimaValidazione).toLocaleString('it-IT') : 'Mai effettuata';
+
+      statusPanel.innerHTML = `
+        <strong>Partite:</strong> ${data.totalePartiteTrovate || 0} | 
+        <strong>Aggiornato:</strong> ${dataAgg}<br>
+        <strong>Ultima Validazione:</strong> ${dataVal}
       `;
-    });
 
-    html += `<div class="total-box">TOTALE COMPLESSIVO: ${totaleGenerale} PARTITE</div>`;
-    container.innerHTML = html;
-  }
+      if (!data.partite || data.partite.length === 0) {
+        listaPartite.innerHTML = "<p style='text-align:center; padding: 20px;'>Nessuna partita presente nel palinsesto.</p>";
+        return;
+      }
 
-  function renderData() {
-    const matchesContainer = document.getElementById('matchesContainer');
-    if (!globalData || !globalData.partite) {
-      matchesContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">Nessuna partita in memoria.</p>';
-      return;
+      listaPartite.innerHTML = data.partite.map(p => {
+        const dataOra = new Date(p.dataOraUTC).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+        return `
+          <div class="match-card">
+            <div class="match-header">
+              <span class="badge-league">${p.campionato || p.codiceCampionato}</span>
+              <span class="match-time">📅 ${dataOra}</span>
+            </div>
+
+            <div class="teams-container">
+              <div class="team-names">
+                <div>${p.squadraCasa}</div>
+                <div style="color: #666; font-size: 13px; font-weight: normal; margin-top:2px;">vs ${p.squadraOspite}</div>
+              </div>
+              <div class="score-badge ${p.completata ? 'finished' : ''}">
+                ${p.risultatoFinale || 'In attesa'}
+              </div>
+            </div>
+
+            <!-- TABELLA COMPLETA DI CONFRONTO E STATISTICHE -->
+            <table class="stats-table">
+              <thead>
+                <tr>
+                  <th style="text-align:left;">Dato</th>
+                  <th>${p.squadraCasa.substring(0, 10)}</th>
+                  <th>${p.squadraOspite.substring(0, 10)}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="label">Punti / Posizione</td>
+                  <td><b>${p.puntiCasa}</b> (${p.posizioneCasa})</td>
+                  <td><b>${p.puntiOspite}</b> (${p.posizioneOspite})</td>
+                </tr>
+                <tr>
+                  <td class="label">Partite Giocate</td>
+                  <td>${p.giocateCasa}</td>
+                  <td>${p.giocateOspite}</td>
+                </tr>
+                <tr>
+                  <td class="label">V / P / S Generali</td>
+                  <td>${p.vinteCasa}/${p.pareggiateCasa}/${p.perseCasa}</td>
+                  <td>${p.vinteOspite}/${p.pareggiateOspite}/${p.perseOspite}</td>
+                </tr>
+                <tr>
+                  <td class="label">Gol Fatti / Subiti</td>
+                  <td>${p.golFattiCasa} / ${p.golSubitiCasa}</td>
+                  <td>${p.golFattiOspite} / ${p.golSubitiOspite}</td>
+                </tr>
+                <tr>
+                  <td class="label">Punti (Casa / Trasferta)</td>
+                  <td>${p.puntiCasaSoloCasa} (Casa)</td>
+                  <td>${p.puntiOspiteSoloTrasferta} (Trasf.)</td>
+                </tr>
+                <tr>
+                  <td class="label">V/P/S (Casa / Trasferta)</td>
+                  <td>${p.vpsCasaSoloCasa}</td>
+                  <td>${p.vpsOspiteSoloTrasferta}</td>
+                </tr>
+                <tr>
+                  <td class="label">Indice Forma & Trend</td>
+                  <td>
+                    <span>${p.indiceFormaCasa}</span>
+                    <span class="form-symbols">${p.simboliFormaCasa}</span>
+                  </td>
+                  <td>
+                    <span>${p.indiceFormaOspite}</span>
+                    <span class="form-symbols">${p.simboliFormaOspite}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="top-scorer-box">
+              🎯 <b>Top Scorer:</b><br>
+              • ${p.squadraCasa}: ${p.topScorerCasa}<br>
+              • ${p.squadraOspite}: ${p.topScorerOspite}
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
-    const selectedCamp = document.getElementById('filterCampionato').value;
-    const search = document.getElementById('searchTeam').value.toLowerCase().trim();
-
-    const filtered = globalData.partite.filter(p => {
-      const matchCamp = (selectedCamp === "ALL" || p.codiceCampionato === selectedCamp || p.campionato === selectedCamp);
-      const sCasa = (p.squadraCasa || p.casa || "").toLowerCase();
-      const sOspite = (p.squadraOspite || p.trasferta || "").toLowerCase();
-      return matchCamp && (!search || sCasa.includes(search) || sOspite.includes(search));
-    });
-
-    matchesContainer.innerHTML = '';
-    if (filtered.length === 0) {
-      matchesContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary);">Nessuna partita trovata.</p>';
-      return;
-    }
-
-    filtered.forEach((p, idx) => {
-      const card = document.createElement('div');
-      card.className = 'match-card';
-      const dataFormatted = p.dataOraUTC ? new Date(p.dataOraUTC).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : (p.ora || 'N/D');
-
-      card.innerHTML = `
-        <div class="match-header">
-          <span class="match-number">#${idx + 1}</span>
-          <span>${p.campionato || ''}</span>
-          <span>${dataFormatted}</span>
-        </div>
-        <div class="teams-title">${p.squadraCasa || p.casa} vs ${p.squadraOspite || p.trasferta}</div>
-        <table class="stats-table">
-          <thead>
-            <tr><th>Dettaglio</th><th>Casa</th><th>Ospite</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Pos. / Punti</td><td><b>${p.posizioneCasa || '-'}</b> (${p.puntiCasa || 0}p)</td><td><b>${p.posizioneOspite || '-'}</b> (${p.puntiOspite || 0}p)</td></tr>
-            <tr><td>Giocate (V/P/S)</td><td>${p.giocateCasa || 0} (${p.vinteCasa || 0}/${p.pareggiateCasa || 0}/${p.perseCasa || 0})</td><td>${p.giocateOspite || 0} (${p.vinteOspite || 0}/${p.pareggiateOspite || 0}/${p.perseOspite || 0})</td></tr>
-            <tr><td>Gol Fatti/Subiti</td><td>${p.golFattiCasa || 0}/${p.golSubitiCasa || 0}</td><td>${p.golFattiOspite || 0}/${p.golSubitiOspite || 0}</td></tr>
-            <tr><td>Casa / Trasf.</td><td>${p.puntiSoloCasa || 0}p (${p.vpsSoloCasa || '0/0/0'})</td><td>${p.puntiSoloOspite || 0}p (${p.vpsSoloOspite || '0/0/0'})</td></tr>
-            <tr><td>Forma Recente</td><td>${p.simboliFormaCasa || 'N/D'} (${p.indiceFormaCasa || '-'})</td><td>${p.simboliFormaOspite || 'N/D'} (${p.indiceFormaOspite || '-'})</td></tr>
-            <tr><td>Trend Recente</td><td>${p.trendCasa || '-----'}</td><td>${p.trendOspite || '-----'}</td></tr>
-          </tbody>
-        </table>
-        <div class="top-scorer-box">⭐ <b>Top Scorer:</b> C: ${p.topScorerCasa || 'N/D'} | O: ${p.topScorerOspite || 'N/D'}</div>
-      `;
-      matchesContainer.appendChild(card);
-    });
-  }
-
-  function aggiornaPalinsesto(force) {
-    if (confirm(force ? "Vuoi forzare l'aggiornamento completo del palinsesto?" : "Vuoi convalidare i risultati reali?")) {
-      loadData(force);
-    }
-  }
-
-  window.onload = () => loadData(false);
-</script>
+    // Caricamento automatico all'avvio
+    caricaPalinsesto();
+  </script>
 </body>
 </html>
