@@ -1,401 +1,186 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Betting Pro Mobile</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-  <style>
-    body { background-color: #0f172a; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    .apple-card {
-      background: rgba(30, 41, 59, 0.7);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 20px;
-    }
-    .active-tab { background-color: #2563eb; color: #ffffff; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoccerStats ML</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="algorithmEngine.js"></script>
 </head>
-<body class="pb-24">
+<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between">
 
-  <header class="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-4">
-    <div class="max-w-md mx-auto flex justify-between items-center">
-      <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">SoccerStats ML</h1>
-      <span id="syncStatus" class="text-xs bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/30">Sync OK</span>
-    </div>
-  </header>
-
-  <main class="max-w-md mx-auto p-4 space-y-4">
-
-    <!-- TAB 1: PALINSESTO ATTIVO -->
-    <section id="secPalinsesto" class="space-y-4">
-      <div class="apple-card p-4 space-y-3">
-        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Filtra & Importa Palinsesto</h2>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="text-xs text-slate-400">Data Inizio</label>
-            <input type="date" id="dateFrom" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
-          </div>
-          <div>
-            <label class="text-xs text-slate-400">Data Fine</label>
-            <input type="date" id="dateTo" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
-          </div>
+    <!-- HEADER -->
+    <header class="p-4 flex justify-between items-center max-w-6xl mx-auto w-full">
+        <h1 class="text-2xl font-bold text-blue-400">SoccerStats ML</h1>
+        <div id="syncBadge" class="px-3 py-1 bg-gray-800 text-gray-400 rounded-full text-xs font-semibold border border-gray-700">
+            Verifica configurazione...
         </div>
-        <button id="btnEstrai" onclick="sincronizzaPalinsesto()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 font-semibold rounded-xl text-sm transition shadow-lg shadow-blue-600/30 flex justify-center items-center gap-2">
-          <span>Sincronizza / Importa Palinsesto</span>
-        </button>
-      </div>
+    </header>
 
-      <div id="listaPalinsesto" class="space-y-4"></div>
-    </section>
+    <!-- MAIN CONTAINER -->
+    <main class="flex-1 max-w-6xl w-full mx-auto p-4 flex flex-col items-center justify-center">
+        
+        <!-- CARD FILTRI & IMPORTAZIONI -->
+        <div class="bg-slate-800/60 border border-slate-700/50 p-6 rounded-2xl max-w-xl w-full shadow-2xl backdrop-blur-sm">
+            <h2 class="text-sm font-semibold tracking-wider text-slate-400 uppercase mb-4">Filtra & Importa Palinsesto</h2>
+            
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Data Inizio</label>
+                    <input type="date" id="dateFrom" class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">Data Fine</label>
+                    <input type="date" id="dateTo" class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
 
-    <!-- TAB 2: VALIDAZIONE & RISOLUZIONE -->
-    <section id="secValidazione" class="space-y-4 hidden">
-      <div class="apple-card p-4 space-y-2">
-        <h2 class="text-lg font-bold text-slate-100">Risoluzione Match Conclusi</h2>
-        <p class="text-xs text-slate-400">Verifica i punteggi reali e archivia i dati per l'addestramento dell'algoritmo.</p>
-        <button onclick="validaERisolvi()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-xl text-sm shadow-lg shadow-emerald-600/30">
-          Valida e Risolvi Palinsesto
-        </button>
-      </div>
-      <div id="listaDaValidare" class="space-y-3"></div>
-    </section>
-
-    <!-- TAB 3: ARCHIVIO STORICO -->
-    <section id="secArchivio" class="space-y-4 hidden">
-      <div class="apple-card p-4 space-y-3">
-        <h2 class="text-lg font-bold text-slate-100">Archivio Storico Consultabile</h2>
-        <div class="grid grid-cols-2 gap-2">
-          <select id="filtroCampionato" onchange="caricaArchivio()" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
-            <option value="ALL">Tutti i Campionati</option>
-            <option value="SA">Serie A</option>
-            <option value="PL">Premier League</option>
-          </select>
-          <select id="filtroEsito" onchange="caricaArchivio()" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
-            <option value="ALL">Tutti gli Esiti</option>
-            <option value="OK">Pronostici Azzeccati</option>
-            <option value="KO">Pronostici Sbagliati</option>
-          </select>
+            <button id="btnSync" onclick="sincronizzaPalinsesto()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl shadow-lg transition duration-200">
+                Sincronizza / Importa Palinsesto
+            </button>
         </div>
-      </div>
-      <div id="listaArchivio" class="space-y-3"></div>
-    </section>
 
-    <!-- TAB 4: MACHINE LEARNING & BACKTESTING -->
-    <section id="secML" class="space-y-4 hidden">
-      <div class="apple-card p-4 space-y-3">
-        <h2 class="text-lg font-bold text-slate-100">Machine Learning & Backtesting</h2>
-        <p class="text-xs text-slate-400">Analizza lo storico salvato nel database noSQL ed esegui il Grid-Search per affinare i pesi predittivi.</p>
-        <button onclick="avviaML()" class="w-full py-3 bg-purple-600 hover:bg-purple-500 font-semibold rounded-xl text-sm shadow-lg shadow-purple-600/30">
-          Avvia Calibrazione Algoritmo
-        </button>
-        <div id="mlReport" class="text-xs space-y-1 text-slate-300 pt-2 border-t border-slate-700"></div>
-      </div>
-    </section>
+        <!-- TABELLA RISULTATI (PALINSESTO) -->
+        <div id="containerRisultati" class="w-full mt-8 hidden">
+            <h3 class="text-lg font-semibold text-slate-200 mb-3">Partite Trovate (<span id="txtTotale">0</span>)</h3>
+            <div class="overflow-x-auto bg-slate-800/40 rounded-xl border border-slate-700/50">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-800 text-slate-400 text-xs uppercase border-b border-slate-700">
+                        <tr>
+                            <th class="px-4 py-3">Data/Ora</th>
+                            <th class="px-4 py-3">Campionato</th>
+                            <th class="px-4 py-3">Partita</th>
+                            <th class="px-4 py-3 text-center">Stato</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbPalinsesto" class="divide-y divide-slate-700/50">
+                        <!-- Popolato via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-  </main>
+    </main>
 
-  <nav class="fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur-lg border-t border-slate-800 px-2 py-2 z-50">
-    <div class="max-w-md mx-auto grid grid-cols-4 gap-1 text-center">
-      <button onclick="switchTab('Palinsesto')" id="tabPalinsesto" class="py-2 text-xs rounded-xl active-tab transition">Palinsesto</button>
-      <button onclick="switchTab('Validazione')" id="tabValidazione" class="py-2 text-xs rounded-xl text-slate-400 transition">Validazione</button>
-      <button onclick="switchTab('Archivio')" id="tabArchivio" class="py-2 text-xs rounded-xl text-slate-400 transition">Archivio</button>
-      <button onclick="switchTab('ML')" id="tabML" class="py-2 text-xs rounded-xl text-slate-400 transition">ML Engine</button>
-    </div>
-  </nav>
+    <!-- FOOTER NAV -->
+    <footer class="p-4 flex justify-center space-x-2 border-t border-slate-800 bg-slate-950/40">
+        <button class="px-5 py-1.5 rounded-full bg-blue-600 text-white text-sm font-medium">Palinsesto</button>
+        <button class="px-5 py-1.5 rounded-full text-slate-400 hover:text-white text-sm font-medium">Validazione</button>
+        <button class="px-5 py-1.5 rounded-full text-slate-400 hover:text-white text-sm font-medium">Archivio</button>
+        <button class="px-5 py-1.5 rounded-full text-slate-400 hover:text-white text-sm font-medium">ML Engine</button>
+    </footer>
 
-  <script type="module">
-    import { calcolaIndiceForma, calcolaPrevisioneMatch, eseguiBacktestingECalibrazione } from './algorithmEngine.js';
+    <!-- LOGICA DI SISTEMA COMPLETA -->
+    <script>
+        // Inizializzazione Date di Default
+        const oggi = new Date().toISOString().split('T')[0];
+        document.getElementById('dateFrom').value = oggi;
+        document.getElementById('dateTo').value = oggi;
 
-    let db;
-    let WORKER_URL = localStorage.getItem("WORKER_URL") || "";
-    let firebaseConfig = JSON.parse(localStorage.getItem("FIREBASE_CONFIG") || "null");
+        // Recupero Configurazione da LocalStorage
+        function getConfig() {
+            let firebaseCfg = localStorage.getItem('firebaseConfig') || localStorage.getItem('firebase_config');
+            let workerUrl = localStorage.getItem('workerUrl') || localStorage.getItem('worker_url');
 
-    // Inizializzazione dinamica credenziali
-    function inizializzaApp() {
-      if (!WORKER_URL) {
-        WORKER_URL = prompt("Inserisci l'URL del tuo Cloudflare Worker (es. https://tuo-worker.subdomain.workers.dev):");
-        if (WORKER_URL) localStorage.setItem("WORKER_URL", WORKER_URL);
-      }
+            if (!firebaseCfg || !workerUrl) {
+                return null;
+            }
 
-      if (!firebaseConfig) {
-        const confStr = prompt("Incolla l'oggetto JSON di configurazione Firebase (firebaseConfig):");
-        if (confStr) {
-          try {
-            firebaseConfig = JSON.parse(confStr);
-            localStorage.setItem("FIREBASE_CONFIG", JSON.stringify(firebaseConfig));
-          } catch(e) {
-            alert("Configurazione Firebase non valida.");
-          }
+            try {
+                return {
+                    firebaseConfig: typeof firebaseCfg === 'string' && firebaseCfg.startsWith('{') ? JSON.parse(firebaseCfg) : firebaseCfg,
+                    workerUrl: workerUrl.replace(/\/$/, "")
+                };
+            } catch (e) {
+                return null;
+            }
         }
-      }
 
-      if (firebaseConfig && !firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-      }
-    }
-
-    inizializzaApp();
-
-    const CAMPIONATI = [
-      { cod: "SA", nome: "Serie A (Italia)", fetchScorers: true },
-      { cod: "PL", nome: "Premier League (Inghilterra)", fetchScorers: true },
-      { cod: "PD", nome: "La Liga (Spagna)", fetchScorers: true },
-      { cod: "BL1", nome: "Bundesliga (Germania)", fetchScorers: true },
-      { cod: "FL1", nome: "Ligue 1 (Francia)", fetchScorers: true },
-      { cod: "CL", nome: "Champions League", fetchScorers: false },
-      { cod: "DED", nome: "Eredivisie (Olanda)", fetchScorers: false },
-      { cod: "PPL", nome: "Primeira Liga (Portogallo)", fetchScorers: false },
-      { cod: "BSA", nome: "Campeonato Brasileiro", fetchScorers: true },
-      { cod: "ELC", nome: "Championship (Inghilterra B)", fetchScorers: false },
-      { cod: "CLI", nome: "Copa Libertadores", fetchScorers: false },
-      { cod: "WC", nome: "Coppa del Mondo / Qualificazioni", fetchScorers: false }
-    ];
-
-    document.getElementById('dateFrom').valueAsDate = new Date();
-    let dTo = new Date(); dTo.setDate(dTo.getDate() + 7);
-    document.getElementById('dateTo').valueAsDate = dTo;
-
-    window.switchTab = function(tabName) {
-      ['Palinsesto', 'Validazione', 'Archivio', 'ML'].forEach(t => {
-        document.getElementById(`sec${t}`).classList.add('hidden');
-        document.getElementById(`tab${t}`).classList.remove('active-tab');
-        document.getElementById(`tab${t}`).classList.add('text-slate-400');
-      });
-      document.getElementById(`sec${tabName}`).classList.remove('hidden');
-      document.getElementById(`tab${tabName}`).classList.add('active-tab');
-      document.getElementById(`tab${tabName}`).classList.remove('text-slate-400');
-
-      if (tabName === 'Validazione') caricaDaValidare();
-      if (tabName === 'Archivio') caricaArchivio();
-    };
-
-    window.sincronizzaPalinsesto = async function() {
-      if (!WORKER_URL || !db) {
-        alert("Configura prima Cloudflare e Firebase!");
-        return;
-      }
-
-      const btn = document.getElementById('btnEstrai');
-      btn.disabled = true;
-      btn.innerText = "Sincronizzazione in corso...";
-
-      const dFrom = document.getElementById('dateFrom').value;
-      const dTo = document.getElementById('dateTo').value;
-
-      try {
-        const queryStr = `?dateFrom=${dFrom}&dateTo=${dTo}&campionati=${encodeURIComponent(JSON.stringify(CAMPIONATI))}`;
-        const res = await fetch(`${WORKER_URL}/api/palinsesto${queryStr}`);
-        const data = await res.json();
-
-        if (data.errore) throw new Error(data.messaggio);
-
-        const container = document.getElementById('listaPalinsesto');
-        container.innerHTML = "";
-
-        for (const match of data.partite) {
-          const prev = calcolaPrevisioneMatch(match.homeTeam.stats, match.awayTeam.stats);
-          const formaH = calcolaIndiceForma(match.homeTeam.stats.form);
-          const formaA = calcolaIndiceForma(match.awayTeam.stats.form);
-
-          await db.collection("palinsesto_attivo").doc(String(match.id)).set({
-            ...match,
-            previsione: prev,
-            dataAggiornamento: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
-
-          container.appendChild(creaCardMatch(match, prev, formaH, formaA));
+        // Verifica Stato Sync Badge
+        const cfg = getConfig();
+        const syncBadge = document.getElementById('syncBadge');
+        if (cfg) {
+            syncBadge.className = "px-3 py-1 bg-emerald-950/80 text-emerald-400 rounded-full text-xs font-semibold border border-emerald-800/60";
+            syncBadge.innerText = "Sync OK";
+        } else {
+            syncBadge.className = "px-3 py-1 bg-amber-950/80 text-amber-400 rounded-full text-xs font-semibold border border-amber-800/60";
+            syncBadge.innerText = "Non Configurato";
         }
-      } catch (err) {
-        alert("Errore Sincronizzazione: " + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "Sincronizza / Importa Palinsesto";
-      }
-    };
 
-    function creaCardMatch(m, prev, formaH, formaA) {
-      const card = document.createElement('div');
-      card.className = "apple-card p-4 space-y-3";
-      
-      const d = new Date(m.utcDate).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
+        // FUNZIONE DI SINCRONIZZAZIONE CORRETTA
+        async function sincronizzaPalinsesto() {
+            const config = getConfig();
+            if (!config) {
+                const fbInput = prompt("Incolla l'oggetto JSON di configurazione Firebase (firebaseConfig):");
+                if (!fbInput) return;
+                const wkInput = prompt("Inserisci l'URL del tuo Cloudflare Worker:");
+                if (!wkInput) return;
 
-      card.innerHTML = `
-        <div class="flex justify-between items-center border-b border-slate-700/50 pb-2">
-          <span class="text-xs font-bold text-blue-400 uppercase">${m.campionato}</span>
-          <span class="text-xs text-slate-400">${d}</span>
-        </div>
+                localStorage.setItem('firebaseConfig', fbInput);
+                localStorage.setItem('workerUrl', wkInput);
+                location.reload();
+                return;
+            }
 
-        <div class="grid grid-cols-7 items-center text-center">
-          <div class="col-span-3 space-y-1">
-            <img src="${m.homeTeam.crest}" class="w-8 h-8 mx-auto object-contain">
-            <div class="text-xs font-bold text-slate-100">${m.homeTeam.name}</div>
-            <div class="text-[10px] text-slate-400">Pos. ${m.homeTeam.stats.posizione || 'N/D'} (${m.homeTeam.stats.punti || 0}pt)</div>
-          </div>
-          <div class="col-span-1 text-xs font-bold text-slate-500">VS</div>
-          <div class="col-span-3 space-y-1">
-            <img src="${m.awayTeam.crest}" class="w-8 h-8 mx-auto object-contain">
-            <div class="text-xs font-bold text-slate-100">${m.awayTeam.name}</div>
-            <div class="text-[10px] text-slate-400">Pos. ${m.awayTeam.stats.posizione || 'N/D'} (${m.awayTeam.stats.punti || 0}pt)</div>
-          </div>
-        </div>
+            const btn = document.getElementById('btnSync');
+            btn.innerText = "Sincronizzazione in corso...";
+            btn.disabled = true;
 
-        <div class="grid grid-cols-2 gap-2 text-[10px] bg-slate-800/50 p-2 rounded-xl">
-          <div>
-            <span class="text-slate-400">Solo Casa:</span> ${m.homeTeam.stats.homePoints || 0} pt | ${m.homeTeam.stats.homeGf || 0}:${m.homeTeam.stats.homeGs || 0} Gol
-            <br><span class="text-slate-400">V/P/S:</span> ${m.homeTeam.stats.homeW}/${m.homeTeam.stats.homeD}/${m.homeTeam.stats.homeL}
-          </div>
-          <div>
-            <span class="text-slate-400">Solo Trasferta:</span> ${m.awayTeam.stats.awayPoints || 0} pt | ${m.awayTeam.stats.awayGf || 0}:${m.awayTeam.stats.awayGs || 0} Gol
-            <br><span class="text-slate-400">V/P/S:</span> ${m.awayTeam.stats.awayW}/${m.awayTeam.stats.awayD}/${m.awayTeam.stats.awayL}
-          </div>
-        </div>
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
 
-        <div class="space-y-1 text-[11px]">
-          <div class="flex justify-between">
-            <span>Forma Casa: ${formaH.simboli}</span>
-            <span class="font-bold">${formaH.punteggio}</span>
-          </div>
-          <div class="flex justify-between">
-            <span>Forma Trasferta: ${formaA.simboli}</span>
-            <span class="font-bold">${formaA.punteggio}</span>
-          </div>
-          ${m.homeTeam.topScorer ? `<div class="text-[10px] text-amber-400">⚽ Top Scorer Casa: ${m.homeTeam.topScorer.name} (${m.homeTeam.topScorer.goals} gol)</div>` : ''}
-          ${m.awayTeam.topScorer ? `<div class="text-[10px] text-amber-400">⚽ Top Scorer Trasferta: ${m.awayTeam.topScorer.name} (${m.awayTeam.topScorer.goals} gol)</div>` : ''}
-        </div>
+            // LISTA PULITA CAMPIONATI (Senza encodare oggetti JSON nell'URL)
+            const campionatiList = "SA,PL,PD,BL1,FL1,CL,DED,PPL,BSA,ELC,CLI,WC";
 
-        <div class="border-t border-slate-700/50 pt-2 grid grid-cols-2 gap-2">
-          <div class="bg-slate-800 p-2 rounded-xl text-center">
-            <div class="text-[10px] text-slate-400">Quote Bookmaker</div>
-            <div class="text-xs font-bold text-slate-200">1: ${m.odds.homeWin} | X: ${m.odds.draw} | 2: ${m.odds.awayWin}</div>
-            <div class="text-[10px] text-slate-400">O2.5: ${m.odds.over25} | GG: ${m.odds.gg}</div>
-          </div>
-          <div class="bg-blue-600/20 border border-blue-500/30 p-2 rounded-xl text-center">
-            <div class="text-[10px] text-blue-300 font-semibold">Previsione Algoritmo</div>
-            <div class="text-sm font-extrabold text-blue-400">${prev.risultatoStimato} (${prev.probabilitaPercentuale})</div>
-            <div class="text-[10px] text-slate-300">${prev.esitoOver25} | ${prev.esitoGoalNoGoal}</div>
-          </div>
-        </div>
-      `;
-      return card;
-    }
+            const endpoint = `${config.workerUrl}/api/palinsesto?dateFrom=${dateFrom}&dateTo=${dateTo}&campionati=${campionatiList}`;
 
-    async function caricaDaValidare() {
-      if (!db) return;
-      const container = document.getElementById('listaDaValidare');
-      container.innerHTML = "<p class='text-xs text-slate-400'>Caricamento match in attesa...</p>";
-      
-      const snap = await db.collection("palinsesto_attivo").get();
-      container.innerHTML = "";
+            try {
+                const res = await fetch(endpoint);
+                const data = await res.json();
 
-      snap.forEach(doc => {
-        const m = doc.data();
-        const div = document.createElement('div');
-        div.className = "apple-card p-3 flex justify-between items-center text-xs";
-        div.innerHTML = `
-          <div>
-            <div class="font-bold">${m.homeTeam.name} - ${m.awayTeam.name}</div>
-            <div class="text-slate-400">Previsto: ${m.previsione.risultatoStimato}</div>
-          </div>
-          <span class="bg-amber-500/20 text-amber-400 px-2 py-1 rounded text-[10px]">In Attesa Esito</span>
-        `;
-        container.appendChild(div);
-      });
-    }
+                if (data.errore) {
+                    alert("Errore API: " + (data.messaggio || "Impossibile recuperare i dati"));
+                    return;
+                }
 
-    window.validaERisolvi = async function() {
-      if (!db) return;
-      const dFrom = document.getElementById('dateFrom').value;
-      const dTo = document.getElementById('dateTo').value;
-
-      const res = await fetch(`${WORKER_URL}/api/valida?dateFrom=${dFrom}&dateTo=${dTo}`);
-      const esiti = await res.json();
-
-      const snap = await db.collection("palinsesto_attivo").get();
-
-      for (const doc of snap.docs) {
-        const match = doc.data();
-        const matchReale = esiti.find(e => e.id === match.id);
-
-        if (matchReale && matchReale.status === "FINISHED") {
-          const homeG = matchReale.scoreHome;
-          const awayG = matchReale.scoreAway;
-          const esitoReale1X2 = homeG > awayG ? "1" : (homeG === awayG ? "X" : "2");
-          const azzeccata = match.previsione.risultatoStimato.includes(esitoReale1X2);
-
-          await db.collection("archivio_storico").doc(String(match.id)).set({
-            ...match,
-            risultatoReale: { home: homeG, away: awayG, esito1X2: esitoReale1X2 },
-            previsioneCorrecta: azzeccata,
-            dataArchiviazione: firebase.firestore.FieldValue.serverTimestamp()
-          });
-
-          await db.collection("palinsesto_attivo").doc(String(match.id)).delete();
+                mostraRisultati(data.partite || []);
+            } catch (err) {
+                alert("Errore Sincronizzazione: " + err.message);
+            } finally {
+                btn.innerText = "Sincronizza / Importa Palinsesto";
+                btn.disabled = false;
+            }
         }
-      }
 
-      alert("Validazione completata!");
-      caricaDaValidare();
-    };
+        // MOSTRA I DATI NELLA TABELLA
+        function mostraRisultati(partite) {
+            const container = document.getElementById('containerRisultati');
+            const tbody = document.getElementById('tbPalinsesto');
+            const txtTotale = document.getElementById('txtTotale');
 
-    window.caricaArchivio = async function() {
-      if (!db) return;
-      const container = document.getElementById('listaArchivio');
-      container.innerHTML = "";
+            tbody.innerHTML = '';
+            txtTotale.innerText = partite.length;
 
-      const camp = document.getElementById('filtroCampionato').value;
-      const esito = document.getElementById('filtroEsito').value;
+            if (partite.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">Nessuna partita trovata per il periodo selezionato.</td></tr>`;
+            } else {
+                partite.forEach(p => {
+                    const row = document.createElement('tr');
+                    row.className = "hover:bg-slate-800/60 transition";
+                    row.innerHTML = `
+                        <td class="px-4 py-3 font-mono text-xs text-slate-400">${p.data || p.date || '-'}</td>
+                        <td class="px-4 py-3 font-medium text-blue-400">${p.campionato || p.league || '-'}</td>
+                        <td class="px-4 py-3 text-slate-200 font-semibold">${p.homeTeam || p.squadraCasa || ''} vs ${p.awayTeam || p.squadraOspite || ''}</td>
+                        <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">${p.status || 'Programmata'}</span></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
 
-      let query = db.collection("archivio_storico");
-      if (camp !== "ALL") query = query.where("codCampionato", "==", camp);
-      if (esito !== "ALL") query = query.where("previsioneCorrecta", "==", esito === "OK");
-
-      const snap = await query.get();
-
-      snap.forEach(doc => {
-        const m = doc.data();
-        const card = document.createElement('div');
-        card.className = "apple-card p-3 space-y-1 text-xs border-l-4 " + (m.previsioneCorrecta ? "border-l-emerald-500" : "border-l-red-500");
-        card.innerHTML = `
-          <div class="flex justify-between font-bold">
-            <span>${m.homeTeam.name} ${m.risultatoReale.home} - ${m.risultatoReale.away} ${m.awayTeam.name}</span>
-            <span class="${m.previsioneCorrecta ? 'text-emerald-400' : 'text-red-400'}">${m.previsioneCorrecta ? 'PREVISIONE OK' : 'PREVISIONE KO'}</span>
-          </div>
-          <div class="text-[10px] text-slate-400">
-            Pronostico Algoritmo: <b class="text-slate-200">${m.previsione.risultatoStimato}</b> | Risultato Reale: <b class="text-slate-200">${m.risultatoReale.esito1X2}</b>
-          </div>
-        `;
-        container.appendChild(card);
-      });
-    };
-
-    window.avviaML = async function() {
-      if (!db) return;
-      const snap = await db.collection("archivio_storico").get();
-      const storico = [];
-      snap.forEach(doc => storico.push(doc.data()));
-
-      const report = eseguiBacktestingECalibrazione(storico);
-      const reportDiv = document.getElementById('mlReport');
-
-      if (report.messaggio) {
-        reportDiv.innerHTML = `<span class="text-amber-400">${report.messaggio}</span>`;
-      } else {
-        reportDiv.innerHTML = `
-          <div class="text-emerald-400 font-bold">Calibrazione Completata!</div>
-          <div>Gare Analizzate: ${report.totaleGareAnalizzate}</div>
-          <div>Accuratezza Modello: <b class="text-white">${report.accuratezzaBacktest}</b></div>
-          <div class="text-[10px] text-slate-400 pt-1">
-            Nuovi Pesi Ottimizzati:<br>
-            Forma: ${report.pesiOttimizzati.pesoForma.toFixed(2)} | Casa/Trasferta: ${report.pesiOttimizzati.pesoCasaTrasferta.toFixed(2)}
-          </div>
-        `;
-      }
-    };
-  </script>
+            container.classList.remove('hidden');
+        }
+    </script>
 </body>
 </html>
