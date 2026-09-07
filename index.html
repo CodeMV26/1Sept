@@ -46,7 +46,7 @@
                     </div>
                 </div>
 
-                <button id="btnSync" onclick="eseguiImportazione()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-3 rounded-xl shadow-lg shadow-blue-500/20 transition duration-200 active:scale-[0.99] text-sm">
+                <button id="btnSync" onclick="sincronizzaPalinsesto()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-3 rounded-xl shadow-lg shadow-blue-500/20 transition duration-200 active:scale-[0.99] text-sm">
                     Sincronizza / Importa Palinsesto
                 </button>
             </div>
@@ -128,7 +128,7 @@
 
     <!-- LOGICA APPLICATIVA INTEGRATA -->
     <script>
-        // 1. Inizializzazione Firebase Firestore
+        // Configurazione Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyDvZ6My0UlFyzAIMvKvWdNneQPajryjvsw",
             authDomain: "betting-pro-db.firebaseapp.com",
@@ -143,13 +143,16 @@
 
         let memoriaPalinsesto = [];
 
-        document.addEventListener("DOMContentLoaded", function() {
+        // Esecuzione immediata al caricamento
+        window.onload = function() {
             document.getElementById('dateFrom').value = "2026-09-07";
             document.getElementById('dateTo').value = "2026-09-14";
-            eseguiImportazione();
-        });
+            
+            // Rendering sincrono immediato
+            memoriaPalinsesto = generaPalinsestoPredefinito();
+            renderizzaPalinsesto(memoriaPalinsesto);
+        };
 
-        // Algoritmo Previsione
         function calcolaIndiceForma(formaArray) {
             if (!formaArray || !Array.isArray(formaArray)) return { punteggio: 50, simboli: "🟨🟨🟨🟨🟨" };
             let pti = 0;
@@ -201,47 +204,35 @@
             if (nomeTab === 'archivio') caricaArchivioFirestore();
         }
 
-        // IMPORTAZIONE CON TIMEOUT FORZATO A 3 SECONDI
-        async function eseguiImportazione() {
+        function sincronizzaPalinsesto() {
             const btn = document.getElementById('btnSync');
             btn.innerText = "Sincronizzazione in corso...";
             btn.disabled = true;
 
+            const workerUrl = "https://betting-pro-1sept.mvmymail.workers.dev/api/palinsesto";
             const dateFrom = document.getElementById('dateFrom').value;
             const dateTo = document.getElementById('dateTo').value;
 
-            const workerUrl = "https://betting-pro-1sept.mvmymail.workers.dev/api/palinsesto";
-            const fullUrl = `${workerUrl}?dateFrom=${dateFrom}&dateTo=${dateTo}`;
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 secondi max
-
-            try {
-                const response = await fetch(fullUrl, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                
-                if (response.ok) {
-                    const data = await response.json();
+            // Tentativo asincrono sicuro
+            fetch(`${workerUrl}?dateFrom=${dateFrom}&dateTo=${dateTo}`)
+                .then(res => res.json())
+                .then(data => {
                     let matches = data.matches || data.partite || (Array.isArray(data) ? data : []);
                     if (matches && matches.length > 0) {
                         memoriaPalinsesto = matches;
-                    } else {
-                        memoriaPalinsesto = generaPalinsestoCompleto();
+                        renderizzaPalinsesto(memoriaPalinsesto);
                     }
-                } else {
-                    memoriaPalinsesto = generaPalinsestoCompleto();
-                }
-            } catch (err) {
-                console.log("Rete/Worker non disponibile, utilizzo fallback locale");
-                memoriaPalinsesto = generaPalinsestoCompleto();
-            } finally {
-                renderizzaPalinsesto(memoriaPalinsesto);
-                btn.innerText = "Sincronizza / Importa Palinsesto";
-                btn.disabled = false;
-            }
+                })
+                .catch(err => {
+                    console.log("Worker non raggiungibile o errore di parsing. Mantenuto palinsesto locale.");
+                })
+                .finally(() => {
+                    btn.innerText = "Sincronizza / Importa Palinsesto";
+                    btn.disabled = false;
+                });
         }
 
-        function generaPalinsestoCompleto() {
+        function generaPalinsestoPredefinito() {
             return [
                 {
                     campionato: "Serie A (Italia)",
@@ -284,10 +275,7 @@
 
         function renderizzaPalinsesto(partite) {
             const container = document.getElementById('containerCards');
-            
-            if (!partite || partite.length === 0) {
-                partite = generaPalinsestoCompleto();
-            }
+            if (!container) return;
 
             let htmlContent = '';
 
@@ -355,7 +343,6 @@
             container.innerHTML = htmlContent;
         }
 
-        // VALIDAZIONE & FIRESTORE
         async function eseguiValidazione() {
             const btn = document.getElementById('btnValida');
             btn.innerText = "Risoluzione in corso...";
@@ -385,7 +372,7 @@
                     });
                 }
 
-                alert("Validazione completata e salvata su Cloud Firestore!");
+                alert("Validazione completata e salvata su Firestore!");
                 memoriaPalinsesto = [];
                 renderizzaPalinsesto([]);
 
