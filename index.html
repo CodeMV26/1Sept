@@ -42,7 +42,7 @@
             </button>
         </div>
 
-        <!-- TABELLA RISULTATI (PALINSESTO) -->
+        <!-- TABELLA RISULTATI -->
         <div id="containerRisultati" class="w-full mt-8 hidden">
             <h3 class="text-lg font-semibold text-slate-200 mb-3">Partite Trovate (<span id="txtTotale">0</span>)</h3>
             <div class="overflow-x-auto bg-slate-800/40 rounded-xl border border-slate-700/50">
@@ -72,38 +72,53 @@
         <button class="px-5 py-1.5 rounded-full text-slate-400 hover:text-white text-sm font-medium">ML Engine</button>
     </footer>
 
-    <!-- ESECUZIONE TRAMITE ENGINE UFFICIALE -->
+    <!-- SCRIPT CHIAMATA DIRETTA ROBUSTA -->
     <script>
-        // Imposta date di default a oggi
-        const oggi = new Date().toISOString().split('T')[0];
-        document.getElementById('dateFrom').value = meDataFormattata(new Date());
-        document.getElementById('dateTo').value = meDataFormattata(new Date(Date.now() + 86400000));
-
-        function meDataFormattata(d) {
-            return d.toISOString().split('T')[0];
-        }
+        // Impostazione date di default a oggi
+        const dOggi = new Date().toISOString().split('T')[0];
+        document.getElementById('dateFrom').value = dOggi;
+        document.getElementById('dateTo').value = dOggi;
 
         async function eseguiImportazione() {
             const btn = document.getElementById('btnSync');
             btn.innerText = "Sincronizzazione in corso...";
             btn.disabled = true;
 
-            const dFrom = document.getElementById('dateFrom').value;
-            const dTo = document.getElementById('dateTo').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+
+            // Worker URL ricavato dal vostro endpoint
+            const baseUrl = "https://betting-pro-1sept.mvmymail.workers.dev/api/palinsesto";
+            
+            // Campionati inviati come lista strutturata per la compatibilità con il Worker
+            const campionati = JSON.stringify([
+                {cod: "SA", nome: "Serie A (Italia)", fetchScorers: true},
+                {cod: "PL", nome: "Premier League (Inghilterra)", fetchScorers: true},
+                {cod: "PD", nome: "La Liga (Spagna)", fetchScorers: true},
+                {cod: "BL1", nome: "Bundesliga (Germania)", fetchScorers: true},
+                {cod: "FL1", nome: "Ligue 1 (Francia)", fetchScorers: true},
+                {cod: "CL", nome: "Champions League", fetchScorers: false},
+                {cod: "DED", nome: "Eredivisie (Olanda)", fetchScorers: false},
+                {cod: "PPL", nome: "Primeira Liga (Portogallo)", fetchScorers: false},
+                {cod: "BSA", nome: "Campeonato Brasileiro", fetchScorers: false},
+                {cod: "ELC", nome: "Championship (Inghilterra B)", fetchScorers: false},
+                {cod: "CLI", nome: "Copa Libertadores", fetchScorers: false},
+                {cod: "WC", nome: "Coppa del Mondo / Qualificazioni", fetchScorers: false}
+            ]);
+
+            const targetUrl = `${baseUrl}?dateFrom=${dateFrom}&dateTo=${dateTo}&campionati=${encodeURIComponent(campionati)}`;
 
             try {
-                // Utilizza il motore di scaricamento originale di algorithmEngine.js
-                let esito;
-                if (typeof scaricaPalinsesto === 'function') {
-                    esito = await scaricaPalinsesto(dFrom, dTo);
-                } else if (typeof caricaPalinsesto === 'function') {
-                    esito = await caricaPalinsesto(dFrom, dTo);
-                } else {
-                    throw new Error("Funzione di scaricamento non trovata in algorithmEngine.js");
+                const response = await fetch(targetUrl);
+                if (!response.ok) {
+                    throw new Error(`Risposta server HTTP ${response.status}`);
                 }
-
-                const partite = Array.isArray(esito) ? esito : (esito && esito.partite ? esito.partite : []);
-                mostraInTabella(partite);
+                
+                const data = await response.json();
+                
+                // Estrazione lista partite
+                const listaPartite = data.partite || data.matches || (Array.isArray(data) ? data : []);
+                mostraInTabella(listaPartite);
 
             } catch (err) {
                 alert("Errore Sincronizzazione: " + err.message);
@@ -122,16 +137,23 @@
             txtTotale.innerText = partite.length;
 
             if (partite.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">Nessuna partita trovata per l'intervallo selezionato.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">Nessuna partita trovata per le date selezionate.</td></tr>`;
             } else {
                 partite.forEach(p => {
                     const row = document.createElement('tr');
                     row.className = "hover:bg-slate-800/60 transition";
+                    
+                    const orario = p.utcDate ? new Date(p.utcDate).toLocaleTimeString('it-IT', {hour: '2-2digit', minute:'2-2digit'}) : (p.ora || p.time || '-');
+                    const lega = p.competition ? p.competition.name : (p.campionato || p.league || '-');
+                    const casa = p.homeTeam ? (p.homeTeam.name || p.homeTeam) : (p.squadraCasa || p.home || '-');
+                    const ospite = p.awayTeam ? (p.awayTeam.name || p.awayTeam) : (p.squadraOspite || p.away || '-');
+                    const stato = p.status || 'SCHEDULED';
+
                     row.innerHTML = `
-                        <td class="px-4 py-3 font-mono text-xs text-slate-400">${p.utcDate ? new Date(p.utcDate).toLocaleString('it-IT') : (p.data || '-')}</td>
-                        <td class="px-4 py-3 font-medium text-blue-400">${p.competition ? p.competition.name : (p.campionato || '-')}</td>
-                        <td class="px-4 py-3 text-slate-200 font-semibold">${p.homeTeam ? p.homeTeam.name : p.squadraCasa} vs ${p.awayTeam ? p.awayTeam.name : p.squadraOspite}</td>
-                        <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">${p.status || 'SCHEDULED'}</span></td>
+                        <td class="px-4 py-3 font-mono text-xs text-slate-400">${orario}</td>
+                        <td class="px-4 py-3 font-medium text-blue-400">${lega}</td>
+                        <td class="px-4 py-3 text-slate-200 font-semibold">${casa} vs ${ospite}</td>
+                        <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">${stato}</span></td>
                     `;
                     tbody.appendChild(row);
                 });
