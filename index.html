@@ -72,7 +72,7 @@
         <button class="px-5 py-1.5 rounded-full text-slate-400 hover:text-white text-sm font-medium">ML Engine</button>
     </footer>
 
-    <!-- SCRIPT CORRETTO -->
+    <!-- SCRIPT SENZA BLOCCO FILTRI -->
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const oggi = new Date().toISOString().split('T')[0];
@@ -88,31 +88,27 @@
             const dateFrom = document.getElementById('dateFrom').value;
             const dateTo = document.getElementById('dateTo').value;
 
-            const campionatiObj = [
-                {cod: "SA", nome: "Serie A (Italia)", fetchScorers: true},
-                {cod: "PL", nome: "Premier League (Inghilterra)", fetchScorers: true},
-                {cod: "PD", nome: "La Liga (Spagna)", fetchScorers: true},
-                {cod: "BL1", nome: "Bundesliga (Germania)", fetchScorers: true},
-                {cod: "FL1", nome: "Ligue 1 (Francia)", fetchScorers: true},
-                {cod: "CL", nome: "Champions League", fetchScorers: false},
-                {cod: "DED", nome: "Eredivisie (Olanda)", fetchScorers: false},
-                {cod: "PPL", nome: "Primeira Liga (Portogallo)", fetchScorers: false},
-                {cod: "BSA", nome: "Campeonato Brasileiro", fetchScorers: false},
-                {cod: "ELC", nome: "Championship (Inghilterra B)", fetchScorers: false},
-                {cod: "CLI", nome: "Copa Libertadores", fetchScorers: false},
-                {cod: "WC", nome: "Coppa del Mondo / Qualificazioni", fetchScorers: false}
-            ];
-
-            const targetUrl = "https://betting-pro-1sept.mvmymail.workers.dev/api/palinsesto?dateFrom=" + dateFrom + "&dateTo=" + dateTo + "&campionati=" + encodeURIComponent(JSON.stringify(campionatiObj));
+            // Inviamo l'URL base con date
+            const baseUrl = "https://betting-pro-1sept.mvmymail.workers.dev/api/palinsesto";
+            
+            // Proviamo prima inviando i codici trasfusi come stringa semplice separata da virgole
+            const codiciCampionati = "SA,PL,PD,BL1,FL1,CL,DED,PPL,BSA,ELC,CLI,WC";
+            let targetUrl = baseUrl + "?dateFrom=" + dateFrom + "&dateTo=" + dateTo + "&campionati=" + codiciCampionati;
 
             try {
-                const response = await fetch(targetUrl);
-                if (!response.ok) {
-                    throw new Error("Risposta server HTTP " + response.status);
+                let response = await fetch(targetUrl);
+                let data = await response.json();
+                let listaPartite = data.partite || data.matches || (Array.isArray(data) ? data : []);
+
+                // Se non trova partite, effettua tentativi con parametri alternativi
+                if (!listaPartite || listaPartite.length === 0) {
+                    // Secondo tentativo: Chiamata senza filtro campionati
+                    const fallbackUrl = baseUrl + "?dateFrom=" + dateFrom + "&dateTo=" + dateTo;
+                    const resFallback = await fetch(fallbackUrl);
+                    const dataFallback = await resFallback.json();
+                    listaPartite = dataFallback.partite || dataFallback.matches || (Array.isArray(dataFallback) ? dataFallback : []);
                 }
-                
-                const data = await response.json();
-                const listaPartite = data.partite || data.matches || (Array.isArray(data) ? data : []);
+
                 mostraInTabella(listaPartite);
 
             } catch (err) {
@@ -131,15 +127,15 @@
             tbody.innerHTML = '';
             txtTotale.innerText = partite.length;
 
-            if (partite.length === 0) {
+            if (!partite || partite.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">Nessuna partita trovata per le date selezionate.</td></tr>';
             } else {
                 partite.forEach(function(p) {
                     const row = document.createElement('tr');
                     row.className = "hover:bg-slate-800/60 transition";
                     
-                    const orario = p.utcDate ? new Date(p.utcDate).toLocaleTimeString('it-IT', {hour: '2-2digit', minute:'2-2digit'}) : (p.ora || p.time || '-');
-                    const lega = p.competition ? p.competition.name : (p.campionato || p.league || '-');
+                    const orario = p.utcDate ? new Date(p.utcDate).toLocaleTimeString('it-IT', {hour: '2-2digit', minute:'2-2digit'}) : (p.ora || p.time || p.date || '-');
+                    const lega = p.competition ? (p.competition.name || p.competition) : (p.campionato || p.league || '-');
                     const casa = p.homeTeam ? (p.homeTeam.name || p.homeTeam) : (p.squadraCasa || p.home || '-');
                     const ospite = p.awayTeam ? (p.awayTeam.name || p.awayTeam) : (p.squadraOspite || p.away || '-');
                     const stato = p.status || 'SCHEDULED';
