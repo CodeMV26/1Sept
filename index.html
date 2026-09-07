@@ -3,405 +3,399 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Palinsesto & Calcio Analisi</title>
-  <!-- LIBRERIA SHEETJS PER GENERARE VERE SCHEDE EXCEL NATIVE (.XLSX) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <title>Betting Pro Mobile</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <style>
-    :root {
-      --bg-color: #f2f2f7;
-      --card-bg: #ffffff;
-      --primary: #007aff;
-      --success: #34c759;
-      --warning: #ff9500;
-      --excel: #107c41;
-      --text-main: #1c1c1e;
-      --text-muted: #8e8e93;
-      --border-color: #e5e5ea;
+    body { background-color: #0f172a; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .apple-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
     }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      padding: 12px;
-      -webkit-text-size-adjust: 100%;
-    }
-
-    h1 {
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      text-align: center;
-    }
-
-    /* BARRA AZIONI RESPONSIVA */
-    .actions-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-      gap: 8px;
-      margin-bottom: 15px;
-    }
-
-    button {
-      padding: 10px 6px;
-      font-size: 12px;
-      font-weight: 600;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      color: white;
-      text-align: center;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    button:active { opacity: 0.8; }
-    .btn-load { background-color: var(--primary); }
-    .btn-validate { background-color: var(--success); }
-    .btn-refresh { background-color: var(--warning); }
-    .btn-export { background-color: var(--excel); }
-
-    /* PANNELLO STATO */
-    .status-panel {
-      background: var(--card-bg);
-      padding: 12px;
-      border-radius: 10px;
-      font-size: 12px;
-      line-height: 1.5;
-      margin-bottom: 15px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      border-left: 4px solid var(--primary);
-    }
-
-    /* SCHEDA PARTITA */
-    .match-card {
-      background: var(--card-bg);
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 14px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-      border: 1px solid var(--border-color);
-    }
-
-    .match-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid var(--border-color);
-    }
-    .badge-league {
-      background: #e5e5ea;
-      color: #3a3a3c;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 6px;
-      border-radius: 4px;
-      text-transform: uppercase;
-    }
-    .match-time {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    /* SEZIONE SQUADRE SULLA STESSA RIGA IN GRASSETTO */
-    .teams-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    .team-names {
-      flex: 1;
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.3;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* RISULTATO SULLA STESSA RIGA */
-    .score-badge {
-      font-size: 15px;
-      font-weight: 800;
-      padding: 6px 10px;
-      border-radius: 8px;
-      background: #e5e5ea;
-      color: var(--text-main);
-      white-space: nowrap;
-      text-align: center;
-      min-width: 65px;
-      flex-shrink: 0;
-    }
-    .score-badge.finished {
-      background: var(--success);
-      color: white;
-    }
-
-    /* GRIGLIA STATISTICHE */
-    .stats-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-      margin-top: 8px;
-    }
-    .stats-table th {
-      background: #f8f8fa;
-      color: var(--text-muted);
-      font-weight: 600;
-      text-align: center;
-      padding: 4px;
-      border-bottom: 1px solid var(--border-color);
-    }
-    .stats-table td {
-      padding: 5px 4px;
-      text-align: center;
-      border-bottom: 1px dashed var(--border-color);
-    }
-    .stats-table td.label {
-      text-align: left;
-      font-weight: 600;
-      color: #48484a;
-      width: 40%;
-    }
-
-    .form-symbols {
-      font-size: 10px;
-      letter-spacing: -1px;
-      display: block;
-    }
-    .top-scorer-box {
-      background: #f8f8fa;
-      padding: 6px 8px;
-      border-radius: 6px;
-      margin-top: 8px;
-      font-size: 11px;
-    }
+    .active-tab { background-color: #2563eb; color: #ffffff; }
   </style>
 </head>
-<body>
+<body class="pb-24">
 
-  <h1>Palinsesto & Analisi</h1>
+  <header class="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-4">
+    <div class="max-w-md mx-auto flex justify-between items-center">
+      <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">SoccerStats ML</h1>
+      <span id="syncStatus" class="text-xs bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/30">Sync OK</span>
+    </div>
+  </header>
 
-  <!-- BARRA AZIONI CON ESPORTAZIONE EXCEL NATIVA -->
-  <div class="actions-grid">
-    <button class="btn-load" onclick="caricaPalinsesto()">📁 Carica Ultimo Palinsesto</button>
-    <button class="btn-validate" onclick="validaRisultati()">✅ Valida Risultati</button>
-    <button class="btn-refresh" onclick="caricaPalinsesto(true)">🔄 Nuovo Palinsesto</button>
-    <button class="btn-export" onclick="esportaExcel()">📊 Esporta Excel (.xlsx)</button>
-  </div>
+  <main class="max-w-md mx-auto p-4 space-y-4">
 
-  <div class="status-panel" id="statusPanel">
-    Stato: In attesa di caricamento...
-  </div>
+    <!-- TAB 1: PALINSESTO ATTIVO -->
+    <section id="secPalinsesto" class="space-y-4">
+      <div class="apple-card p-4 space-y-3">
+        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Filtra & Importa Palinsesto</h2>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs text-slate-400">Data Inizio</label>
+            <input type="date" id="dateFrom" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
+          </div>
+          <div>
+            <label class="text-xs text-slate-400">Data Fine</label>
+            <input type="date" id="dateTo" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
+          </div>
+        </div>
+        <button id="btnEstrai" onclick="sincronizzaPalinsesto()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 font-semibold rounded-xl text-sm transition shadow-lg shadow-blue-600/30 flex justify-center items-center gap-2">
+          <span>Sincronizza / Importa Palinsesto</span>
+        </button>
+      </div>
 
-  <div id="listaPartite"></div>
+      <div id="listaPalinsesto" class="space-y-4"></div>
+    </section>
 
-  <script>
-    const WORKER_URL = "https://betting-pro-1sept.mvmymail.workers.dev";
+    <!-- TAB 2: VALIDAZIONE & RISOLUZIONE -->
+    <section id="secValidazione" class="space-y-4 hidden">
+      <div class="apple-card p-4 space-y-2">
+        <h2 class="text-lg font-bold text-slate-100">Risoluzione Match Conclusi</h2>
+        <p class="text-xs text-slate-400">Verifica i punteggi reali e archivia i dati per l'addestramento dell'algoritmo.</p>
+        <button onclick="validaERisolvi()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-xl text-sm shadow-lg shadow-emerald-600/30">
+          Valida e Risolvi Palinsesto
+        </button>
+      </div>
+      <div id="listaDaValidare" class="space-y-3"></div>
+    </section>
 
-    const statusPanel = document.getElementById("statusPanel");
-    const listaPartite = document.getElementById("listaPartite");
-    
-    let datiCorrenti = null;
+    <!-- TAB 3: ARCHIVIO STORICO -->
+    <section id="secArchivio" class="space-y-4 hidden">
+      <div class="apple-card p-4 space-y-3">
+        <h2 class="text-lg font-bold text-slate-100">Archivio Storico Consultabile</h2>
+        <div class="grid grid-cols-2 gap-2">
+          <select id="filtroCampionato" onchange="caricaArchivio()" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
+            <option value="ALL">Tutti i Campionati</option>
+            <option value="SA">Serie A</option>
+            <option value="PL">Premier League</option>
+          </select>
+          <select id="filtroEsito" onchange="caricaArchivio()" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white">
+            <option value="ALL">Tutti gli Esiti</option>
+            <option value="OK">Pronostici Azzeccati</option>
+            <option value="KO">Pronostici Sbagliati</option>
+          </select>
+        </div>
+      </div>
+      <div id="listaArchivio" class="space-y-3"></div>
+    </section>
 
-    async function caricaPalinsesto(force = false) {
-      statusPanel.innerHTML = force ? "⏳ Generazione nuovo palinsesto (oggi + 3 giorni)..." : "⏳ Caricamento ultimo palinsesto...";
-      listaPartite.innerHTML = "";
-      
-      const endpoint = force ? `${WORKER_URL}?force=true` : WORKER_URL;
+    <!-- TAB 4: MACHINE LEARNING & BACKTESTING -->
+    <section id="secML" class="space-y-4 hidden">
+      <div class="apple-card p-4 space-y-3">
+        <h2 class="text-lg font-bold text-slate-100">Machine Learning & Backtesting</h2>
+        <p class="text-xs text-slate-400">Analizza lo storico salvato nel database noSQL ed esegui il Grid-Search per affinare i pesi predittivi.</p>
+        <button onclick="avviaML()" class="w-full py-3 bg-purple-600 hover:bg-purple-500 font-semibold rounded-xl text-sm shadow-lg shadow-purple-600/30">
+          Avvia Calibrazione Algoritmo
+        </button>
+        <div id="mlReport" class="text-xs space-y-1 text-slate-300 pt-2 border-t border-slate-700"></div>
+      </div>
+    </section>
 
-      try {
-        const res = await fetch(endpoint);
-        const data = await res.json();
-        datiCorrenti = data;
-        mostraDati(data);
-      } catch (e) {
-        statusPanel.innerHTML = "❌ Errore durante il caricamento: " + e.message;
+  </main>
+
+  <nav class="fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur-lg border-t border-slate-800 px-2 py-2 z-50">
+    <div class="max-w-md mx-auto grid grid-cols-4 gap-1 text-center">
+      <button onclick="switchTab('Palinsesto')" id="tabPalinsesto" class="py-2 text-xs rounded-xl active-tab transition">Palinsesto</button>
+      <button onclick="switchTab('Validazione')" id="tabValidazione" class="py-2 text-xs rounded-xl text-slate-400 transition">Validazione</button>
+      <button onclick="switchTab('Archivio')" id="tabArchivio" class="py-2 text-xs rounded-xl text-slate-400 transition">Archivio</button>
+      <button onclick="switchTab('ML')" id="tabML" class="py-2 text-xs rounded-xl text-slate-400 transition">ML Engine</button>
+    </div>
+  </nav>
+
+  <script type="module">
+    import { calcolaIndiceForma, calcolaPrevisioneMatch, eseguiBacktestingECalibrazione } from './algorithmEngine.js';
+
+    let db;
+    let WORKER_URL = localStorage.getItem("WORKER_URL") || "";
+    let firebaseConfig = JSON.parse(localStorage.getItem("FIREBASE_CONFIG") || "null");
+
+    // Inizializzazione dinamica credenziali
+    function inizializzaApp() {
+      if (!WORKER_URL) {
+        WORKER_URL = prompt("Inserisci l'URL del tuo Cloudflare Worker (es. https://tuo-worker.subdomain.workers.dev):");
+        if (WORKER_URL) localStorage.setItem("WORKER_URL", WORKER_URL);
       }
-    }
 
-    async function validaRisultati() {
-      statusPanel.innerHTML = "⏳ Validazione risultati in corso...";
-      
-      try {
-        const res = await fetch(`${WORKER_URL}?validate=true`);
-        const data = await res.json();
-
-        if (data.errore) {
-          statusPanel.innerHTML = "⚠️ " + data.messaggio;
-          return;
+      if (!firebaseConfig) {
+        const confStr = prompt("Incolla l'oggetto JSON di configurazione Firebase (firebaseConfig):");
+        if (confStr) {
+          try {
+            firebaseConfig = JSON.parse(confStr);
+            localStorage.setItem("FIREBASE_CONFIG", JSON.stringify(firebaseConfig));
+          } catch(e) {
+            alert("Configurazione Firebase non valida.");
+          }
         }
+      }
 
-        datiCorrenti = data;
-        mostraDati(data);
-      } catch (e) {
-        statusPanel.innerHTML = "❌ Errore durante la validazione: " + e.message;
+      if (firebaseConfig && !firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
       }
     }
 
-    function mostraDati(data) {
-      const dataAgg = data.dataAggiornamento ? new Date(data.dataAggiornamento).toLocaleString('it-IT') : 'N/D';
-      const dataVal = data.dataUltimaValidazione ? new Date(data.dataUltimaValidazione).toLocaleString('it-IT') : 'Mai effettuata';
+    inizializzaApp();
 
-      statusPanel.innerHTML = `
-        <strong>Partite:</strong> ${data.totalePartiteTrovate || 0} | 
-        <strong>Aggiornato:</strong> ${dataAgg}<br>
-        <strong>Ultima Validazione:</strong> ${dataVal}
-      `;
+    const CAMPIONATI = [
+      { cod: "SA", nome: "Serie A (Italia)", fetchScorers: true },
+      { cod: "PL", nome: "Premier League (Inghilterra)", fetchScorers: true },
+      { cod: "PD", nome: "La Liga (Spagna)", fetchScorers: true },
+      { cod: "BL1", nome: "Bundesliga (Germania)", fetchScorers: true },
+      { cod: "FL1", nome: "Ligue 1 (Francia)", fetchScorers: true },
+      { cod: "CL", nome: "Champions League", fetchScorers: false },
+      { cod: "DED", nome: "Eredivisie (Olanda)", fetchScorers: false },
+      { cod: "PPL", nome: "Primeira Liga (Portogallo)", fetchScorers: false },
+      { cod: "BSA", nome: "Campeonato Brasileiro", fetchScorers: true },
+      { cod: "ELC", nome: "Championship (Inghilterra B)", fetchScorers: false },
+      { cod: "CLI", nome: "Copa Libertadores", fetchScorers: false },
+      { cod: "WC", nome: "Coppa del Mondo / Qualificazioni", fetchScorers: false }
+    ];
 
-      if (!data.partite || data.partite.length === 0) {
-        listaPartite.innerHTML = "<p style='text-align:center; padding: 20px;'>Nessuna partita presente nel palinsesto.</p>";
+    document.getElementById('dateFrom').valueAsDate = new Date();
+    let dTo = new Date(); dTo.setDate(dTo.getDate() + 7);
+    document.getElementById('dateTo').valueAsDate = dTo;
+
+    window.switchTab = function(tabName) {
+      ['Palinsesto', 'Validazione', 'Archivio', 'ML'].forEach(t => {
+        document.getElementById(`sec${t}`).classList.add('hidden');
+        document.getElementById(`tab${t}`).classList.remove('active-tab');
+        document.getElementById(`tab${t}`).classList.add('text-slate-400');
+      });
+      document.getElementById(`sec${tabName}`).classList.remove('hidden');
+      document.getElementById(`tab${tabName}`).classList.add('active-tab');
+      document.getElementById(`tab${tabName}`).classList.remove('text-slate-400');
+
+      if (tabName === 'Validazione') caricaDaValidare();
+      if (tabName === 'Archivio') caricaArchivio();
+    };
+
+    window.sincronizzaPalinsesto = async function() {
+      if (!WORKER_URL || !db) {
+        alert("Configura prima Cloudflare e Firebase!");
         return;
       }
 
-      listaPartite.innerHTML = data.partite.map(p => {
-        const dataOra = new Date(p.dataOraUTC).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const btn = document.getElementById('btnEstrai');
+      btn.disabled = true;
+      btn.innerText = "Sincronizzazione in corso...";
 
-        return `
-          <div class="match-card">
-            <div class="match-header">
-              <span class="badge-league">${p.campionato || p.codiceCampionato}</span>
-              <span class="match-time">📅 ${dataOra}</span>
-            </div>
+      const dFrom = document.getElementById('dateFrom').value;
+      const dTo = document.getElementById('dateTo').value;
 
-            <div class="teams-container">
-              <div class="team-names">
-                <b>${p.squadraCasa}</b> <span style="font-weight: normal; color: #8e8e93;">vs</span> <b>${p.squadraOspite}</b>
-              </div>
-              <div class="score-badge ${p.completata ? 'finished' : ''}">
-                ${p.risultatoFinale || 'In attesa'}
-              </div>
-            </div>
+      try {
+        const queryStr = `?dateFrom=${dFrom}&dateTo=${dTo}&campionati=${encodeURIComponent(JSON.stringify(CAMPIONATI))}`;
+        const res = await fetch(`${WORKER_URL}/api/palinsesto${queryStr}`);
+        const data = await res.json();
 
-            <table class="stats-table">
-              <thead>
-                <tr>
-                  <th style="text-align:left;">Dato</th>
-                  <th>${p.squadraCasa.substring(0, 10)}</th>
-                  <th>${p.squadraOspite.substring(0, 10)}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td class="label">Punti / Posizione</td>
-                  <td><b>${p.puntiCasa}</b> (${p.posizioneCasa})</td>
-                  <td><b>${p.puntiOspite}</b> (${p.posizioneOspite})</td>
-                </tr>
-                <tr>
-                  <td class="label">Partite Giocate</td>
-                  <td>${p.giocateCasa}</td>
-                  <td>${p.giocateOspite}</td>
-                </tr>
-                <tr>
-                  <td class="label">V / P / S Generali</td>
-                  <td>${p.vinteCasa}/${p.pareggiateCasa}/${p.perseCasa}</td>
-                  <td>${p.vinteOspite}/${p.pareggiateOspite}/${p.perseOspite}</td>
-                </tr>
-                <tr>
-                  <td class="label">Gol Fatti / Subiti</td>
-                  <td>${p.golFattiCasa} / ${p.golSubitiCasa}</td>
-                  <td>${p.golFattiOspite} / ${p.golSubitiOspite}</td>
-                </tr>
-                <tr>
-                  <td class="label">Punti (Casa / Trasferta)</td>
-                  <td>${p.puntiCasaSoloCasa} (Casa)</td>
-                  <td>${p.puntiOspiteSoloTrasferta} (Trasf.)</td>
-                </tr>
-                <tr>
-                  <td class="label">V/P/S (Casa / Trasferta)</td>
-                  <td>${p.vpsCasaSoloCasa}</td>
-                  <td>${p.vpsOspiteSoloTrasferta}</td>
-                </tr>
-                <tr>
-                  <td class="label">Indice Forma & Trend</td>
-                  <td>
-                    <span>${p.indiceFormaCasa}</span>
-                    <span class="form-symbols">${p.simboliFormaCasa}</span>
-                  </td>
-                  <td>
-                    <span>${p.indiceFormaOspite}</span>
-                    <span class="form-symbols">${p.simboliFormaOspite}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        if (data.errore) throw new Error(data.messaggio);
 
-            <div class="top-scorer-box">
-              🎯 <b>Top Scorer:</b><br>
-              • ${p.squadraCasa}: ${p.topScorerCasa}<br>
-              • ${p.squadraOspite}: ${p.topScorerOspite}
-            </div>
+        const container = document.getElementById('listaPalinsesto');
+        container.innerHTML = "";
+
+        for (const match of data.partite) {
+          const prev = calcolaPrevisioneMatch(match.homeTeam.stats, match.awayTeam.stats);
+          const formaH = calcolaIndiceForma(match.homeTeam.stats.form);
+          const formaA = calcolaIndiceForma(match.awayTeam.stats.form);
+
+          await db.collection("palinsesto_attivo").doc(String(match.id)).set({
+            ...match,
+            previsione: prev,
+            dataAggiornamento: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+
+          container.appendChild(creaCardMatch(match, prev, formaH, formaA));
+        }
+      } catch (err) {
+        alert("Errore Sincronizzazione: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Sincronizza / Importa Palinsesto";
+      }
+    };
+
+    function creaCardMatch(m, prev, formaH, formaA) {
+      const card = document.createElement('div');
+      card.className = "apple-card p-4 space-y-3";
+      
+      const d = new Date(m.utcDate).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
+
+      card.innerHTML = `
+        <div class="flex justify-between items-center border-b border-slate-700/50 pb-2">
+          <span class="text-xs font-bold text-blue-400 uppercase">${m.campionato}</span>
+          <span class="text-xs text-slate-400">${d}</span>
+        </div>
+
+        <div class="grid grid-cols-7 items-center text-center">
+          <div class="col-span-3 space-y-1">
+            <img src="${m.homeTeam.crest}" class="w-8 h-8 mx-auto object-contain">
+            <div class="text-xs font-bold text-slate-100">${m.homeTeam.name}</div>
+            <div class="text-[10px] text-slate-400">Pos. ${m.homeTeam.stats.posizione || 'N/D'} (${m.homeTeam.stats.punti || 0}pt)</div>
+          </div>
+          <div class="col-span-1 text-xs font-bold text-slate-500">VS</div>
+          <div class="col-span-3 space-y-1">
+            <img src="${m.awayTeam.crest}" class="w-8 h-8 mx-auto object-contain">
+            <div class="text-xs font-bold text-slate-100">${m.awayTeam.name}</div>
+            <div class="text-[10px] text-slate-400">Pos. ${m.awayTeam.stats.posizione || 'N/D'} (${m.awayTeam.stats.punti || 0}pt)</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-[10px] bg-slate-800/50 p-2 rounded-xl">
+          <div>
+            <span class="text-slate-400">Solo Casa:</span> ${m.homeTeam.stats.homePoints || 0} pt | ${m.homeTeam.stats.homeGf || 0}:${m.homeTeam.stats.homeGs || 0} Gol
+            <br><span class="text-slate-400">V/P/S:</span> ${m.homeTeam.stats.homeW}/${m.homeTeam.stats.homeD}/${m.homeTeam.stats.homeL}
+          </div>
+          <div>
+            <span class="text-slate-400">Solo Trasferta:</span> ${m.awayTeam.stats.awayPoints || 0} pt | ${m.awayTeam.stats.awayGf || 0}:${m.awayTeam.stats.awayGs || 0} Gol
+            <br><span class="text-slate-400">V/P/S:</span> ${m.awayTeam.stats.awayW}/${m.awayTeam.stats.awayD}/${m.awayTeam.stats.awayL}
+          </div>
+        </div>
+
+        <div class="space-y-1 text-[11px]">
+          <div class="flex justify-between">
+            <span>Forma Casa: ${formaH.simboli}</span>
+            <span class="font-bold">${formaH.punteggio}</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Forma Trasferta: ${formaA.simboli}</span>
+            <span class="font-bold">${formaA.punteggio}</span>
+          </div>
+          ${m.homeTeam.topScorer ? `<div class="text-[10px] text-amber-400">⚽ Top Scorer Casa: ${m.homeTeam.topScorer.name} (${m.homeTeam.topScorer.goals} gol)</div>` : ''}
+          ${m.awayTeam.topScorer ? `<div class="text-[10px] text-amber-400">⚽ Top Scorer Trasferta: ${m.awayTeam.topScorer.name} (${m.awayTeam.topScorer.goals} gol)</div>` : ''}
+        </div>
+
+        <div class="border-t border-slate-700/50 pt-2 grid grid-cols-2 gap-2">
+          <div class="bg-slate-800 p-2 rounded-xl text-center">
+            <div class="text-[10px] text-slate-400">Quote Bookmaker</div>
+            <div class="text-xs font-bold text-slate-200">1: ${m.odds.homeWin} | X: ${m.odds.draw} | 2: ${m.odds.awayWin}</div>
+            <div class="text-[10px] text-slate-400">O2.5: ${m.odds.over25} | GG: ${m.odds.gg}</div>
+          </div>
+          <div class="bg-blue-600/20 border border-blue-500/30 p-2 rounded-xl text-center">
+            <div class="text-[10px] text-blue-300 font-semibold">Previsione Algoritmo</div>
+            <div class="text-sm font-extrabold text-blue-400">${prev.risultatoStimato} (${prev.probabilitaPercentuale})</div>
+            <div class="text-[10px] text-slate-300">${prev.esitoOver25} | ${prev.esitoGoalNoGoal}</div>
+          </div>
+        </div>
+      `;
+      return card;
+    }
+
+    async function caricaDaValidare() {
+      if (!db) return;
+      const container = document.getElementById('listaDaValidare');
+      container.innerHTML = "<p class='text-xs text-slate-400'>Caricamento match in attesa...</p>";
+      
+      const snap = await db.collection("palinsesto_attivo").get();
+      container.innerHTML = "";
+
+      snap.forEach(doc => {
+        const m = doc.data();
+        const div = document.createElement('div');
+        div.className = "apple-card p-3 flex justify-between items-center text-xs";
+        div.innerHTML = `
+          <div>
+            <div class="font-bold">${m.homeTeam.name} - ${m.awayTeam.name}</div>
+            <div class="text-slate-400">Previsto: ${m.previsione.risultatoStimato}</div>
+          </div>
+          <span class="bg-amber-500/20 text-amber-400 px-2 py-1 rounded text-[10px]">In Attesa Esito</span>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    window.validaERisolvi = async function() {
+      if (!db) return;
+      const dFrom = document.getElementById('dateFrom').value;
+      const dTo = document.getElementById('dateTo').value;
+
+      const res = await fetch(`${WORKER_URL}/api/valida?dateFrom=${dFrom}&dateTo=${dTo}`);
+      const esiti = await res.json();
+
+      const snap = await db.collection("palinsesto_attivo").get();
+
+      for (const doc of snap.docs) {
+        const match = doc.data();
+        const matchReale = esiti.find(e => e.id === match.id);
+
+        if (matchReale && matchReale.status === "FINISHED") {
+          const homeG = matchReale.scoreHome;
+          const awayG = matchReale.scoreAway;
+          const esitoReale1X2 = homeG > awayG ? "1" : (homeG === awayG ? "X" : "2");
+          const azzeccata = match.previsione.risultatoStimato.includes(esitoReale1X2);
+
+          await db.collection("archivio_storico").doc(String(match.id)).set({
+            ...match,
+            risultatoReale: { home: homeG, away: awayG, esito1X2: esitoReale1X2 },
+            previsioneCorrecta: azzeccata,
+            dataArchiviazione: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          await db.collection("palinsesto_attivo").doc(String(match.id)).delete();
+        }
+      }
+
+      alert("Validazione completata!");
+      caricaDaValidare();
+    };
+
+    window.caricaArchivio = async function() {
+      if (!db) return;
+      const container = document.getElementById('listaArchivio');
+      container.innerHTML = "";
+
+      const camp = document.getElementById('filtroCampionato').value;
+      const esito = document.getElementById('filtroEsito').value;
+
+      let query = db.collection("archivio_storico");
+      if (camp !== "ALL") query = query.where("codCampionato", "==", camp);
+      if (esito !== "ALL") query = query.where("previsioneCorrecta", "==", esito === "OK");
+
+      const snap = await query.get();
+
+      snap.forEach(doc => {
+        const m = doc.data();
+        const card = document.createElement('div');
+        card.className = "apple-card p-3 space-y-1 text-xs border-l-4 " + (m.previsioneCorrecta ? "border-l-emerald-500" : "border-l-red-500");
+        card.innerHTML = `
+          <div class="flex justify-between font-bold">
+            <span>${m.homeTeam.name} ${m.risultatoReale.home} - ${m.risultatoReale.away} ${m.awayTeam.name}</span>
+            <span class="${m.previsioneCorrecta ? 'text-emerald-400' : 'text-red-400'}">${m.previsioneCorrecta ? 'PREVISIONE OK' : 'PREVISIONE KO'}</span>
+          </div>
+          <div class="text-[10px] text-slate-400">
+            Pronostico Algoritmo: <b class="text-slate-200">${m.previsione.risultatoStimato}</b> | Risultato Reale: <b class="text-slate-200">${m.risultatoReale.esito1X2}</b>
           </div>
         `;
-      }).join('');
-    }
-
-    // FUNZIONE DI ESPORTAZIONE EXCEL NATIVA (.XLSX)
-    function esportaExcel() {
-      if (!datiCorrenti || !datiCorrenti.partite || datiCorrenti.partite.length === 0) {
-        alert("Nessun palinsesto caricato da esportare!");
-        return;
-      }
-
-      if (typeof XLSX === 'undefined') {
-        alert("Libreria Excel in caricamento... Riprova tra 3 secondi.");
-        return;
-      }
-
-      const convertiNumero = (v) => {
-        if (v === null || v === undefined || v === '-' || v === '') return 0;
-        const n = Number(v);
-        return isNaN(n) ? v : n;
-      };
-
-      const righe = datiCorrenti.partite.map(p => {
-        return {
-          "Campionato": String(p.campionato || ''),
-          "Data Ora": new Date(p.dataOraUTC).toLocaleString('it-IT'),
-          "Squadra Casa": String(p.squadraCasa || ''),
-          "Squadra Ospite": String(p.squadraOspite || ''),
-          "Risultato Finale": String(p.risultatoFinale || 'In attesa'),
-          
-          // Dati Squadra Casa (Numeri puri per formule + Testo per frazioni)
-          "Punti Casa": convertiNumero(p.puntiCasa),
-          "Posizione Casa": String(p.posizioneCasa || '-'),
-          "Giocate Casa": convertiNumero(p.giocateCasa),
-          "V/P/S Casa": String(`${p.vinteCasa ?? 0}/${p.pareggiateCasa ?? 0}/${p.perseCasa ?? 0}`),
-          "Gol Fatti Casa": convertiNumero(p.golFattiCasa),
-          "Gol Subiti Casa": convertiNumero(p.golSubitiCasa),
-          "Punti Solo Casa": convertiNumero(p.puntiCasaSoloCasa),
-          "V/P/S Solo Casa": String(p.vpsCasaSoloCasa || '0/0/0'),
-          "Indice Forma Casa": String(p.indiceFormaCasa || '-'),
-          "Top Scorer Casa": String(p.topScorerCasa || '-'),
-
-          // Dati Squadra Ospite
-          "Punti Ospite": convertiNumero(p.puntiOspite),
-          "Posizione Ospite": String(p.posizioneOspite || '-'),
-          "Giocate Ospite": convertiNumero(p.giocateOspite),
-          "V/P/S Ospite": String(`${p.vinteOspite ?? 0}/${p.pareggiateOspite ?? 0}/${p.perseOspite ?? 0}`),
-          "Gol Fatti Ospite": convertiNumero(p.golFattiOspite),
-          "Gol Subiti Ospite": convertiNumero(p.golSubitiOspite),
-          "Punti Solo Trasferta": convertiNumero(p.puntiOspiteSoloTrasferta),
-          "V/P/S Solo Trasferta": String(p.vpsOspiteSoloTrasferta || '0/0/0'),
-          "Indice Forma Ospite": String(p.indiceFormaOspite || '-'),
-          "Top Scorer Ospite": String(p.topScorerOspite || '-')
-        };
+        container.appendChild(card);
       });
+    };
 
-      // Creazione del foglio di lavoro nativo Excel
-      const worksheet = XLSX.utils.json_to_sheet(righe);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Palinsesto");
+    window.avviaML = async function() {
+      if (!db) return;
+      const snap = await db.collection("archivio_storico").get();
+      const storico = [];
+      snap.forEach(doc => storico.push(doc.data()));
 
-      // Download del file .xlsx
-      const nomeFile = `Palinsesto_Analisi_${new Date().toISOString().split('T')[0]}.xlsx`;
-      XLSX.writeFile(workbook, nomeFile);
-    }
+      const report = eseguiBacktestingECalibrazione(storico);
+      const reportDiv = document.getElementById('mlReport');
 
-    caricaPalinsesto();
+      if (report.messaggio) {
+        reportDiv.innerHTML = `<span class="text-amber-400">${report.messaggio}</span>`;
+      } else {
+        reportDiv.innerHTML = `
+          <div class="text-emerald-400 font-bold">Calibrazione Completata!</div>
+          <div>Gare Analizzate: ${report.totaleGareAnalizzate}</div>
+          <div>Accuratezza Modello: <b class="text-white">${report.accuratezzaBacktest}</b></div>
+          <div class="text-[10px] text-slate-400 pt-1">
+            Nuovi Pesi Ottimizzati:<br>
+            Forma: ${report.pesiOttimizzati.pesoForma.toFixed(2)} | Casa/Trasferta: ${report.pesiOttimizzati.pesoCasaTrasferta.toFixed(2)}
+          </div>
+        `;
+      }
+    };
   </script>
 </body>
 </html>
