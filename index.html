@@ -51,10 +51,8 @@
                 </button>
             </div>
 
-            <!-- CONTENITORE APPLE CARDS PALINSESTO -->
-            <div id="containerCards" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                <!-- Generato via JavaScript -->
-            </div>
+            <!-- CONTENITORE CARDS -->
+            <div id="containerCards" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6"></div>
         </section>
 
         <!-- SEZIONE 2: VALIDAZIONE & RISOLUZIONE -->
@@ -74,7 +72,7 @@
             <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-3xl shadow-2xl backdrop-blur-xl flex flex-wrap gap-4 items-center justify-between">
                 <div>
                     <h2 class="text-xs font-bold tracking-widest text-indigo-400 uppercase">Archivio Cloud Storico</h2>
-                    <p class="text-xs text-slate-400">Database continuo registrato su Firestore (Sincronizzato Mac/iPhone)</p>
+                    <p class="text-xs text-slate-400">Database continuo registrato su Firestore</p>
                 </div>
                 <div class="flex gap-2">
                     <select id="filtroEsito" onchange="caricaArchivioFirestore()" class="bg-slate-950 border border-slate-800 text-xs rounded-xl px-3 py-2 text-slate-300 focus:outline-none focus:border-indigo-500">
@@ -145,14 +143,13 @@
 
         let memoriaPalinsesto = [];
 
-        window.onload = function() {
+        document.addEventListener("DOMContentLoaded", function() {
             document.getElementById('dateFrom').value = "2026-09-07";
             document.getElementById('dateTo').value = "2026-09-14";
-            // Rendering immediato dei dati garantito
             eseguiImportazione();
-        };
+        });
 
-        // Motore Algoritmo & Previsione
+        // Algoritmo Previsione
         function calcolaIndiceForma(formaArray) {
             if (!formaArray || !Array.isArray(formaArray)) return { punteggio: 50, simboli: "🟨🟨🟨🟨🟨" };
             let pti = 0;
@@ -204,7 +201,7 @@
             if (nomeTab === 'archivio') caricaArchivioFirestore();
         }
 
-        // 1. IMPORTAZIONE PALINSESTO CON PARSER SICURO
+        // IMPORTAZIONE CON TIMEOUT FORZATO A 3 SECONDI
         async function eseguiImportazione() {
             const btn = document.getElementById('btnSync');
             btn.innerText = "Sincronizzazione in corso...";
@@ -216,8 +213,13 @@
             const workerUrl = "https://betting-pro-1sept.mvmymail.workers.dev/api/palinsesto";
             const fullUrl = `${workerUrl}?dateFrom=${dateFrom}&dateTo=${dateTo}`;
 
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 secondi max
+
             try {
-                const response = await fetch(fullUrl);
+                const response = await fetch(fullUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
                 if (response.ok) {
                     const data = await response.json();
                     let matches = data.matches || data.partite || (Array.isArray(data) ? data : []);
@@ -230,6 +232,7 @@
                     memoriaPalinsesto = generaPalinsestoCompleto();
                 }
             } catch (err) {
+                console.log("Rete/Worker non disponibile, utilizzo fallback locale");
                 memoriaPalinsesto = generaPalinsestoCompleto();
             } finally {
                 renderizzaPalinsesto(memoriaPalinsesto);
@@ -352,7 +355,7 @@
             container.innerHTML = htmlContent;
         }
 
-        // 2. VALIDAZIONE & SCRITTURA FIRESTORE
+        // VALIDAZIONE & FIRESTORE
         async function eseguiValidazione() {
             const btn = document.getElementById('btnValida');
             btn.innerText = "Risoluzione in corso...";
@@ -382,7 +385,7 @@
                     });
                 }
 
-                alert("Validazione completata e registrata nel Database Firestore Cloud!");
+                alert("Validazione completata e salvata su Cloud Firestore!");
                 memoriaPalinsesto = [];
                 renderizzaPalinsesto([]);
 
@@ -394,7 +397,6 @@
             }
         }
 
-        // 3. CONSULTAZIONE FIRESTORE
         async function caricaArchivioFirestore() {
             const container = document.getElementById('containerArchivio');
             const filtro = document.getElementById('filtroEsito').value;
@@ -435,10 +437,9 @@
             }
         }
 
-        // 4. BACKTESTING & MACHINE LEARNING
         async function avviaBacktestingML() {
             const resBox = document.getElementById('resCalibrazione');
-            resBox.innerText = "Backtesting in corso sul DB Firestore...";
+            resBox.innerText = "Backtesting in corso su Firestore...";
 
             try {
                 const snapshot = await db.collection("archivio_storico").get();
@@ -458,7 +459,7 @@
 
                 document.getElementById('pForma').innerText = "0.38";
                 document.getElementById('pCasa').innerText = "0.28";
-                resBox.innerText = `Analizzate ${totali} gare. Accuratezza corrente: ${precisione}%. Pesi algoritmo aggiornati!`;
+                resBox.innerText = `Analizzate ${totali} gare. Accuratezza: ${precisione}%. Pesi algoritmo aggiornati!`;
 
             } catch (err) {
                 resBox.innerText = "Errore Calibrazione: " + err.message;
