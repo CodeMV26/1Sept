@@ -21,68 +21,137 @@
     <!-- MAIN CONTAINER -->
     <main class="flex-1 max-w-6xl w-full mx-auto p-4 flex flex-col items-center justify-center">
         
-        <!-- CARD FILTRI -->
-        <div class="bg-slate-800/60 border border-slate-700/50 p-6 rounded-2xl max-w-xl w-full shadow-2xl backdrop-blur-sm">
-            <h2 class="text-sm font-semibold tracking-wider text-slate-400 uppercase mb-4">Filtra & Importa Palinsesto</h2>
-            
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Data Inizio</label>
-                    <input type="date" id="dateFrom" class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+        <!-- SEZIONE 1: PALINSESTO -->
+        <section id="sec-palinsesto" class="w-full flex flex-col items-center">
+            <div class="bg-slate-800/60 border border-slate-700/50 p-6 rounded-2xl max-w-xl w-full shadow-2xl backdrop-blur-sm">
+                <h2 class="text-sm font-semibold tracking-wider text-slate-400 uppercase mb-4">Filtra & Importa Palinsesto</h2>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Data Inizio</label>
+                        <input type="date" id="dateFrom" class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Data Fine</label>
+                        <input type="date" id="dateTo" class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1">Data Fine</label>
-                    <input type="date" id="dateTo" class="w-full bg-slate-900/80 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
-                </div>
+
+                <button id="btnSync" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl shadow-lg transition duration-200">
+                    Sincronizza / Importa Palinsesto
+                </button>
             </div>
 
-            <button id="btnSync" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl shadow-lg transition duration-200">
-                Sincronizza / Importa Palinsesto
+            <!-- TABELLA RISULTATI -->
+            <div id="containerRisultati" class="w-full mt-8 hidden">
+                <h3 class="text-lg font-semibold text-slate-200 mb-3">Partite Trovate (<span id="txtTotale">0</span>)</h3>
+                <div class="overflow-x-auto bg-slate-800/40 rounded-xl border border-slate-700/50">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="bg-slate-800 text-slate-400 text-xs uppercase border-b border-slate-700">
+                            <tr>
+                                <th class="px-4 py-3">Data/Ora</th>
+                                <th class="px-4 py-3">Campionato</th>
+                                <th class="px-4 py-3">Partita</th>
+                                <th class="px-4 py-3 text-center">Stato</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbPalinsesto" class="divide-y divide-slate-700/50">
+                            <!-- Popolato via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEZIONE 2: VALIDAZIONE -->
+        <section id="sec-validazione" class="w-full max-w-xl bg-slate-800/60 border border-slate-700/50 p-6 rounded-2xl shadow-2xl hidden">
+            <h2 class="text-sm font-semibold tracking-wider text-slate-400 uppercase mb-4">Validazione Pronostici</h2>
+            <p class="text-sm text-slate-300 mb-4">Confronta i pronostici elaborati dal modello con i risultati reali ottenuti.</p>
+            <div id="validazioneContent" class="text-xs text-slate-400 italic bg-slate-900/50 p-4 rounded-xl">
+                Nessun pronostico recente da validare. Sincronizza prima il palinsesto.
+            </div>
+        </section>
+
+        <!-- SEZIONE 3: ARCHIVIO -->
+        <section id="sec-archivio" class="w-full max-w-xl bg-slate-800/60 border border-slate-700/50 p-6 rounded-2xl shadow-2xl hidden">
+            <h2 class="text-sm font-semibold tracking-wider text-slate-400 uppercase mb-4">Archivio Storico</h2>
+            <p class="text-sm text-slate-300 mb-4">Storico completo delle partite analizzate ed esiti salvati.</p>
+            <div class="text-xs text-slate-400 italic bg-slate-900/50 p-4 rounded-xl">
+                L'archivio è attualmente vuoto.
+            </div>
+        </section>
+
+        <!-- SEZIONE 4: ML ENGINE -->
+        <section id="sec-mlengine" class="w-full max-w-xl bg-slate-800/60 border border-slate-700/50 p-6 rounded-2xl shadow-2xl hidden">
+            <h2 class="text-sm font-semibold tracking-wider text-slate-400 uppercase mb-4">Engine di Machine Learning</h2>
+            <div class="space-y-3 text-sm text-slate-300">
+                <div class="flex justify-between border-b border-slate-700/50 pb-2">
+                    <span>Peso Forma Recent:</span>
+                    <span class="font-mono text-blue-400">0.35</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-700/50 pb-2">
+                    <span>Peso Casa/Trasferta:</span>
+                    <span class="font-mono text-blue-400">0.30</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-700/50 pb-2">
+                    <span>Peso Posizione Classifica:</span>
+                    <span class="font-mono text-blue-400">0.20</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-700/50 pb-2">
+                    <span>Peso Attacco/Difesa:</span>
+                    <span class="font-mono text-blue-400">0.15</span>
+                </div>
+            </div>
+            <button id="btnCalibra" class="w-full mt-5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 rounded-xl transition">
+                Esegui Calibrazione Algoritmo
             </button>
-        </div>
-
-        <!-- TABELLA RISULTATI -->
-        <div id="containerRisultati" class="w-full mt-8 hidden">
-            <h3 class="text-lg font-semibold text-slate-200 mb-3">Partite Trovate (<span id="txtTotale">0</span>)</h3>
-            <div class="overflow-x-auto bg-slate-800/40 rounded-xl border border-slate-700/50">
-                <table class="w-full text-left text-sm text-slate-300">
-                    <thead class="bg-slate-800 text-slate-400 text-xs uppercase border-b border-slate-700">
-                        <tr>
-                            <th class="px-4 py-3">Data/Ora</th>
-                            <th class="px-4 py-3">Campionato</th>
-                            <th class="px-4 py-3">Partita</th>
-                            <th class="px-4 py-3 text-center">Stato</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbPalinsesto" class="divide-y divide-slate-700/50">
-                        <!-- Popolato via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        </section>
 
     </main>
 
-    <!-- FOOTER NAV -->
+    <!-- FOOTER NAV CON GESTIONE CAMBIO SCHEDA -->
     <footer class="p-4 flex justify-center space-x-2 border-t border-slate-800 bg-slate-950/40">
-        <button class="px-5 py-1.5 rounded-full bg-blue-600 text-white text-sm font-medium">Palinsesto</button>
-        <button class="px-5 py-1.5 rounded-full text-slate-400 hover:text-white text-sm font-medium">Validazione</button>
-        <button class="px-5 py-1.5 rounded-full text-slate-400 hover:text-white text-sm font-medium">Archivio</button>
-        <button class="px-5 py-1.5 rounded-full text-slate-400 hover:text-white text-sm font-medium">ML Engine</button>
+        <button onclick="cambiaTab('palinsesto')" id="tab-palinsesto" class="px-5 py-1.5 rounded-full bg-blue-600 text-white text-sm font-medium transition">Palinsesto</button>
+        <button onclick="cambiaTab('validazione')" id="tab-validazione" class="px-5 py-1.5 rounded-full text-slate-400 hover:text-white text-sm font-medium transition">Validazione</button>
+        <button onclick="cambiaTab('archivio')" id="tab-archivio" class="px-5 py-1.5 rounded-full text-slate-400 hover:text-white text-sm font-medium transition">Archivio</button>
+        <button onclick="cambiaTab('mlengine')" id="tab-mlengine" class="px-5 py-1.5 rounded-full text-slate-400 hover:text-white text-sm font-medium transition">ML Engine</button>
     </footer>
 
-    <!-- SCRIPT INFORMATO E COMPATIBILE CON I MODULI ES6 -->
+    <!-- LOGICA JS -->
     <script type="module">
-        import { calcolaPrevisioneMatch } from './algorithmEngine.js';
+        import { calcolaPrevisioneMatch, eseguiBacktestingECalibrazione } from './algorithmEngine.js';
 
+        // Imposta date iniziali
         document.addEventListener("DOMContentLoaded", () => {
             const oggi = new Date().toISOString().split('T')[0];
             document.getElementById('dateFrom').value = oggi;
             document.getElementById('dateTo').value = oggi;
 
             document.getElementById('btnSync').addEventListener('click', eseguiImportazione);
+            document.getElementById('btnCalibra').addEventListener('click', () => {
+                const esito = eseguiBacktestingECalibrazione([]);
+                alert(esito.messaggio || "Calibrazione completata!");
+            });
         });
 
+        // Cambio schede di navigazione
+        window.cambiaTab = function(nomeTab) {
+            ['palinsesto', 'validazione', 'archivio', 'mlengine'].forEach(t => {
+                const sec = document.getElementById(`sec-${t}`);
+                const btn = document.getElementById(`tab-${t}`);
+                if (sec && btn) {
+                    if (t === nomeTab) {
+                        sec.classList.remove('hidden');
+                        btn.className = "px-5 py-1.5 rounded-full bg-blue-600 text-white text-sm font-medium transition";
+                    } else {
+                        sec.classList.add('hidden');
+                        btn.className = "px-5 py-1.5 rounded-full text-slate-400 hover:text-white text-sm font-medium transition";
+                    }
+                }
+            });
+        };
+
+        // Funzione Importazione
         async function eseguiImportazione() {
             const btn = document.getElementById('btnSync');
             btn.innerText = "Sincronizzazione in corso...";
@@ -92,32 +161,18 @@
             const dateTo = document.getElementById('dateTo').value;
 
             const workerUrl = "https://betting-pro-1sept.mvmymail.workers.dev/api/palinsesto";
-            
-            // Invio parametro campionati sia in formato JSON che come fallback
-            const campionatiArray = [
-                {cod: "SA", nome: "Serie A (Italia)", fetchScorers: true},
-                {cod: "PL", nome: "Premier League (Inghilterra)", fetchScorers: true},
-                {cod: "PD", nome: "La Liga (Spagna)", fetchScorers: true},
-                {cod: "BL1", nome: "Bundesliga (Germania)", fetchScorers: true},
-                {cod: "FL1", nome: "Ligue 1 (Francia)", fetchScorers: true},
-                {cod: "DED", nome: "Eredivisie (Olanda)", fetchScorers: false},
-                {cod: "PPL", nome: "Primeira Liga (Portogallo)", fetchScorers: false}
-            ];
-
-            const fullUrl = `${workerUrl}?dateFrom=${dateFrom}&dateTo=${dateTo}&campionati=${encodeURIComponent(JSON.stringify(campionatiArray))}`;
+            const fullUrl = `${workerUrl}?dateFrom=${dateFrom}&dateTo=${dateTo}`;
 
             try {
                 const response = await fetch(fullUrl);
-                if (!response.ok) {
-                    throw new Error(`Errore HTTP ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`Errore Server HTTP ${response.status}`);
 
                 const data = await response.json();
                 const partite = data.partite || data.matches || (Array.isArray(data) ? data : []);
                 mostraInTabella(partite);
 
             } catch (err) {
-                alert("Errore durante l'importazione: " + err.message);
+                alert("Errore Sincronizzazione: " + err.message);
             } finally {
                 btn.innerText = "Sincronizza / Importa Palinsesto";
                 btn.disabled = false;
