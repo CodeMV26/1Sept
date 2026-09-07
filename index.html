@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="algorithmEngine.js"></script>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col justify-between">
 
@@ -37,7 +36,7 @@
                 </div>
             </div>
 
-            <button id="btnSync" onclick="eseguiImportazione()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl shadow-lg transition duration-200">
+            <button id="btnSync" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl shadow-lg transition duration-200">
                 Sincronizza / Importa Palinsesto
             </button>
         </div>
@@ -72,12 +71,16 @@
         <button class="px-5 py-1.5 rounded-full text-slate-400 hover:text-white text-sm font-medium">ML Engine</button>
     </footer>
 
-    <!-- SCRIPT SENZA BLOCCO FILTRI -->
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
+    <!-- SCRIPT INFORMATO E COMPATIBILE CON I MODULI ES6 -->
+    <script type="module">
+        import { calcolaPrevisioneMatch } from './algorithmEngine.js';
+
+        document.addEventListener("DOMContentLoaded", () => {
             const oggi = new Date().toISOString().split('T')[0];
             document.getElementById('dateFrom').value = oggi;
             document.getElementById('dateTo').value = oggi;
+
+            document.getElementById('btnSync').addEventListener('click', eseguiImportazione);
         });
 
         async function eseguiImportazione() {
@@ -88,31 +91,33 @@
             const dateFrom = document.getElementById('dateFrom').value;
             const dateTo = document.getElementById('dateTo').value;
 
-            // Inviamo l'URL base con date
-            const baseUrl = "https://betting-pro-1sept.mvmymail.workers.dev/api/palinsesto";
+            const workerUrl = "https://betting-pro-1sept.mvmymail.workers.dev/api/palinsesto";
             
-            // Proviamo prima inviando i codici trasfusi come stringa semplice separata da virgole
-            const codiciCampionati = "SA,PL,PD,BL1,FL1,CL,DED,PPL,BSA,ELC,CLI,WC";
-            let targetUrl = baseUrl + "?dateFrom=" + dateFrom + "&dateTo=" + dateTo + "&campionati=" + codiciCampionati;
+            // Invio parametro campionati sia in formato JSON che come fallback
+            const campionatiArray = [
+                {cod: "SA", nome: "Serie A (Italia)", fetchScorers: true},
+                {cod: "PL", nome: "Premier League (Inghilterra)", fetchScorers: true},
+                {cod: "PD", nome: "La Liga (Spagna)", fetchScorers: true},
+                {cod: "BL1", nome: "Bundesliga (Germania)", fetchScorers: true},
+                {cod: "FL1", nome: "Ligue 1 (Francia)", fetchScorers: true},
+                {cod: "DED", nome: "Eredivisie (Olanda)", fetchScorers: false},
+                {cod: "PPL", nome: "Primeira Liga (Portogallo)", fetchScorers: false}
+            ];
+
+            const fullUrl = `${workerUrl}?dateFrom=${dateFrom}&dateTo=${dateTo}&campionati=${encodeURIComponent(JSON.stringify(campionatiArray))}`;
 
             try {
-                let response = await fetch(targetUrl);
-                let data = await response.json();
-                let listaPartite = data.partite || data.matches || (Array.isArray(data) ? data : []);
-
-                // Se non trova partite, effettua tentativi con parametri alternativi
-                if (!listaPartite || listaPartite.length === 0) {
-                    // Secondo tentativo: Chiamata senza filtro campionati
-                    const fallbackUrl = baseUrl + "?dateFrom=" + dateFrom + "&dateTo=" + dateTo;
-                    const resFallback = await fetch(fallbackUrl);
-                    const dataFallback = await resFallback.json();
-                    listaPartite = dataFallback.partite || dataFallback.matches || (Array.isArray(dataFallback) ? dataFallback : []);
+                const response = await fetch(fullUrl);
+                if (!response.ok) {
+                    throw new Error(`Errore HTTP ${response.status}`);
                 }
 
-                mostraInTabella(listaPartite);
+                const data = await response.json();
+                const partite = data.partite || data.matches || (Array.isArray(data) ? data : []);
+                mostraInTabella(partite);
 
             } catch (err) {
-                alert("Errore Sincronizzazione: " + err.message);
+                alert("Errore durante l'importazione: " + err.message);
             } finally {
                 btn.innerText = "Sincronizza / Importa Palinsesto";
                 btn.disabled = false;
@@ -130,20 +135,22 @@
             if (!partite || partite.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">Nessuna partita trovata per le date selezionate.</td></tr>';
             } else {
-                partite.forEach(function(p) {
+                partite.forEach(p => {
                     const row = document.createElement('tr');
                     row.className = "hover:bg-slate-800/60 transition";
                     
-                    const orario = p.utcDate ? new Date(p.utcDate).toLocaleTimeString('it-IT', {hour: '2-2digit', minute:'2-2digit'}) : (p.ora || p.time || p.date || '-');
+                    const orario = p.utcDate ? new Date(p.utcDate).toLocaleTimeString('it-IT', {hour: '2-2digit', minute:'2-2digit'}) : (p.ora || p.time || '-');
                     const lega = p.competition ? (p.competition.name || p.competition) : (p.campionato || p.league || '-');
                     const casa = p.homeTeam ? (p.homeTeam.name || p.homeTeam) : (p.squadraCasa || p.home || '-');
                     const ospite = p.awayTeam ? (p.awayTeam.name || p.awayTeam) : (p.squadraOspite || p.away || '-');
                     const stato = p.status || 'SCHEDULED';
 
-                    row.innerHTML = '<td class="px-4 py-3 font-mono text-xs text-slate-400">' + orario + '</td>' +
-                                    '<td class="px-4 py-3 font-medium text-blue-400">' + lega + '</td>' +
-                                    '<td class="px-4 py-3 text-slate-200 font-semibold">' + casa + ' vs ' + ospite + '</td>' +
-                                    '<td class="px-4 py-3 text-center"><span class="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">' + stato + '</span></td>';
+                    row.innerHTML = `
+                        <td class="px-4 py-3 font-mono text-xs text-slate-400">${orario}</td>
+                        <td class="px-4 py-3 font-medium text-blue-400">${lega}</td>
+                        <td class="px-4 py-3 text-slate-200 font-semibold">${casa} vs ${ospite}</td>
+                        <td class="px-4 py-3 text-center"><span class="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded">${stato}</span></td>
+                    `;
                     tbody.appendChild(row);
                 });
             }
