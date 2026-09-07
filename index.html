@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoccerStats ML</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase Compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
@@ -27,109 +26,47 @@
     <!-- MAIN CONTAINER -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 my-2">
         
-        <!-- SEZIONE 1: PALINSESTO ATTIVO -->
+        <!-- SEZIONE PALINSESTO -->
         <section id="sec-palinsesto" class="space-y-6">
             <div class="bg-slate-900/60 border border-slate-800/80 p-6 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
                 <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-4 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zM3 16a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2z"></path></svg>
-                    Filtra & Importa Palinsesto
+                    FILTRA & IMPORTA PALINSESTO
                 </h2>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1.5">Data Inizio</label>
-                        <input type="date" id="dateFrom" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
+                        <input type="date" id="dateFrom" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1.5">Data Fine</label>
-                        <input type="date" id="dateTo" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
+                        <input type="date" id="dateTo" class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
                     </div>
                 </div>
 
-                <button id="btnSync" onclick="sincronizzaPalinsesto()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-3 rounded-xl shadow-lg shadow-blue-500/20 transition duration-200 active:scale-[0.99] text-sm cursor-pointer">
+                <button id="btnSync" onclick="sincronizzaPalinsesto()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-3 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer">
                     Sincronizza / Importa Palinsesto
                 </button>
 
-                <!-- Box Notifica / Errori -->
-                <div id="statusMessage" class="hidden mt-3 p-3 rounded-xl text-xs text-center border"></div>
+                <div id="statusMessage" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
             </div>
 
-            <!-- CONTENITORE CARDS -->
+            <!-- CONTENITORE CARDS DOVE VENGONO MOSTRATE LE PARTITE -->
             <div id="containerCards" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6"></div>
-        </section>
-
-        <!-- SEZIONE 2: VALIDAZIONE -->
-        <section id="sec-validazione" class="hidden space-y-6">
-            <div class="bg-slate-900/60 border border-slate-800/80 p-6 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
-                <h2 class="text-xs font-bold tracking-widest text-emerald-400 uppercase mb-2">Validazione & Risoluzione Palinsesto</h2>
-                <p class="text-xs text-slate-400 mb-5">Recupera i risultati reali per le gare concluse, valida i pronostici e le sposta nell'archivio storico.</p>
-                <button id="btnValida" onclick="eseguiValidazione()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl shadow-lg shadow-emerald-500/20 transition duration-200 text-sm">
-                    Valida e Risolvi Palinsesto
-                </button>
-            </div>
-            <div id="containerValidazione" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-        </section>
-
-        <!-- SEZIONE 3: ARCHIVIO -->
-        <section id="sec-archivio" class="hidden space-y-6">
-            <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-3xl shadow-2xl backdrop-blur-xl flex flex-wrap gap-4 items-center justify-between">
-                <div>
-                    <h2 class="text-xs font-bold tracking-widest text-indigo-400 uppercase">Archivio Cloud Storico</h2>
-                    <p class="text-xs text-slate-400">Database continuo registrato su Firestore</p>
-                </div>
-                <div>
-                    <select id="filtroEsito" onchange="caricaArchivioFirestore()" class="bg-slate-950 border border-slate-800 text-xs rounded-xl px-3 py-2 text-slate-300 focus:outline-none focus:border-indigo-500">
-                        <option value="Tutti">Tutti gli esiti</option>
-                        <option value="OK">Previsioni Azzeccate</option>
-                        <option value="KO">Previsioni Sbagliate</option>
-                    </select>
-                </div>
-            </div>
-            <div id="containerArchivio" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
-        </section>
-
-        <!-- SEZIONE 4: MACHINE LEARNING ENGINE -->
-        <section id="sec-mlengine" class="hidden space-y-6">
-            <div class="bg-slate-900/60 border border-slate-800/80 p-6 rounded-3xl shadow-2xl backdrop-blur-xl max-w-xl mx-auto">
-                <h2 class="text-xs font-bold tracking-widest text-amber-400 uppercase mb-4">Machine Learning / Calibrazione Algoritmo</h2>
-                <div class="space-y-3 text-sm text-slate-300 mb-6 bg-slate-950/60 p-4 rounded-2xl border border-slate-800/60">
-                    <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
-                        <span class="text-xs text-slate-400">Peso Forma Recente:</span>
-                        <span id="pForma" class="font-mono text-blue-400 font-bold">0.35</span>
-                    </div>
-                    <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
-                        <span class="text-xs text-slate-400">Peso Factor Casa/Trasferta:</span>
-                        <span id="pCasa" class="font-mono text-blue-400 font-bold">0.30</span>
-                    </div>
-                    <div class="flex justify-between items-center border-b border-slate-800/80 pb-2">
-                        <span class="text-xs text-slate-400">Peso Posizione Classifica:</span>
-                        <span id="pRank" class="font-mono text-blue-400 font-bold">0.20</span>
-                    </div>
-                    <div class="flex justify-between items-center pb-1">
-                        <span class="text-xs text-slate-400">Peso Attacco/Difesa:</span>
-                        <span id="pAttDef" class="font-mono text-blue-400 font-bold">0.15</span>
-                    </div>
-                </div>
-                <button id="btnCalibra" onclick="avviaBacktestingML()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-3 rounded-xl shadow-lg shadow-amber-500/20 transition duration-200 text-sm">
-                    Esegui Backtesting & Ricalibra Pesi
-                </button>
-                <div id="resCalibrazione" class="mt-4 text-xs text-slate-400 text-center font-mono"></div>
-            </div>
         </section>
 
     </main>
 
-    <!-- FOOTER NAVIGATION (FISSATO IN BASSO SENZA SOVRAPPOSIZIONI) -->
+    <!-- FOOTER NAV -->
     <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-2rem)] z-50">
         <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center">
-            <button onclick="cambiaTab('palinsesto')" id="tab-palinsesto" class="flex-1 py-2 px-3 rounded-full bg-blue-600 text-white text-xs font-semibold transition duration-200">Palinsesto</button>
-            <button onclick="cambiaTab('validazione')" id="tab-validazione" class="flex-1 py-2 px-3 rounded-full text-slate-400 hover:text-white text-xs font-semibold transition duration-200">Validazione</button>
-            <button onclick="cambiaTab('archivio')" id="tab-archivio" class="flex-1 py-2 px-3 rounded-full text-slate-400 hover:text-white text-xs font-semibold transition duration-200">Archivio</button>
-            <button onclick="cambiaTab('mlengine')" id="tab-mlengine" class="flex-1 py-2 px-3 rounded-full text-slate-400 hover:text-white text-xs font-semibold transition duration-200">ML Engine</button>
+            <button class="flex-1 py-2 px-3 rounded-full bg-blue-600 text-white text-xs font-semibold">Palinsesto</button>
+            <button class="flex-1 py-2 px-3 rounded-full text-slate-400 text-xs font-semibold">Validazione</button>
+            <button class="flex-1 py-2 px-3 rounded-full text-slate-400 text-xs font-semibold">Archivio</button>
+            <button class="flex-1 py-2 px-3 rounded-full text-slate-400 text-xs font-semibold">ML Engine</button>
         </div>
     </footer>
 
-    <!-- SCRIPT LOGICO COMPLETO -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyDvZ6My0UlFyzAIMvKvWdNneQPajryjvsw",
@@ -139,330 +76,115 @@
             messagingSenderId: "157886609369",
             appId: "1:157886609369:web:565f3a44ec8d1dba3c8bc8"
         };
-
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
 
         let memoriaPalinsesto = [];
 
         window.onload = function() {
-            document.getElementById('dateFrom').value = "2026-09-07";
-            document.getElementById('dateTo').value = "2026-09-14";
-            
-            // Renderizza subito le partite locali senza attendere chiamate in sospeso
-            memoriaPalinsesto = generaPalinsestoPredefinito();
-            renderizzaPalinsesto(memoriaPalinsesto);
+            // Imposta di default la data odierna e tra 7 giorni
+            const oggi = new Date();
+            const tra7giorni = new Date();
+            tra7giorni.setDate(oggi.getDate() + 7);
+
+            document.getElementById('dateFrom').value = oggi.toISOString().split('T')[0];
+            document.getElementById('dateTo').value = tra7giorni.toISOString().split('T')[0];
+
+            // Chiamata automatica all'avvio
+            sincronizzaPalinsesto();
         };
 
         function mostraMessaggio(testo, tipo = 'info') {
             const msgBox = document.getElementById('statusMessage');
             msgBox.classList.remove('hidden', 'bg-rose-950/80', 'border-rose-800', 'text-rose-300', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-blue-950/80', 'border-blue-800', 'text-blue-300');
             
-            if (tipo === 'error') {
-                msgBox.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
-            } else if (tipo === 'success') {
-                msgBox.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
-            } else {
-                msgBox.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
-            }
+            if (tipo === 'error') msgBox.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
+            else if (tipo === 'success') msgBox.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+            else msgBox.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
 
             msgBox.innerText = testo;
         }
 
-        function sincronizzaPalinsesto() {
+        async function sincronizzaPalinsesto() {
             const btn = document.getElementById('btnSync');
-            btn.innerText = "Sincronizzazione in corso...";
+            btn.innerText = "Estrazione API in corso...";
             btn.disabled = true;
-            mostraMessaggio("Richiesta in corso al Cloudflare Worker...", "info");
+            mostraMessaggio("Connessione in corso a Football-Data API...", "info");
 
             const workerUrl = "https://betting-pro-1sept.mvmymail.workers.dev/api/palinsesto";
             const dateFrom = document.getElementById('dateFrom').value;
             const dateTo = document.getElementById('dateTo').value;
 
-            // Timeout di sicurezza a 8 secondi per evitare che il pulsante rimanga bloccato
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-            fetch(`${workerUrl}?dateFrom=${dateFrom}&dateTo=${dateTo}`, { signal: controller.signal })
-                .then(res => {
-                    if (!res.ok) throw new Error(`HTTP Error Status: ${res.status}`);
-                    return res.json();
-                })
-                .then(data => {
-                    clearTimeout(timeoutId);
-                    let matches = data.matches || data.partite || (Array.isArray(data) ? data : []);
-                    if (matches && matches.length > 0) {
-                        memoriaPalinsesto = matches;
-                        renderizzaPalinsesto(memoriaPalinsesto);
-                        mostraMessaggio("Palinsesto aggiornato con successo dall'API!", "success");
-                    } else {
-                        mostraMessaggio("Nessun match trovato per le date selezionate. Caricato palinsesto predefinito.", "info");
-                    }
-                })
-                .catch(err => {
-                    clearTimeout(timeoutId);
-                    console.warn("Errore di rete/worker:", err);
-                    mostraMessaggio("Connessione al Worker fallita o in timeout. Visualizzati dati locali di backup.", "error");
-                    renderizzaPalinsesto(memoriaPalinsesto);
-                })
-                .finally(() => {
-                    btn.innerText = "Sincronizza / Importa Palinsesto";
-                    btn.disabled = false;
-                });
-        }
-
-        function calcolaIndiceForma(formaArray) {
-            if (!formaArray || !Array.isArray(formaArray)) return { punteggio: 50, simboli: "🟨🟨🟨🟨🟨" };
-            let pti = 0;
-            let simboli = "";
-            formaArray.slice(-5).forEach(m => {
-                if (m === 'W' || m === 'V') { pti += 3; simboli += "🟩"; }
-                else if (m === 'D' || m === 'N') { pti += 1; simboli += "🟨"; }
-                else { simboli += "🟥"; }
-            });
-            const pct = Math.round((pti / 15) * 100);
-            return { punteggio: pct, simboli: simboli };
-        }
-
-        function calcolaPrevisioneMatch(home, away) {
-            const xGHome = ((home.homeGf / (home.giocate || 1)) * 1.15).toFixed(2);
-            const xGAway = ((away.awayGf / (away.giocate || 1)) * 0.95).toFixed(2);
-            
-            let esito = "1";
-            if (xGHome - xGAway > 0.4) esito = "1";
-            else if (xGAway - xGHome > 0.4) esito = "2";
-            else esito = "1X";
-
-            const over = (parseFloat(xGHome) + parseFloat(xGAway)) > 2.5 ? "OVER 2.5" : "UNDER 2.5";
-            const conf = Math.min(88, Math.max(55, Math.round(50 + (Math.abs(xGHome - xGAway) * 20))));
-
-            return {
-                xG: { home: xGHome, away: xGAway },
-                risultatoStimato: esito,
-                esitoOver25: over,
-                probabilitaPercentuale: conf + "%"
-            };
-        }
-
-        function cambiaTab(nomeTab) {
-            ['palinsesto', 'validazione', 'archivio', 'mlengine'].forEach(t => {
-                const sec = document.getElementById(`sec-${t}`);
-                const btn = document.getElementById(`tab-${t}`);
-                if (sec && btn) {
-                    if (t === nomeTab) {
-                        sec.classList.remove('hidden');
-                        btn.className = "flex-1 py-2 px-3 rounded-full bg-blue-600 text-white text-xs font-semibold transition duration-200 shadow-lg shadow-blue-500/30";
-                    } else {
-                        sec.classList.add('hidden');
-                        btn.className = "flex-1 py-2 px-3 rounded-full text-slate-400 hover:text-white text-xs font-semibold transition duration-200";
-                    }
-                }
-            });
-
-            if (nomeTab === 'archivio') caricaArchivioFirestore();
-        }
-
-        function generaPalinsestoPredefinito() {
-            return [
-                {
-                    campionato: "Serie A (Italia)",
-                    home: "Inter", away: "Juventus", utcDate: "2026-09-12T20:45:00Z",
-                    homeRank: 1, awayRank: 3,
-                    homeStats: { giocate: 10, homePoints: 24, homeGf: 22, homeGs: 8, form: ["W","W","W","D","W"] },
-                    awayStats: { giocate: 10, awayPoints: 20, awayGf: 17, awayGs: 10, form: ["W","L","W","W","D"] },
-                    topScorer: "Lautaro M. (7)", topAssist: "Barella N. (4)",
-                    odds: { p1: "2.05", pX: "3.30", p2: "3.70", over: "1.85" }
-                },
-                {
-                    campionato: "Premier League (Inghilterra)",
-                    home: "Arsenal", away: "Chelsea", utcDate: "2026-09-13T17:30:00Z",
-                    homeRank: 2, awayRank: 5,
-                    homeStats: { giocate: 10, homePoints: 22, homeGf: 20, homeGs: 9, form: ["W","W","D","W","L"] },
-                    awayStats: { giocate: 10, awayPoints: 17, awayGf: 15, awayGs: 12, form: ["D","W","L","W","D"] },
-                    topScorer: "Saka B. (6)", topAssist: "Odegaard M. (5)",
-                    odds: { p1: "1.90", pX: "3.50", p2: "4.10", over: "1.75" }
-                }
-            ];
-        }
-
-        function renderizzaPalinsesto(partite) {
-            const container = document.getElementById('containerCards');
-            if (!container) return;
-
-            let htmlContent = '';
-
-            partite.forEach((p) => {
-                const homeName = p.homeTeam?.name || p.home || 'Casa';
-                const awayName = p.awayTeam?.name || p.away || 'Trasferta';
-                const camp = p.competition?.name || p.campionato || 'Campionato';
-
-                const homeStats = p.homeStats || { giocate: 10, homePoints: 15, homeGf: 16, homeGs: 11, form: ["W","D","L","W","W"] };
-                const awayStats = p.awayStats || { giocate: 10, awayPoints: 12, awayGf: 12, awayGs: 14, form: ["L","W","D","L","W"] };
-
-                const formaHome = calcolaIndiceForma(homeStats.form);
-                const formaAway = calcolaIndiceForma(awayStats.form);
-                const prev = calcolaPrevisioneMatch(homeStats, awayStats);
-
-                htmlContent += `
-                <div class="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-5 shadow-2xl backdrop-blur-xl flex flex-col justify-between hover:border-slate-700/80 transition">
-                    <div>
-                        <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800/60 pb-2">
-                            <span class="font-bold text-blue-400 tracking-wider">${camp}</span>
-                            <span class="font-mono text-slate-400">${p.utcDate ? new Date(p.utcDate).toLocaleString('it-IT', {day:'2-2digit', month:'2-2digit', hour:'2-2digit', minute:'2-2digit'}) : 'In Programma'}</span>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4 mb-4">
-                            <div class="space-y-1">
-                                <div class="text-base font-bold text-slate-100">${homeName}</div>
-                                <div class="text-[11px] text-slate-400">Pos: <b class="text-slate-200">#${p.homeRank || '2'}</b> | Pti: <b class="text-slate-200">${homeStats.homePoints}</b></div>
-                                <div class="text-[11px] text-slate-400">Gol C: <b class="text-emerald-400">${homeStats.homeGf}</b>/<b class="text-rose-400">${homeStats.homeGs}</b></div>
-                                <div class="text-[11px] mt-1">${formaHome.simboli} (${formaHome.punteggio}%)</div>
-                            </div>
-                            <div class="space-y-1 text-right">
-                                <div class="text-base font-bold text-slate-100">${awayName}</div>
-                                <div class="text-[11px] text-slate-400">Pos: <b class="text-slate-200">#${p.awayRank || '5'}</b> | Pti: <b class="text-slate-200">${awayStats.awayPoints}</b></div>
-                                <div class="text-[11px] text-slate-400">Gol T: <b class="text-emerald-400">${awayStats.awayGf}</b>/<b class="text-rose-400">${awayStats.awayGs}</b></div>
-                                <div class="text-[11px] mt-1">${formaAway.simboli} (${formaAway.punteggio}%)</div>
-                            </div>
-                        </div>
-
-                        <div class="bg-slate-950/50 rounded-2xl p-2.5 mb-4 border border-slate-800/50 text-[11px] flex justify-between text-slate-400">
-                            <div>⚽ Top: <span class="text-slate-200 font-medium">${p.topScorer || 'Attaccante Top'}</span></div>
-                            <div>🎯 Assist: <span class="text-slate-200 font-medium">${p.topAssist || 'Regista Top'}</span></div>
-                        </div>
-
-                        <div class="grid grid-cols-4 gap-1.5 mb-4 text-center text-[10px]">
-                            <div class="bg-slate-950/80 p-1.5 rounded-xl border border-slate-800/80"><div class="text-slate-500">1</div><div class="font-bold text-slate-200">${p.odds?.p1 || '2.00'}</div></div>
-                            <div class="bg-slate-950/80 p-1.5 rounded-xl border border-slate-800/80"><div class="text-slate-500">X</div><div class="font-bold text-slate-200">${p.odds?.pX || '3.30'}</div></div>
-                            <div class="bg-slate-950/80 p-1.5 rounded-xl border border-slate-800/80"><div class="text-slate-500">2</div><div class="font-bold text-slate-200">${p.odds?.p2 || '3.60'}</div></div>
-                            <div class="bg-slate-950/80 p-1.5 rounded-xl border border-slate-800/80"><div class="text-slate-500">O2.5</div><div class="font-bold text-slate-200">${p.odds?.over || '1.80'}</div></div>
-                        </div>
-                    </div>
-
-                    <div class="bg-gradient-to-r from-blue-950/40 to-indigo-950/40 border border-blue-800/40 rounded-2xl p-3 flex justify-between items-center">
-                        <div>
-                            <div class="text-[10px] uppercase font-bold text-blue-400 tracking-wider">Pronostico ML Engine</div>
-                            <div class="text-xs text-slate-300">xG: ${prev.xG.home} - ${prev.xG.away} | ${prev.esitoOver25}</div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-lg font-extrabold text-blue-300">${prev.risultatoStimato}</div>
-                            <div class="text-[10px] text-emerald-400 font-semibold">${prev.probabilitaPercentuale} Conf.</div>
-                        </div>
-                    </div>
-                </div>`;
-            });
-
-            container.innerHTML = htmlContent;
-        }
-
-        async function eseguiValidazione() {
-            const btn = document.getElementById('btnValida');
-            btn.innerText = "Risoluzione in corso...";
-            btn.disabled = true;
-
             try {
-                for (const item of memoriaPalinsesto) {
-                    const homeScore = Math.floor(Math.random() * 3);
-                    const awayScore = Math.floor(Math.random() * 2);
-                    const esitoReale1X2 = homeScore > awayScore ? "1" : (homeScore === awayScore ? "X" : "2");
-                    
-                    const prev = calcolaPrevisioneMatch(
-                        item.homeStats || { giocate: 10, homePoints: 15, homeGf: 16, homeGs: 11, form: ["W"] },
-                        item.awayStats || { giocate: 10, awayPoints: 12, awayGf: 12, awayGs: 14, form: ["L"] }
-                    );
+                const response = await fetch(`${workerUrl}?dateFrom=${dateFrom}&dateTo=${dateTo}`);
+                const data = await response.json();
 
-                    const azzeccata = prev.risultatoStimato.includes(esitoReale1X2);
-
-                    await db.collection("archivio_storico").add({
-                        partita: `${item.homeTeam?.name || item.home} vs ${item.awayTeam?.name || item.away}`,
-                        campionato: item.competition?.name || item.campionato,
-                        risultatoReale: `${homeScore} - ${awayScore}`,
-                        esitoReale: esitoReale1X2,
-                        pronosticoAlgoritmo: prev.risultatoStimato,
-                        esitoCorretto: azzeccata,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                if (data.error) {
+                    throw new Error(data.error + (data.details ? `: ${data.details}` : ''));
                 }
 
-                alert("Validazione completata e salvata su Firestore!");
-                memoriaPalinsesto = [];
-                renderizzaPalinsesto([]);
+                const matches = data.matches || [];
+
+                if (matches.length > 0) {
+                    memoriaPalinsesto = matches;
+                    renderizzaPalinsesto(memoriaPalinsesto);
+                    mostraMessaggio(`SUCCESS: Estratte ed elaborate ${matches.length} partite dall'API!`, "success");
+                } else {
+                    document.getElementById('containerCards').innerHTML = '';
+                    mostraMessaggio(`L'API ha risposto con 0 partite nel range ${dateFrom} - ${dateTo}. Prova ad allargare le date al prossimo weekend.`, "error");
+                }
 
             } catch (err) {
-                alert("Errore Firestore: " + err.message);
+                console.error("Errore estrazione:", err);
+                mostraMessaggio("ERRORE ESTRAZIONE: " + err.message, "error");
             } finally {
-                btn.innerText = "Valida e Risolvi Palinsesto";
+                btn.innerText = "Sincronizza / Importa Palinsesto";
                 btn.disabled = false;
             }
         }
 
-        async function caricaArchivioFirestore() {
-            const container = document.getElementById('containerArchivio');
-            const filtro = document.getElementById('filtroEsito').value;
-            container.innerHTML = '<div class="col-span-full text-center py-6 text-slate-500">Connessione a Firestore Cloud...</div>';
+        function renderizzaPalinsesto(partite) {
+            const container = document.getElementById('containerCards');
+            container.innerHTML = '';
 
-            try {
-                let snapshot = await db.collection("archivio_storico").orderBy("timestamp", "desc").limit(30).get();
-                container.innerHTML = '';
+            partite.forEach(p => {
+                const homeName = p.homeTeam?.name || p.homeTeam?.shortName || "Casa";
+                const awayName = p.awayTeam?.name || p.awayTeam?.shortName || "Trasferta";
+                const campionato = p.competition?.name || "Campionato";
+                const dataMatch = p.utcDate ? new Date(p.utcDate).toLocaleString('it-IT', { day: '2-2digit', month: '2-2digit', hour: '2-2digit', minute: '2-2digit' }) : 'Da definire';
 
-                if (snapshot.empty) {
-                    container.innerHTML = `<div class="col-span-full text-center py-8 text-slate-500 text-sm">Nessun dato registrato. Esegui la prima validazione.</div>`;
-                    return;
-                }
+                const cardHtml = `
+                <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col justify-between hover:border-blue-500/50 transition">
+                    <div>
+                        <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800/80 pb-2">
+                            <span class="font-bold text-blue-400 uppercase tracking-wider">${campionato}</span>
+                            <span class="font-mono text-slate-300">${dataMatch}</span>
+                        </div>
 
-                snapshot.forEach(doc => {
-                    const d = doc.data();
-                    if (filtro === "OK" && !d.esitoCorretto) return;
-                    if (filtro === "KO" && d.esitoCorretto) return;
+                        <div class="grid grid-cols-2 gap-4 my-4">
+                            <div class="space-y-1">
+                                <div class="text-base font-bold text-slate-100">${homeName}</div>
+                                <div class="text-xs text-emerald-400 font-semibold">Casa</div>
+                            </div>
+                            <div class="space-y-1 text-right">
+                                <div class="text-base font-bold text-slate-100">${awayName}</div>
+                                <div class="text-xs text-indigo-400 font-semibold">Ospite</div>
+                            </div>
+                        </div>
+                    </div>
 
-                    const card = `
-                    <div class="bg-slate-900/40 border ${d.esitoCorretto ? 'border-emerald-800/40' : 'border-rose-800/40'} p-4 rounded-2xl flex justify-between items-center backdrop-blur-xl">
+                    <div class="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-3 flex justify-between items-center mt-2">
                         <div>
-                            <div class="text-[10px] text-slate-400">${d.campionato}</div>
-                            <div class="text-sm font-bold text-slate-200">${d.partita}</div>
-                            <div class="text-xs text-slate-400">Reale: <b class="text-slate-100">${d.risultatoReale}</b> | Pronostico: <b class="text-blue-400">${d.pronosticoAlgoritmo}</b></div>
+                            <div class="text-[10px] uppercase font-bold text-slate-400">Stato Partita</div>
+                            <div class="text-xs font-semibold text-blue-400">${p.status || 'SCHEDULED'}</div>
                         </div>
                         <div class="text-right">
-                            <span class="px-2.5 py-1 text-xs font-bold rounded-full ${d.esitoCorretto ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60' : 'bg-rose-950 text-rose-400 border border-rose-800/60'}">
-                                ${d.esitoCorretto ? 'AZZECCATA' : 'SBAGLIATA'}
-                            </span>
+                            <div class="text-xs font-bold text-emerald-400">Pronta per ML</div>
                         </div>
-                    </div>`;
-                    container.insertAdjacentHTML('beforeend', card);
-                });
+                    </div>
+                </div>`;
 
-            } catch (err) {
-                container.innerHTML = `<div class="col-span-full text-center py-6 text-rose-400 text-xs">Errore Firestore: ${err.message}</div>`;
-            }
-        }
-
-        async function avviaBacktestingML() {
-            const resBox = document.getElementById('resCalibrazione');
-            resBox.innerText = "Backtesting in corso su Firestore...";
-
-            try {
-                const snapshot = await db.collection("archivio_storico").get();
-                let azzeccati = 0;
-                let totali = snapshot.size;
-
-                if (totali === 0) {
-                    resBox.innerText = "Registra almeno alcune gare per ricalibrare i pesi ML.";
-                    return;
-                }
-
-                snapshot.forEach(doc => {
-                    if (doc.data().esitoCorretto) azzeccati++;
-                });
-
-                const precisione = ((azzeccati / totali) * 100).toFixed(1);
-
-                document.getElementById('pForma').innerText = "0.38";
-                document.getElementById('pCasa').innerText = "0.28";
-                resBox.innerText = `Analizzate ${totali} gare. Accuratezza: ${precisione}%. Pesi algoritmo aggiornati!`;
-
-            } catch (err) {
-                resBox.innerText = "Errore Calibrazione: " + err.message;
-            }
+                container.insertAdjacentHTML('beforeend', cardHtml);
+            });
         }
     </script>
 </body>
