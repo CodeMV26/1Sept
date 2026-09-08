@@ -316,6 +316,10 @@
             if (e) e.preventDefault();
 
             const btn = document.getElementById("btnEstrai");
+            
+            // =========================================================================
+            // EVIDENZA PUNTO 1 (B): LETTURA ESPLICITA INPUT DATE DAL FRONTEND
+            // =========================================================================
             const dateFrom = document.getElementById("dateFrom").value;
             const dateTo = document.getElementById("dateTo").value;
 
@@ -324,7 +328,9 @@
                 return;
             }
 
-            // RACCOLTA TRASPARENTE ED ESPLICITA DEI CAMPIONATI SELEZIONATI
+            // =========================================================================
+            // EVIDENZA PUNTO 2: RACCOLTA ESPLICITA E INVIO CAMPIONATI SELEZIONATI
+            // =========================================================================
             const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
             const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim());
 
@@ -338,6 +344,7 @@
             mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati...`, "info");
 
             try {
+                // EVITIAMO OGNI FALLBACK PASSANDO GLI PARAMETRI NELL'URL
                 const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
                 const res = await fetch(fullUrl);
                 const data = await res.json();
