@@ -18,7 +18,7 @@
                 <h1 class="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">SoccerStats ML</h1>
             </div>
             <div id="syncBadge" class="px-3 py-1 bg-emerald-950/80 text-emerald-400 rounded-full text-xs font-semibold border border-emerald-800/60 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Live Sync
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Live Sync
             </div>
         </div>
     </header>
@@ -29,12 +29,24 @@
         <section id="sec-palinsesto" class="space-y-6">
             <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
                 <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2 flex items-center gap-2">
-                    ESTRAZIONE E SINCRONIZZAZIONE PALINSESTO
+                    ESTRAZIONE &amp; SINCRONIZZAZIONE PALINSESTO
                 </h2>
                 
                 <p class="text-xs text-slate-400 mb-4">
-                    Estrai i dati dall'API, calcola le metriche e salvali su Firebase per sincronizzare iPhone e Mac in tempo reale.
+                    Seleziona l'intervallo temporale delle partite da analizzare:
                 </p>
+
+                <!-- SELETTORE RANGE DATE -->
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
+                        <input type="date" id="dateFrom" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Fine</label>
+                        <input type="date" id="dateTo" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
 
                 <button id="btnEstrai" onclick="sincronizzaESalva()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                     Estrai Partite e Sincronizza Cloud
@@ -71,17 +83,24 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // URL ORIGINALE CORRETTO DEL WORKER
         const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
 
-        // ASCOLTO IN TEMPO REALE DA FIREBASE (Per sincronizzare iPhone e Mac automaticamente)
+        // Imposta date di default (Oggi e Oggi + 14 giorni)
         window.onload = function() {
+            const oggi = new Date();
+            const futuro = new Date();
+            futuro.setDate(oggi.getDate() + 14);
+
+            document.getElementById("dateFrom").value = oggi.toISOString().split("T")[0];
+            document.getElementById("dateTo").value = futuro.toISOString().split("T")[0];
+
+            // Ascolto sincronizzato in tempo reale da Cloud Firestore
             db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
                     if (data.partite && data.partite.length > 0) {
                         mostraPartite(data.partite);
-                        mostraStato(`Sincronizzato Cloud: ${data.partite.length} partite in memoria (Ultimo aggiornamento: ${data.ultimoAggiornamento || 'di recente'})`, "success");
+                        mostraStato(`Sincronizzato Cloud: ${data.partite.length} partite (${data.intervallo || 'intervallo personalizzato'}) - Aggiornato: ${data.ultimoAggiornamento}`, "success");
                     }
                 }
             });
@@ -99,7 +118,6 @@
                 return { simboli: "N/D", punteggio: "N/D" };
             }
             
-            // Gestisce sia il formato "W,D,L" che "WDL"
             const esiti = strForma.includes(",") ? strForma.split(",").map(e => e.trim()) : strForma.split("");
             let p = 0;
             let sim = "";
@@ -132,7 +150,7 @@
             risultati.innerHTML = "";
 
             if (!partite || partite.length === 0) {
-                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita presente in memoria.</div>`;
+                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata nell'intervallo selezionato.</div>`;
                 return;
             }
 
@@ -228,12 +246,21 @@
 
         async function sincronizzaESalva() {
             const btn = document.getElementById("btnEstrai");
+            const dateFrom = document.getElementById("dateFrom").value;
+            const dateTo = document.getElementById("dateTo").value;
+
+            if (!dateFrom || !dateTo) {
+                alert("Seleziona entrambe le date!");
+                return;
+            }
+
             btn.disabled = true;
             btn.textContent = "Estrazione & Sincronizzazione...";
-            mostraStato("Estrazione API in corso (circa 2 minuti)...", "info");
+            mostraStato(`Estrazione in corso dal ${dateFrom} al ${dateTo}...`, "info");
 
             try {
-                const res = await fetch(WORKER_URL);
+                const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}`;
+                const res = await fetch(fullUrl);
                 const data = await res.json();
 
                 if (data.errore) {
@@ -244,13 +271,14 @@
                     // SALVATAGGIO AUTOMATICO SU FIREBASE
                     await db.collection("palinsesto").doc("corrente").set({
                         partite: data.partite,
+                        intervallo: `${dateFrom} / ${dateTo}`,
                         ultimoAggiornamento: ora,
                         totale: data.partite.length
                     });
 
-                    mostraStato(`Completato! Trovate e salvate su Cloud ${data.partite.length} partite.`, "success");
+                    mostraStato(`Completato! Trovate e sincronizzate ${data.partite.length} partite nell'intervallo selezionato.`, "success");
                 } else {
-                    mostraStato("Nessuna partita trovata nei prossimi giorni.", "error");
+                    mostraStato("Nessuna partita trovata nell'intervallo selezionato.", "error");
                 }
             } catch (e) {
                 console.error(e);
