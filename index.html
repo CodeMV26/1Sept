@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SoccerStats ML</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -15,48 +15,48 @@
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
                 <div class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
-                <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">SoccerStats ML</h1>
+                <h1 class="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">SoccerStats ML</h1>
             </div>
             <div id="syncBadge" class="px-3 py-1 bg-emerald-950/80 text-emerald-400 rounded-full text-xs font-semibold border border-emerald-800/60 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Firebase Ready
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Live Sync
             </div>
         </div>
     </header>
 
     <!-- MAIN CONTAINER -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 my-2">
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 my-2">
         
-        <!-- SEZIONE PALINSESTO -->
+        <!-- SEZIONE CONTROL PANEL -->
         <section id="sec-palinsesto" class="space-y-6">
-            <div class="bg-slate-900/60 border border-slate-800/80 p-6 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
                 <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2 flex items-center gap-2">
-                    ESTRAZIONE E CALCOLO PALINSESTO
+                    IMPORTAZIONE &amp; SINCRONIZZAZIONE PALINSESTO
                 </h2>
                 
-                <p class="text-xs text-slate-400 mb-5">
-                    Interroga i 12 campionati principali, scarica le classifiche e calcola le metriche avanzate (Medie Gol, Rendimento Casa/Trasferta, Forma e Indici ML).
+                <p class="text-xs text-slate-400 mb-4">
+                    Estrai i dati dall'API e salvali sul cloud. I dati si sincronizzeranno automaticamente su tutti i dispositivi connessi.
                 </p>
 
-                <button id="btnEstrai" onclick="sincronizzaPalinsesto()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                    Estrai Partite e Calcola Metriche (prossimi 4 giorni)
+                <button id="btnEstrai" onclick="sincronizzaE Salva()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                    Estrai Partite e Sincronizza Cloud
                 </button>
 
                 <div id="stato" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
             </div>
 
             <!-- CONTENITORE CARDS DOVE VENGONO MOSTRATE LE PARTITE -->
-            <div id="risultati" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6"></div>
+            <div id="risultati" class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
         </section>
 
     </main>
 
     <!-- FOOTER NAV -->
     <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-2rem)] z-50">
-        <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center">
-            <button class="flex-1 py-2 px-3 rounded-full bg-blue-600 text-white text-xs font-semibold">Palinsesto</button>
-            <button class="flex-1 py-2 px-3 rounded-full text-slate-400 text-xs font-semibold">Validazione</button>
-            <button class="flex-1 py-2 px-3 rounded-full text-slate-400 text-xs font-semibold">Archivio</button>
-            <button class="flex-1 py-2 px-3 rounded-full text-slate-400 text-xs font-semibold">ML Engine</button>
+        <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center">
+            <button class="flex-1 py-2 px-2 rounded-full bg-blue-600 text-white text-xs font-semibold truncate">Palinsesto</button>
+            <button class="flex-1 py-2 px-2 rounded-full text-slate-400 text-xs font-semibold truncate">Validazione</button>
+            <button class="flex-1 py-2 px-2 rounded-full text-slate-400 text-xs font-semibold truncate">Archivio</button>
+            <button class="flex-1 py-2 px-2 rounded-full text-slate-400 text-xs font-semibold truncate">ML Engine</button>
         </div>
     </footer>
 
@@ -70,13 +70,49 @@
             appId: "1:157886609369:web:565f3a44ec8d1dba3c8bc8"
         };
         firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-        const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
+        const WORKER_URL = "https://betting-pro-1sept.mvmymail.workers.dev/";
+
+        // ASCOLTO IN TEMPO REALE DA FIREBASE (Per sincronizzare iPhone e Mac)
+        window.onload = function() {
+            db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.partite) {
+                        mostraPartite(data.partite);
+                        mostraStato(`Sincronizzato Cloud: ${data.partite.length} partite (Aggiornato il ${data.ultimoAggiornamento || 'di recente'})`, "success");
+                    }
+                }
+            });
+        };
 
         function formattaData(isoString) {
-            if (!isoString) return "Data N.D.";
+            if (!isoString) return "N.D.";
             const d = new Date(isoString);
             return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        }
+
+        // CALCOLO FORMA VISIVA CON PALLINI COLORATI
+        function calcolaIndiceForma(strForma) {
+            if (!strForma || typeof strForma !== "string" || strForma.trim() === "") {
+                return { simboli: "N/D", punteggio: "N/D" };
+            }
+            
+            const esiti = strForma.split(",").map(e => e.trim());
+            let p = 0;
+            let sim = "";
+            
+            esiti.forEach(e => {
+                if (e === "W") { p += 1.0; sim += "🟩"; }
+                else if (e === "D") { p += 0.5; sim += "🟨"; }
+                else if (e === "L") { p += 0.0; sim += "🟥"; }
+            });
+
+            return {
+                simboli: sim || "N/D",
+                punteggio: p.toFixed(1) + " / " + esiti.length + ".0"
+            };
         }
 
         function mostraStato(testo, tipo = 'info') {
@@ -95,130 +131,133 @@
             risultati.innerHTML = "";
 
             if (!partite || partite.length === 0) {
-                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata nei prossimi 4 giorni.</div>`;
+                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata nel database cloud.</div>`;
                 return;
             }
 
             partite.forEach(p => {
+                const formaCasaObj = calcolaIndiceForma(p.formaCasa);
+                const formaOspiteObj = calcolaIndiceForma(p.formaOspite);
+
                 const card = document.createElement("div");
-                card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition";
+                card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition";
                 card.innerHTML = `
                     <div>
-                        <!-- HEAD: Campionato, Giornata e Ora -->
+                        <!-- HEAD -->
                         <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
-                            <span class="font-bold text-blue-400 uppercase tracking-wider">${p.campionato} ${p.giornata ? `(G. ${p.giornata})` : ''}</span>
-                            <span class="font-mono text-slate-300">${formattaData(p.dataOraUTC)}</span>
+                            <span class="font-bold text-blue-400 uppercase tracking-wider truncate max-w-[60%]">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
+                            <span class="font-mono text-slate-300 text-[11px]">${formattaData(p.dataOraUTC)}</span>
                         </div>
 
                         <!-- SQUADRE -->
-                        <div class="grid grid-cols-2 gap-4 my-3">
-                            <div class="space-y-1">
-                                <div class="text-lg font-bold text-slate-100">${p.squadraCasa}</div>
-                                <div class="text-xs text-emerald-400 font-medium flex items-center gap-2">
-                                    <span>Casa</span>
-                                    <span class="bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded text-[10px]">Forma: ${p.formaCasa}</span>
+                        <div class="grid grid-cols-2 gap-2 my-3 items-start">
+                            <div class="space-y-1 min-w-0">
+                                <div class="text-sm sm:text-base font-bold text-slate-100 truncate">${p.squadraCasa}</div>
+                                <div class="text-[11px] text-emerald-400 font-medium">Casa</div>
+                                <div class="text-[10px] text-slate-300 bg-slate-950 px-2 py-1 rounded border border-slate-800 mt-1">
+                                    <span>${formaCasaObj.simboli}</span>
+                                    <div class="text-[9px] text-slate-400">${formaCasaObj.punteggio}</div>
                                 </div>
                             </div>
-                            <div class="space-y-1 text-right">
-                                <div class="text-lg font-bold text-slate-100">${p.squadraOspite}</div>
-                                <div class="text-xs text-indigo-400 font-medium flex items-center gap-2 justify-end">
-                                    <span class="bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded text-[10px]">Forma: ${p.formaOspite}</span>
-                                    <span>Ospite</span>
+                            <div class="space-y-1 text-right min-w-0">
+                                <div class="text-sm sm:text-base font-bold text-slate-100 truncate">${p.squadraOspite}</div>
+                                <div class="text-[11px] text-indigo-400 font-medium">Ospite</div>
+                                <div class="text-[10px] text-slate-300 bg-slate-950 px-2 py-1 rounded border border-slate-800 mt-1">
+                                    <span>${formaOspiteObj.simboli}</span>
+                                    <div class="text-[9px] text-slate-400">${formaOspiteObj.punteggio}</div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- TABELLA COMPARATIVA METRICHE GENERALE -->
-                        <div class="bg-slate-950/60 rounded-2xl p-3 my-3 border border-slate-800/60 text-xs space-y-2">
+                        <!-- RENDIMENTO GENERALE -->
+                        <div class="bg-slate-950/60 rounded-2xl p-3 my-3 border border-slate-800/60 text-xs space-y-1.5">
                             <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Rendimento Generale</div>
                             <div class="flex justify-between text-slate-300">
-                                <span>Classifica / Punti</span>
-                                <span class="font-bold text-slate-100">${p.posizioneCasa}° (${p.puntiCasa} pt) vs ${p.posizioneOspite}° (${p.puntiOspite} pt)</span>
+                                <span>Posizione (Punti)</span>
+                                <span class="font-bold text-slate-100">${p.posizioneCasa}° (${p.puntiCasa}pt) vs ${p.posizioneOspite}° (${p.puntiOspite}pt)</span>
                             </div>
                             <div class="flex justify-between text-slate-300">
                                 <span>Partite Giocate</span>
                                 <span class="font-semibold text-slate-200">${p.giocateCasa} vs ${p.giocateOspite}</span>
                             </div>
                             <div class="flex justify-between text-slate-300">
-                                <span>Totale Gol (Fatti / Subiti)</span>
+                                <span>Gol Fatti / Subiti</span>
                                 <span class="font-semibold text-slate-200">${p.golFattiCasa}/${p.golSubitiCasa} vs ${p.golFattiOspite}/${p.golSubitiOspite}</span>
-                            </div>
-                            <div class="flex justify-between text-slate-300">
-                                <span>Diff. Reti</span>
-                                <span class="font-semibold text-slate-200">${p.diffRetiCasa > 0 ? '+' : ''}${p.diffRetiCasa} vs ${p.diffRetiOspite > 0 ? '+' : ''}${p.diffRetiOspite}</span>
                             </div>
                         </div>
 
-                        <!-- TABELLA COMPARATIVA CASA VS TRASFERTA -->
-                        <div class="bg-slate-950/60 rounded-2xl p-3 my-3 border border-slate-800/60 text-xs space-y-2">
-                            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Specifico Casa / Trasferta</div>
+                        <!-- SPECIFICO CASA VS TRASFERTA -->
+                        <div class="bg-slate-950/60 rounded-2xl p-3 my-3 border border-slate-800/60 text-xs space-y-1.5">
+                            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Casa vs Trasferta</div>
                             <div class="flex justify-between text-slate-300">
-                                <span>Punti (in Casa vs Trasferta)</span>
+                                <span>Punti Specifici</span>
                                 <span class="font-semibold text-slate-200">${p.puntiCasaInCasa} pt vs ${p.puntiOspiteInTrasferta} pt</span>
                             </div>
                             <div class="flex justify-between text-slate-300">
-                                <span>Gol Segnati (in Casa vs Trasferta)</span>
+                                <span>Gol Segnati</span>
                                 <span class="font-semibold text-slate-200">${p.golFattiCasaInCasa} vs ${p.golFattiOspiteInTrasferta}</span>
-                            </div>
-                            <div class="flex justify-between text-slate-300">
-                                <span>Gol Subiti (in Casa vs Trasferta)</span>
-                                <span class="font-semibold text-slate-200">${p.golSubitiCasaInCasa} vs ${p.golSubitiOspiteInTrasferta}</span>
                             </div>
                         </div>
 
-                        <!-- CALCOLI MEDIE & INDICATORI ML -->
-                        <div class="grid grid-cols-3 gap-2 my-3 text-center">
+                        <!-- CALCOLI MEDIE -->
+                        <div class="grid grid-cols-3 gap-1.5 my-3 text-center">
                             <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
-                                <div class="text-[9px] text-slate-400 uppercase font-semibold">Media Punti/G</div>
+                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold">Media Punti</div>
                                 <div class="text-xs font-bold text-emerald-400 mt-0.5">${p.mediaPuntiCasa} | ${p.mediaPuntiOspite}</div>
                             </div>
                             <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
-                                <div class="text-[9px] text-slate-400 uppercase font-semibold">Media Gol Fatti</div>
+                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold">Media Gol</div>
                                 <div class="text-xs font-bold text-blue-400 mt-0.5">${p.mediaGolFattiCasa} | ${p.mediaGolFattiOspite}</div>
                             </div>
                             <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
-                                <div class="text-[9px] text-slate-400 uppercase font-semibold">Indice Gol Attesi</div>
+                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold">Gol Attesi</div>
                                 <div class="text-xs font-bold text-indigo-300 mt-0.5">${p.indiceGolAttesi}</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-3 flex justify-between items-center mt-3">
-                        <span class="text-[10px] uppercase font-bold text-slate-400">Pronto per ML Engine</span>
-                        <span class="text-xs font-bold text-emerald-400">Match ID: ${p.matchId}</span>
+                    <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-2.5 flex justify-between items-center mt-2">
+                        <span class="text-[10px] uppercase font-bold text-slate-400">ID Partita</span>
+                        <span class="text-xs font-bold text-emerald-400">#${p.matchId}</span>
                     </div>
                 `;
                 risultati.appendChild(card);
             });
         }
 
-        function sincronizzaPalinsesto() {
+        async function sincronizzaESalva() {
             const btn = document.getElementById("btnEstrai");
-            const risultati = document.getElementById("risultati");
-
             btn.disabled = true;
-            btn.textContent = "Estrazione & Calcolo in corso...";
-            mostraStato("Attendere circa 2-2.5 minuti per la scansione completa di campionati, classifiche e calcolo metriche...", "info");
-            risultati.innerHTML = "";
+            btn.textContent = "Estrazione & Sincronizzazione...";
+            mostraStato("Estrazione API in corso (2-2.5 min) con salvataggio automatico su Firebase...", "info");
 
-            fetch(WORKER_URL)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.errore) {
-                        mostraStato("Errore: " + (data.messaggio || "richiesta fallita"), "error");
-                    } else {
-                        mostraStato(`Completato! Trovate ${data.totalePartiteTrovate || (data.partite ? data.partite.length : 0)} partite elaborate con metriche avanzate.`, "success");
-                        mostraPartite(data.partite || []);
-                    }
-                })
-                .catch(e => {
-                    console.error(e);
-                    mostraStato("Errore di connessione: " + e.message, "error");
-                })
-                .finally(() => {
-                    btn.disabled = false;
-                    btn.textContent = "Estrai Partite e Calcola Metriche (prossimi 4 giorni)";
-                });
+            try {
+                const res = await fetch(WORKER_URL);
+                const data = await res.json();
+
+                if (data.errore) {
+                    mostraStato("Errore Worker: " + data.messaggio, "error");
+                } else if (data.partite && data.partite.length > 0) {
+                    const ora = new Date().toLocaleString("it-IT");
+                    
+                    // SALVATAGGIO SU FIREBASE FIRESTORE
+                    await db.collection("palinsesto").doc("corrente").set({
+                        partite: data.partite,
+                        ultimoAggiornamento: ora,
+                        totale: data.partite.length
+                    });
+
+                    mostraStato(`Completato e Salvato su Cloud! Trovate ${data.partite.length} partite.`, "success");
+                } else {
+                    mostraStato("Nessuna partita estratta dall'API.", "error");
+                }
+            } catch (e) {
+                console.error(e);
+                mostraStato("Errore di rete: " + e.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Estrai Partite e Sincronizza Cloud";
+            }
         }
     </script>
 </body>
