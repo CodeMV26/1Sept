@@ -211,7 +211,7 @@
             risultati.innerHTML = "";
 
             if (!partite || partite.length === 0) {
-                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata nell'intervallo selezionato.</div>`;
+                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata per la selezione corrente.</div>`;
                 return;
             }
 
@@ -324,7 +324,7 @@
                 return;
             }
 
-            // RACCOLTA RIGOROSA CHECKBOX SELEZIONATE
+            // RACCOLTA TRASPARENTE ED ESPLICITA DEI CAMPIONATI SELEZIONATI
             const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
             const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim());
 
@@ -334,8 +334,8 @@
             }
 
             btn.disabled = true;
-            btn.textContent = "Estrazione & Sincronizzazione...";
-            mostraStato(`Estrazione in corso dal ${dateFrom} al ${dateTo} (${selectedComps.length} campionati selezionati)...`, "info");
+            btn.textContent = "Estrazione in corso...";
+            mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati...`, "info");
 
             try {
                 const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
