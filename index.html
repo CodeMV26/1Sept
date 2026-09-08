@@ -10,7 +10,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-28">
 
-    <!-- C: GRAFICA INIZIALE CONSERVATA INTEGRA -->
+    <!-- C: GRAFICA INIZIALE CONSERVATA INTEGRALMENTE -->
     <header class="p-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -46,7 +46,7 @@
                     </div>
                 </div>
 
-                <!-- FILTRO CAMPIONATI -->
+                <!-- FILTRO CAMPIONATI MULTI-SELEZIONE -->
                 <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
                     <div class="flex justify-between items-center mb-2.5">
                         <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
@@ -324,7 +324,7 @@
                 return;
             }
 
-            // RACCOLTA RIGIDA DEI CHECKBOX
+            // EVIDENZA PUNTO 2: RACCOLTA CHECKBOX RIGIDA
             const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
             const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim());
 
@@ -338,7 +338,6 @@
             mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati...`, "info");
 
             try {
-                // INVIO DIRETTO DEI PARAMETRI CON FORM-ENCODED URL
                 const fullUrl = `${WORKER_URL}?dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
                 const res = await fetch(fullUrl);
                 const data = await res.json();
@@ -347,7 +346,7 @@
                     mostraStato("Errore Worker: " + data.messaggio, "error");
                 } else if (data.partite) {
                     
-                    // SOLUZIONE DRASTICA CLIENT-SIDE GUARD: SECONDABARRIERA DI FILTRAGGIO RIGIDA
+                    // EVIDENZA PUNTO 1 E 2: SECONDO SCUDO DI FILTRAGGIO LOCALE RIGIDO
                     const fStart = new Date(`${dateFrom}T00:00:00Z`).getTime();
                     const fEnd = new Date(`${dateTo}T23:59:59Z`).getTime();
 
