@@ -2,15 +2,15 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>SoccerStats ML</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-24">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-28">
 
-    <!-- HEADER INVARIATO -->
+    <!-- HEADER (Conservato come da immagine allegata) -->
     <header class="p-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -26,9 +26,9 @@
     <!-- MAIN CONTAINER -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 my-2">
         
-        <!-- PANNELLO DI CONTROLLO CONSERVATO ESATTAMENTE COME ALLEGATO -->
+        <!-- SEZIONE PALINSESTO (Invariata grafica prima pagina) -->
         <section id="sec-palinsesto" class="space-y-6">
-            <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
                 <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2 flex items-center gap-2">
                     ESTRAZIONE &amp; SINCRONIZZAZIONE PALINSESTO
                 </h2>
@@ -38,7 +38,7 @@
                 </p>
 
                 <!-- SELETTORE RANGE DATE -->
-                <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
                         <input type="date" id="dateFrom" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
@@ -56,19 +56,19 @@
                 <div id="stato" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
             </div>
 
-            <!-- CONTENITORE CARDS CON DATI GRANULARI AGGIUNTI -->
-            <div id="risultati" class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
+            <!-- CONTENITORE CARDS (Griglia flessibile a prova di schermi da 5.8" fino a desktop) -->
+            <div id="risultati" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
         </section>
 
     </main>
 
     <!-- FOOTER NAV -->
-    <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-2rem)] z-50">
+    <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-1.5rem)] z-50">
         <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center">
-            <button class="flex-1 py-2 px-2 rounded-full bg-blue-600 text-white text-xs font-semibold truncate">Palinsesto</button>
-            <button class="flex-1 py-2 px-2 rounded-full text-slate-400 text-xs font-semibold truncate">Validazione</button>
-            <button class="flex-1 py-2 px-2 rounded-full text-slate-400 text-xs font-semibold truncate">Archivio</button>
-            <button class="flex-1 py-2 px-2 rounded-full text-slate-400 text-xs font-semibold truncate">ML Engine</button>
+            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[11px] sm:text-xs font-semibold truncate">Palinsesto</button>
+            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate">Validazione</button>
+            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate">Archivio</button>
+            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate">ML Engine</button>
         </div>
     </footer>
 
@@ -157,96 +157,96 @@
                 const formaOspiteObj = calcolaIndiceForma(p.formaOspite);
 
                 const card = document.createElement("div");
-                card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition";
+                card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-3.5 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
                 card.innerHTML = `
-                    <div>
+                    <div class="min-w-0">
                         <!-- HEAD -->
                         <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
-                            <span class="font-bold text-blue-400 uppercase tracking-wider truncate max-w-[60%]">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
-                            <span class="font-mono text-slate-300 text-[11px]">${formattaData(p.dataOraUTC)}</span>
+                            <span class="font-bold text-blue-400 uppercase tracking-wider truncate max-w-[55%] sm:max-w-[60%]">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
+                            <span class="font-mono text-slate-300 text-[10px] sm:text-[11px] shrink-0">${formattaData(p.dataOraUTC)}</span>
                         </div>
 
-                        <!-- SQUADRE CON FORMA -->
-                        <div class="grid grid-cols-2 gap-2 my-3 items-start">
+                        <!-- SQUADRE CON FORMA (Adattamento Mobile anti-sovrapposizione) -->
+                        <div class="grid grid-cols-2 gap-2 my-3 items-start min-w-0">
                             <div class="space-y-1 min-w-0">
-                                <div class="text-sm sm:text-base font-bold text-slate-100 truncate">${p.squadraCasa}</div>
-                                <div class="text-[11px] text-emerald-400 font-medium">Casa</div>
-                                <div class="text-[10px] text-slate-300 bg-slate-950 px-2 py-1 rounded border border-slate-800 mt-1 inline-block">
-                                    <div>${formaCasaObj.simboli}</div>
+                                <div class="text-xs sm:text-base font-bold text-slate-100 truncate break-words">${p.squadraCasa}</div>
+                                <div class="text-[10px] sm:text-[11px] text-emerald-400 font-medium">Casa</div>
+                                <div class="text-[10px] text-slate-300 bg-slate-950 px-2 py-1 rounded border border-slate-800 mt-1 inline-block max-w-full overflow-hidden">
+                                    <div class="truncate">${formaCasaObj.simboli}</div>
                                     <div class="text-[9px] text-slate-400 mt-0.5">${formaCasaObj.punteggio}</div>
                                 </div>
                             </div>
                             <div class="space-y-1 text-right min-w-0">
-                                <div class="text-sm sm:text-base font-bold text-slate-100 truncate">${p.squadraOspite}</div>
-                                <div class="text-[11px] text-indigo-400 font-medium">Ospite</div>
-                                <div class="text-[10px] text-slate-300 bg-slate-950 px-2 py-1 rounded border border-slate-800 mt-1 inline-block">
-                                    <div>${formaOspiteObj.simboli}</div>
+                                <div class="text-xs sm:text-base font-bold text-slate-100 truncate break-words">${p.squadraOspite}</div>
+                                <div class="text-[10px] sm:text-[11px] text-indigo-400 font-medium">Ospite</div>
+                                <div class="text-[10px] text-slate-300 bg-slate-950 px-2 py-1 rounded border border-slate-800 mt-1 inline-block max-w-full overflow-hidden">
+                                    <div class="truncate">${formaOspiteObj.simboli}</div>
                                     <div class="text-[9px] text-slate-400 mt-0.5">${formaOspiteObj.punteggio}</div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- RENDIMENTO GENERALE (CON V / P / S) -->
-                        <div class="bg-slate-950/60 rounded-2xl p-3 my-3 border border-slate-800/60 text-xs space-y-1.5">
-                            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Rendimento Generale</div>
-                            <div class="flex justify-between text-slate-300">
-                                <span>Posizione (Punti)</span>
-                                <span class="font-bold text-slate-100">${p.posizioneCasa}° (${p.puntiCasa}pt) vs ${p.posizioneOspite}° (${p.puntiOspite}pt)</span>
+                        <!-- RENDIMENTO GENERALE -->
+                        <div class="bg-slate-950/60 rounded-2xl p-2.5 sm:p-3 my-3 border border-slate-800/60 text-[11px] sm:text-xs space-y-1.5 min-w-0">
+                            <div class="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Rendimento Generale</div>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">Posizione (Punti)</span>
+                                <span class="font-bold text-slate-100 text-right truncate">${p.posizioneCasa}° (${p.puntiCasa}pt) vs ${p.posizioneOspite}° (${p.puntiOspite}pt)</span>
                             </div>
-                            <div class="flex justify-between text-slate-300">
-                                <span>Partite Giocate</span>
-                                <span class="font-semibold text-slate-200">${p.giocateCasa} vs ${p.giocateOspite}</span>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">Partite Giocate</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.giocateCasa} vs ${p.giocateOspite}</span>
                             </div>
-                            <div class="flex justify-between text-slate-300">
-                                <span>V / P / S Generali</span>
-                                <span class="font-semibold text-slate-200">${p.vinteCasa}-${p.pareggiateCasa}-${p.persoCasa} vs ${p.vinteOspite}-${p.pareggiateOspite}-${p.persoOspite}</span>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">V / P / S Generali</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.vinteCasa}-${p.pareggiateCasa}-${p.persoCasa} vs ${p.vinteOspite}-${p.pareggiateOspite}-${p.persoOspite}</span>
                             </div>
-                            <div class="flex justify-between text-slate-300">
-                                <span>Gol Fatti / Subiti</span>
-                                <span class="font-semibold text-slate-200">${p.golFattiCasa}/${p.golSubitiCasa} vs ${p.golFattiOspite}/${p.golSubitiOspite}</span>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">Gol Fatti / Subiti</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.golFattiCasa}/${p.golSubitiCasa} vs ${p.golFattiOspite}/${p.golSubitiOspite}</span>
                             </div>
                         </div>
 
-                        <!-- SPECIFICO CASA VS TRASFERTA (CON V / P / S SPECIFICI) -->
-                        <div class="bg-slate-950/60 rounded-2xl p-3 my-3 border border-slate-800/60 text-xs space-y-1.5">
-                            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Casa vs Trasferta Specifico</div>
-                            <div class="flex justify-between text-slate-300">
-                                <span>Partite Specifiche</span>
-                                <span class="font-semibold text-slate-200">${p.giocateCasaInCasa} in casa vs ${p.giocateOspiteInTrasferta} in trasf.</span>
+                        <!-- SPECIFICO CASA VS TRASFERTA -->
+                        <div class="bg-slate-950/60 rounded-2xl p-2.5 sm:p-3 my-3 border border-slate-800/60 text-[11px] sm:text-xs space-y-1.5 min-w-0">
+                            <div class="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Casa vs Trasferta Specifico</div>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">Partite Specifiche</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.giocateCasaInCasa} in casa vs ${p.giocateOspiteInTrasferta} in trasf.</span>
                             </div>
-                            <div class="flex justify-between text-slate-300">
-                                <span>Punti Specifici</span>
-                                <span class="font-semibold text-slate-200">${p.puntiCasaInCasa} pt vs ${p.puntiOspiteInTrasferta} pt</span>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">Punti Specifici</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.puntiCasaInCasa} pt vs ${p.puntiOspiteInTrasferta} pt</span>
                             </div>
-                            <div class="flex justify-between text-slate-300">
-                                <span>V / P / S Specifico</span>
-                                <span class="font-semibold text-slate-200">${p.vinteCasaInCasa}-${p.pareggiateCasaInCasa}-${p.persoCasaInCasa} vs ${p.vinteOspiteInTrasferta}-${p.pareggiateOspiteInTrasferta}-${p.persoOspiteInTrasferta}</span>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">V / P / S Specifico</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.vinteCasaInCasa}-${p.pareggiateCasaInCasa}-${p.persoCasaInCasa} vs ${p.vinteOspiteInTrasferta}-${p.pareggiateOspiteInTrasferta}-${p.persoOspiteInTrasferta}</span>
                             </div>
-                            <div class="flex justify-between text-slate-300">
-                                <span>Gol Segnati / Subiti</span>
-                                <span class="font-semibold text-slate-200">${p.golFattiCasaInCasa}/${p.golSubitiCasaInCasa} vs ${p.golFattiOspiteInTrasferta}/${p.golSubitiOspiteInTrasferta}</span>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">Gol Segnati / Subiti</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.golFattiCasaInCasa}/${p.golSubitiCasaInCasa} vs ${p.golFattiOspiteInTrasferta}/${p.golSubitiOspiteInTrasferta}</span>
                             </div>
                         </div>
 
                         <!-- CALCOLI MEDIE -->
                         <div class="grid grid-cols-3 gap-1.5 my-3 text-center">
-                            <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
-                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold">Media Punti</div>
-                                <div class="text-xs font-bold text-emerald-400 mt-0.5">${p.mediaPuntiCasa} | ${p.mediaPuntiOspite}</div>
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 sm:p-2 rounded-xl">
+                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold truncate">Media Punti</div>
+                                <div class="text-[11px] sm:text-xs font-bold text-emerald-400 mt-0.5">${p.mediaPuntiCasa} | ${p.mediaPuntiOspite}</div>
                             </div>
-                            <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
-                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold">Media Gol</div>
-                                <div class="text-xs font-bold text-blue-400 mt-0.5">${p.mediaGolFattiCasa} | ${p.mediaGolFattiOspite}</div>
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 sm:p-2 rounded-xl">
+                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold truncate">Media Gol</div>
+                                <div class="text-[11px] sm:text-xs font-bold text-blue-400 mt-0.5">${p.mediaGolFattiCasa} | ${p.mediaGolFattiOspite}</div>
                             </div>
-                            <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
-                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold">Gol Attesi</div>
-                                <div class="text-xs font-bold text-indigo-300 mt-0.5">${p.indiceGolAttesi}</div>
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 sm:p-2 rounded-xl">
+                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold truncate">Gol Attesi</div>
+                                <div class="text-[11px] sm:text-xs font-bold text-indigo-300 mt-0.5">${p.indiceGolAttesi}</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-2.5 flex justify-between items-center mt-2">
-                        <span class="text-[10px] uppercase font-bold text-slate-400">ID Partita</span>
+                    <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-2 sm:p-2.5 flex justify-between items-center mt-2">
+                        <span class="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">ID Partita</span>
                         <span class="text-xs font-bold text-emerald-400">#${p.matchId}</span>
                     </div>
                 `;
