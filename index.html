@@ -31,7 +31,7 @@
                 </h2>
                 
                 <p class="text-xs text-slate-400 mb-4">
-                    Seleziona l'intervallo temporale delle partite da analizzare:
+                    Seleziona l'intervallo temporale ed i campionati da analizzare:
                 </p>
 
                 <!-- B: INTERVALLO TEMPORALE CONSERVATO INTEGRALMENTE -->
@@ -43,6 +43,67 @@
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Fine</label>
                         <input type="date" id="dateTo" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <!-- OPTIMIZATION: FILTRO SELEZIONE CAMPIONATI -->
+                <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
+                    <div class="flex justify-between items-center mb-2.5">
+                        <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
+                        <button type="button" onclick="toggleTuttiCampionati()" class="text-[10px] text-blue-400 hover:text-blue-300 font-semibold underline">
+                            Seleziona / Deseleziona Tutti
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" name="compFilter" value="SA" checked class="rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950">
+                            <span class="text-slate-200 truncate">🇮🇹 Serie A</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" name="compFilter" value="PL" checked class="rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950">
+                            <span class="text-slate-200 truncate">🏴󠁧󠁢󠁥󠁮󠁧󠁢WINDOW Premier League</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" name="compFilter" value="PD" checked class="rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950">
+                            <span class="text-slate-200 truncate">🇪🇸 La Liga</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" name="compFilter" value="BL1" checked class="rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950">
+                            <span class="text-slate-200 truncate">🇩🇪 Bundesliga</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" name="compFilter" value="FL1" checked class="rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950">
+                            <span class="text-slate-200 truncate">🇫🇷 Ligue 1</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" name="compFilter" value="DED" checked class="rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950">
+                            <span class="text-slate-200 truncate">🇳🇱 Eredivisie</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" name="compFilter" value="PPL" checked class="rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950">
+                            <span class="text-slate-200 truncate">🇵🇹 Liga Portugal</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" name="compFilter" value="ELC" checked class="rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950">
+                            <span class="text-slate-200 truncate">🏴󠁧󠁢󠁥󠁮󠁧󠁢WINDOW Championship</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" name="compFilter" value="CL" checked class="rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950">
+                            <span class="text-slate-200 truncate">🇪🇺 Champions League</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" name="compFilter" value="EC" checked class="rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950">
+                            <span class="text-slate-200 truncate">🇪🇺 Euro Championship</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" name="compFilter" value="WC" checked class="rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950">
+                            <span class="text-slate-200 truncate">🌍 World Cup</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" name="compFilter" value="BSA" checked class="rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950">
+                            <span class="text-slate-200 truncate">🇧🇷 Brasileirão</span>
+                        </label>
                     </div>
                 </div>
 
@@ -100,6 +161,12 @@
                 }
             });
         };
+
+        function toggleTuttiCampionati() {
+            const checkboxes = document.querySelectorAll('input[name="compFilter"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+        }
 
         function formattaData(isoString) {
             if (!isoString) return "N.D.";
@@ -255,12 +322,21 @@
                 return;
             }
 
+            // Lettura campionati selezionati dal filtro
+            const selectedCheckboxes = document.querySelectorAll('input[name="compFilter"]:checked');
+            const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+            if (selectedComps.length === 0) {
+                alert("Seleziona almeno un campionato da estrarre!");
+                return;
+            }
+
             btn.disabled = true;
             btn.textContent = "Estrazione & Sincronizzazione...";
-            mostraStato(`Estrazione in corso dal ${dateFrom} al ${dateTo}...`, "info");
+            mostraStato(`Estrazione in corso dal ${dateFrom} al ${dateTo} (${selectedComps.length} campionati)...`, "info");
 
             try {
-                const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}`;
+                const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${selectedComps.join(",")}`;
                 const res = await fetch(fullUrl);
                 const data = await res.json();
 
@@ -272,13 +348,14 @@
                     await db.collection("palinsesto").doc("corrente").set({
                         partite: data.partite,
                         intervallo: `${dateFrom} / ${dateTo}`,
+                        campionatiSelezionati: selectedComps,
                         ultimoAggiornamento: ora,
                         totale: data.partite.length
                     });
 
                     mostraStato(`Completato! Trovate e sincronizzate ${data.partite.length} partite nell'intervallo selezionato.`, "success");
                 } else {
-                    mostraStato("Nessuna partita trovata nell'intervallo selezionato.", "error");
+                    mostraStato("Nessuna partita trovata per i campionati e le date selezionate.", "error");
                 }
             } catch (e) {
                 console.error(e);
