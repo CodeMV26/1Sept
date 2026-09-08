@@ -10,7 +10,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-28">
 
-    <!-- C: GRAFICA PARTE INIZIALE CONSERVATA INTEGRA -->
+    <!-- C: GRAFICA INIZIALE CONSERVATA INTEGRA -->
     <header class="p-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -34,7 +34,7 @@
                     Seleziona l'intervallo temporale ed i campionati da analizzare:
                 </p>
 
-                <!-- B: INTERVALLO TEMPORALE CONSERVATO INTEGRALMENTE -->
+                <!-- B: INTERVALLO TEMPORALE -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
@@ -46,7 +46,7 @@
                     </div>
                 </div>
 
-                <!-- FILTRO CAMPIONATI CON CHECKBOX MULTI-SELEZIONE -->
+                <!-- FILTRO CAMPIONATI -->
                 <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
                     <div class="flex justify-between items-center mb-2.5">
                         <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
@@ -114,7 +114,7 @@
                 <div id="stato" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
             </div>
 
-            <!-- D: GRID RESPONSIVE ANTI SCOMPAGINAMENTO CONSERVATA -->
+            <!-- D: GRID RESPONSIVE -->
             <div id="risultati" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
         </section>
     </main>
@@ -316,10 +316,6 @@
             if (e) e.preventDefault();
 
             const btn = document.getElementById("btnEstrai");
-            
-            // =========================================================================
-            // EVIDENZA PUNTO 1 (B): LETTURA ESPLICITA INPUT DATE DAL FRONTEND
-            // =========================================================================
             const dateFrom = document.getElementById("dateFrom").value;
             const dateTo = document.getElementById("dateTo").value;
 
@@ -328,9 +324,7 @@
                 return;
             }
 
-            // =========================================================================
-            // EVIDENZA PUNTO 2: RACCOLTA ESPLICITA E INVIO CAMPIONATI SELEZIONATI
-            // =========================================================================
+            // RACCOLTA RIGIDA DEI CHECKBOX
             const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
             const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim());
 
@@ -344,27 +338,43 @@
             mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati...`, "info");
 
             try {
-                // EVITIAMO OGNI FALLBACK PASSANDO GLI PARAMETRI NELL'URL
-                const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
+                // INVIO DIRETTO DEI PARAMETRI CON FORM-ENCODED URL
+                const fullUrl = `${WORKER_URL}?dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
                 const res = await fetch(fullUrl);
                 const data = await res.json();
 
                 if (data.errore) {
                     mostraStato("Errore Worker: " + data.messaggio, "error");
-                } else if (data.partite && data.partite.length > 0) {
-                    const ora = new Date().toLocaleString("it-IT");
+                } else if (data.partite) {
                     
-                    await db.collection("palinsesto").doc("corrente").set({
-                        partite: data.partite,
-                        intervallo: `${dateFrom} / ${dateTo}`,
-                        campionatiSelezionati: selectedComps,
-                        ultimoAggiornamento: ora,
-                        totale: data.partite.length
+                    // SOLUZIONE DRASTICA CLIENT-SIDE GUARD: SECONDABARRIERA DI FILTRAGGIO RIGIDA
+                    const fStart = new Date(`${dateFrom}T00:00:00Z`).getTime();
+                    const fEnd = new Date(`${dateTo}T23:59:59Z`).getTime();
+
+                    const partiteFiltrateInLoco = data.partite.filter(p => {
+                        // 1. FILTRO CAMPIONATO RIGIDO
+                        const cOk = selectedComps.includes(p.campionatoCode);
+                        // 2. FILTRO DATA RIGIDO
+                        const pTime = new Date(p.dataOraUTC).getTime();
+                        const dOk = pTime >= fStart && pTime <= fEnd;
+                        return cOk && dOk;
                     });
 
-                    mostraStato(`Completato! Trovate e sincronizzate ${data.partite.length} partite per i campionati selezionati.`, "success");
-                } else {
-                    mostraStato("Nessuna partita trovata per i campionati e le date selezionate.", "error");
+                    if (partiteFiltrateInLoco.length > 0) {
+                        const ora = new Date().toLocaleString("it-IT");
+                        
+                        await db.collection("palinsesto").doc("corrente").set({
+                            partite: partiteFiltrateInLoco,
+                            intervallo: `${dateFrom} / ${dateTo}`,
+                            campionatiSelezionati: selectedComps,
+                            ultimoAggiornamento: ora,
+                            totale: partiteFiltrateInLoco.length
+                        });
+
+                        mostraStato(`Completato! Trovate e sincronizzate ${partiteFiltrateInLoco.length} partite per i campionati selezionati.`, "success");
+                    } else {
+                        mostraStato("Nessuna partita trovata per i campionati e le date selezionate.", "error");
+                    }
                 }
             } catch (err) {
                 console.error(err);
