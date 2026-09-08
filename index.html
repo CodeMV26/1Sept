@@ -10,7 +10,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-28">
 
-    <!-- HEADER (Conservato come da immagine allegata) -->
+    <!-- C: GRAFICA PARTE INIZIALE CONSERVATA INTEGRA -->
     <header class="p-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -23,10 +23,7 @@
         </div>
     </header>
 
-    <!-- MAIN CONTAINER -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 my-2">
-        
-        <!-- SEZIONE PALINSESTO (Invariata grafica prima pagina) -->
         <section id="sec-palinsesto" class="space-y-6">
             <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
                 <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2 flex items-center gap-2">
@@ -37,7 +34,7 @@
                     Seleziona l'intervallo temporale delle partite da analizzare:
                 </p>
 
-                <!-- SELETTORE RANGE DATE -->
+                <!-- B: INTERVALLO TEMPORALE CONSERVATO INTEGRALMENTE -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
@@ -56,13 +53,12 @@
                 <div id="stato" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
             </div>
 
-            <!-- CONTENITORE CARDS (Griglia flessibile a prova di schermi da 5.8" fino a desktop) -->
+            <!-- D: RESPONSIVE GRID ANTI SCOMPAGINAMENTO -->
             <div id="risultati" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
         </section>
-
     </main>
 
-    <!-- FOOTER NAV -->
+    <!-- A: SINCRONIZZAZIONE NAV BAR CONSERVATA -->
     <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-1.5rem)] z-50">
         <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center">
             <button class="flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[11px] sm:text-xs font-semibold truncate">Palinsesto</button>
@@ -160,13 +156,11 @@
                 card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-3.5 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
                 card.innerHTML = `
                     <div class="min-w-0">
-                        <!-- HEAD -->
                         <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
                             <span class="font-bold text-blue-400 uppercase tracking-wider truncate max-w-[55%] sm:max-w-[60%]">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
                             <span class="font-mono text-slate-300 text-[10px] sm:text-[11px] shrink-0">${formattaData(p.dataOraUTC)}</span>
                         </div>
 
-                        <!-- SQUADRE CON FORMA (Adattamento Mobile anti-sovrapposizione) -->
                         <div class="grid grid-cols-2 gap-2 my-3 items-start min-w-0">
                             <div class="space-y-1 min-w-0">
                                 <div class="text-xs sm:text-base font-bold text-slate-100 truncate break-words">${p.squadraCasa}</div>
@@ -186,7 +180,6 @@
                             </div>
                         </div>
 
-                        <!-- RENDIMENTO GENERALE -->
                         <div class="bg-slate-950/60 rounded-2xl p-2.5 sm:p-3 my-3 border border-slate-800/60 text-[11px] sm:text-xs space-y-1.5 min-w-0">
                             <div class="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Rendimento Generale</div>
                             <div class="flex justify-between items-center text-slate-300 gap-2">
@@ -207,7 +200,6 @@
                             </div>
                         </div>
 
-                        <!-- SPECIFICO CASA VS TRASFERTA -->
                         <div class="bg-slate-950/60 rounded-2xl p-2.5 sm:p-3 my-3 border border-slate-800/60 text-[11px] sm:text-xs space-y-1.5 min-w-0">
                             <div class="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Casa vs Trasferta Specifico</div>
                             <div class="flex justify-between items-center text-slate-300 gap-2">
@@ -228,7 +220,6 @@
                             </div>
                         </div>
 
-                        <!-- CALCOLI MEDIE -->
                         <div class="grid grid-cols-3 gap-1.5 my-3 text-center">
                             <div class="bg-slate-950 border border-slate-800 p-1.5 sm:p-2 rounded-xl">
                                 <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold truncate">Media Punti</div>
