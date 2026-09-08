@@ -10,7 +10,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-28">
 
-    <!-- C: GRAFICA INIZIALE CONSERVATA INTEGRALMENTE -->
+    <!-- C) GRAFICA PARTE INIZIALE CONSERVATA SENZA MODIFICHE -->
     <header class="p-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -34,7 +34,7 @@
                     Seleziona l'intervallo temporale ed i campionati da analizzare:
                 </p>
 
-                <!-- B: INTERVALLO TEMPORALE -->
+                <!-- B) INTERVALLO TEMPORALE -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
@@ -46,7 +46,7 @@
                     </div>
                 </div>
 
-                <!-- FILTRO CAMPIONATI MULTI-SELEZIONE -->
+                <!-- EVIDENZA PUNTO 2: FILTRO CAMPIONATI CON CODICI UNIVOCI FOOTBALL-DATA.ORG -->
                 <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
                     <div class="flex justify-between items-center mb-2.5">
                         <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
@@ -114,12 +114,12 @@
                 <div id="stato" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
             </div>
 
-            <!-- D: GRID RESPONSIVE -->
+            <!-- D) LAYOUT ADATTABILE PER IPHONE E DESKTOP CONSERVATO -->
             <div id="risultati" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
         </section>
     </main>
 
-    <!-- A: SINCRONIZZAZIONE NAV BAR CONSERVATA -->
+    <!-- A) SINCRONIZZAZIONE MACBOOK E IPHONE 17 / BARRA NAV CONSERVATA -->
     <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-1.5rem)] z-50">
         <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center">
             <button class="flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[11px] sm:text-xs font-semibold truncate">Palinsesto</button>
@@ -142,6 +142,25 @@
         const db = firebase.firestore();
 
         const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
+
+        // EVIDENZA PUNTO 1: PARSER RIGIDO DATA ANCHE NEL FRONTEND
+        function parseDataInizioFine(dataStr, isEnd = false) {
+            if (!dataStr) return null;
+            let y, m, d;
+            if (dataStr.includes("-")) {
+                const parts = dataStr.split("-");
+                if (parts[0].length === 4) { y = parts[0]; m = parts[1]; d = parts[2]; }
+                else { d = parts[0]; m = parts[1]; y = parts[2]; }
+            } else if (dataStr.includes("/")) {
+                const parts = dataStr.split("/");
+                if (parts[2].length === 4) { d = parts[0]; m = parts[1]; y = parts[2]; }
+                else { y = parts[0]; m = parts[1]; d = parts[2]; }
+            } else {
+                return null;
+            }
+            const isoStr = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T${isEnd ? '23:59:59' : '00:00:00'}Z`;
+            return new Date(isoStr).getTime();
+        }
 
         window.onload = function() {
             const oggi = new Date();
@@ -316,17 +335,17 @@
             if (e) e.preventDefault();
 
             const btn = document.getElementById("btnEstrai");
-            const dateFrom = document.getElementById("dateFrom").value;
-            const dateTo = document.getElementById("dateTo").value;
+            const dateFromRaw = document.getElementById("dateFrom").value;
+            const dateToRaw = document.getElementById("dateTo").value;
 
-            if (!dateFrom || !dateTo) {
+            if (!dateFromRaw || !dateToRaw) {
                 alert("Seleziona entrambe le date!");
                 return;
             }
 
-            // EVIDENZA PUNTO 2: RACCOLTA CHECKBOX RIGIDA
+            // EVIDENZA PUNTO 2: PRELIEVO CODICI UNIVOCI SELEZIONATI
             const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
-            const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim());
+            const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim().toUpperCase());
 
             if (selectedComps.length === 0) {
                 alert("Seleziona almeno un campionato da estrarre!");
@@ -338,7 +357,7 @@
             mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati...`, "info");
 
             try {
-                const fullUrl = `${WORKER_URL}?dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
+                const fullUrl = `${WORKER_URL}?dateFrom=${encodeURIComponent(dateFromRaw)}&dateTo=${encodeURIComponent(dateToRaw)}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
                 const res = await fetch(fullUrl);
                 const data = await res.json();
 
@@ -346,16 +365,14 @@
                     mostraStato("Errore Worker: " + data.messaggio, "error");
                 } else if (data.partite) {
                     
-                    // EVIDENZA PUNTO 1 E 2: SECONDO SCUDO DI FILTRAGGIO LOCALE RIGIDO
-                    const fStart = new Date(`${dateFrom}T00:00:00Z`).getTime();
-                    const fEnd = new Date(`${dateTo}T23:59:59Z`).getTime();
+                    const fStart = parseDataInizioFine(dateFromRaw, false);
+                    const fEnd = parseDataInizioFine(dateToRaw, true);
 
+                    // EVIDENZA PUNTO 1 & 2: FILTRAGGIO RIGIDO SUI CODICI E SULLE DATE SUL FRONTEND
                     const partiteFiltrateInLoco = data.partite.filter(p => {
-                        // 1. FILTRO CAMPIONATO RIGIDO
                         const cOk = selectedComps.includes(p.campionatoCode);
-                        // 2. FILTRO DATA RIGIDO
                         const pTime = new Date(p.dataOraUTC).getTime();
-                        const dOk = pTime >= fStart && pTime <= fEnd;
+                        const dOk = (!fStart || pTime >= fStart) && (!fEnd || pTime <= fEnd);
                         return cOk && dOk;
                     });
 
@@ -364,7 +381,7 @@
                         
                         await db.collection("palinsesto").doc("corrente").set({
                             partite: partiteFiltrateInLoco,
-                            intervallo: `${dateFrom} / ${dateTo}`,
+                            intervallo: `${dateFromRaw} / ${dateToRaw}`,
                             campionatiSelezionati: selectedComps,
                             ultimoAggiornamento: ora,
                             totale: partiteFiltrateInLoco.length
