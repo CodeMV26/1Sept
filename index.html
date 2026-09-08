@@ -46,7 +46,7 @@
                     </div>
                 </div>
 
-                <!-- FILTRO SELEZIONE CAMPIONATI CORRETTO -->
+                <!-- FILTRO CAMPIONATI CON CHECKBOX MULTI-SELEZIONE -->
                 <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
                     <div class="flex justify-between items-center mb-2.5">
                         <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
@@ -324,9 +324,9 @@
                 return;
             }
 
-            // CORREZIONE LETTURA CHECKBOX SELEZIONATE
+            // RACCOLTA RIGOROSA CHECKBOX SELEZIONATE
             const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
-            const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value);
+            const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim());
 
             if (selectedComps.length === 0) {
                 alert("Seleziona almeno un campionato da estrarre!");
@@ -335,7 +335,7 @@
 
             btn.disabled = true;
             btn.textContent = "Estrazione & Sincronizzazione...";
-            mostraStato(`Estrazione in corso dal ${dateFrom} al ${dateTo} (${selectedComps.length} campionati)...`, "info");
+            mostraStato(`Estrazione in corso dal ${dateFrom} al ${dateTo} (${selectedComps.length} campionati selezionati)...`, "info");
 
             try {
                 const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
@@ -355,7 +355,7 @@
                         totale: data.partite.length
                     });
 
-                    mostraStato(`Completato! Trovate e sincronizzate ${data.partite.length} partite nell'intervallo selezionato.`, "success");
+                    mostraStato(`Completato! Trovate e sincronizzate ${data.partite.length} partite per i campionati selezionati.`, "success");
                 } else {
                     mostraStato("Nessuna partita trovata per i campionati e le date selezionate.", "error");
                 }
