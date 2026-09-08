@@ -10,7 +10,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-24">
 
-    <!-- HEADER -->
+    <!-- HEADER INVARIATO -->
     <header class="p-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -26,6 +26,7 @@
     <!-- MAIN CONTAINER -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 my-2">
         
+        <!-- PANNELLO DI CONTROLLO CONSERVATO ESATTAMENTE COME ALLEGATO -->
         <section id="sec-palinsesto" class="space-y-6">
             <div class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
                 <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2 flex items-center gap-2">
@@ -55,7 +56,7 @@
                 <div id="stato" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
             </div>
 
-            <!-- CONTENITORE CARDS DOVE VENGONO MOSTRATE LE PARTITE -->
+            <!-- CONTENITORE CARDS CON DATI GRANULARI AGGIUNTI -->
             <div id="risultati" class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
         </section>
 
@@ -85,7 +86,6 @@
 
         const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
 
-        // Imposta date di default (Oggi e Oggi + 14 giorni)
         window.onload = function() {
             const oggi = new Date();
             const futuro = new Date();
@@ -94,7 +94,6 @@
             document.getElementById("dateFrom").value = oggi.toISOString().split("T")[0];
             document.getElementById("dateTo").value = futuro.toISOString().split("T")[0];
 
-            // Ascolto sincronizzato in tempo reale da Cloud Firestore
             db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
@@ -112,7 +111,6 @@
             return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
 
-        // CALCOLO INDICE FORMA CON PALLINI COLORATI (🟩 🟨 🟥)
         function calcolaIndiceForma(strForma) {
             if (!strForma || typeof strForma !== "string" || strForma.trim() === "") {
                 return { simboli: "N/D", punteggio: "N/D" };
@@ -168,7 +166,7 @@
                             <span class="font-mono text-slate-300 text-[11px]">${formattaData(p.dataOraUTC)}</span>
                         </div>
 
-                        <!-- SQUADRE -->
+                        <!-- SQUADRE CON FORMA -->
                         <div class="grid grid-cols-2 gap-2 my-3 items-start">
                             <div class="space-y-1 min-w-0">
                                 <div class="text-sm sm:text-base font-bold text-slate-100 truncate">${p.squadraCasa}</div>
@@ -188,7 +186,7 @@
                             </div>
                         </div>
 
-                        <!-- RENDIMENTO GENERALE -->
+                        <!-- RENDIMENTO GENERALE (CON V / P / S) -->
                         <div class="bg-slate-950/60 rounded-2xl p-3 my-3 border border-slate-800/60 text-xs space-y-1.5">
                             <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Rendimento Generale</div>
                             <div class="flex justify-between text-slate-300">
@@ -200,21 +198,33 @@
                                 <span class="font-semibold text-slate-200">${p.giocateCasa} vs ${p.giocateOspite}</span>
                             </div>
                             <div class="flex justify-between text-slate-300">
+                                <span>V / P / S Generali</span>
+                                <span class="font-semibold text-slate-200">${p.vinteCasa}-${p.pareggiateCasa}-${p.persoCasa} vs ${p.vinteOspite}-${p.pareggiateOspite}-${p.persoOspite}</span>
+                            </div>
+                            <div class="flex justify-between text-slate-300">
                                 <span>Gol Fatti / Subiti</span>
                                 <span class="font-semibold text-slate-200">${p.golFattiCasa}/${p.golSubitiCasa} vs ${p.golFattiOspite}/${p.golSubitiOspite}</span>
                             </div>
                         </div>
 
-                        <!-- SPECIFICO CASA VS TRASFERTA -->
+                        <!-- SPECIFICO CASA VS TRASFERTA (CON V / P / S SPECIFICI) -->
                         <div class="bg-slate-950/60 rounded-2xl p-3 my-3 border border-slate-800/60 text-xs space-y-1.5">
-                            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Casa vs Trasferta</div>
+                            <div class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Casa vs Trasferta Specifico</div>
+                            <div class="flex justify-between text-slate-300">
+                                <span>Partite Specifiche</span>
+                                <span class="font-semibold text-slate-200">${p.giocateCasaInCasa} in casa vs ${p.giocateOspiteInTrasferta} in trasf.</span>
+                            </div>
                             <div class="flex justify-between text-slate-300">
                                 <span>Punti Specifici</span>
                                 <span class="font-semibold text-slate-200">${p.puntiCasaInCasa} pt vs ${p.puntiOspiteInTrasferta} pt</span>
                             </div>
                             <div class="flex justify-between text-slate-300">
-                                <span>Gol Segnati</span>
-                                <span class="font-semibold text-slate-200">${p.golFattiCasaInCasa} vs ${p.golFattiOspiteInTrasferta}</span>
+                                <span>V / P / S Specifico</span>
+                                <span class="font-semibold text-slate-200">${p.vinteCasaInCasa}-${p.pareggiateCasaInCasa}-${p.persoCasaInCasa} vs ${p.vinteOspiteInTrasferta}-${p.pareggiateOspiteInTrasferta}-${p.persoOspiteInTrasferta}</span>
+                            </div>
+                            <div class="flex justify-between text-slate-300">
+                                <span>Gol Segnati / Subiti</span>
+                                <span class="font-semibold text-slate-200">${p.golFattiCasaInCasa}/${p.golSubitiCasaInCasa} vs ${p.golFattiOspiteInTrasferta}/${p.golSubitiOspiteInTrasferta}</span>
                             </div>
                         </div>
 
@@ -268,7 +278,6 @@
                 } else if (data.partite && data.partite.length > 0) {
                     const ora = new Date().toLocaleString("it-IT");
                     
-                    // SALVATAGGIO AUTOMATICO SU FIREBASE
                     await db.collection("palinsesto").doc("corrente").set({
                         partite: data.partite,
                         intervallo: `${dateFrom} / ${dateTo}`,
