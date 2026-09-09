@@ -35,7 +35,7 @@
                     Seleziona l'intervallo temporale ed i campionati da analizzare:
                 </p>
 
-                <!-- INPUT DATE E GIORNI OFFSET CONFIGURABILI -->
+                <!-- INPUT DATE E OFFSET GIORNI CONFIGURABILE -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
@@ -64,6 +64,10 @@
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
                             <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="SA" checked>
                             <span class="text-slate-200 truncate"> Serie A</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BSA" checked>
+                            <span class="text-slate-200 truncate"> Brasileirão</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
                             <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PL" checked>
@@ -104,10 +108,6 @@
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
                             <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="WC">
                             <span class="text-slate-200 truncate"> World Cup</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BSA">
-                            <span class="text-slate-200 truncate"> Brasileirão</span>
                         </label>
                     </div>
                 </div>
@@ -207,7 +207,7 @@
             return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
 
-        // CALCOLO AVANZATO INDICE DI FORMA CON RISOLUZIONE COMPLETA SCONFITTE (L/S/W/V/D/P)
+        // CALCOLO AVANZATO INDICE DI FORMA & TREND (BILINGUE W/V, D/P, L/S)
         function calcolaIndiceForma(strForma, vinte = 0, pareggiate = 0, perso = 0) {
             let esiti = [];
 
@@ -254,14 +254,15 @@
             };
         }
 
+        // BADGE STATO MATCH REALE API
         function formattaStatoApi(statoApi) {
-            if (!statoApi) return `<span class="bg-slate-800 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">IN ATTESA</span>`;
+            if (!statoApi) return `<span class="bg-slate-800 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">TIMED</span>`;
             
             const st = statoApi.toUpperCase();
             if (st === "IN_PLAY" || st === "PAUSED" || st === "LIVE") {
-                return `<span class="bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-700 animate-pulse">LIVE (${st})</span>`;
+                return `<span class="bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-700 animate-pulse">${st}</span>`;
             } else if (st === "FINISHED" || st === "AWARDED") {
-                return `<span class="bg-slate-800 text-slate-400 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">TERMINATA</span>`;
+                return `<span class="bg-slate-800 text-slate-400 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">${st}</span>`;
             } else {
                 return `<span class="bg-blue-950 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-blue-800">${st}</span>`;
             }
@@ -308,6 +309,7 @@
 
             const compMapping = {
                 "SA": ["SERIE A", "SA"],
+                "BSA": ["BRASILEIRÃO", "BRASILEIRAO", "SERIE A BRAZIL", "BSA"],
                 "PL": ["PREMIER LEAGUE", "PL"],
                 "PD": ["LA LIGA", "PRIMERA DIVISION", "PD"],
                 "BL1": ["BUNDESLIGA", "BL1"],
@@ -317,8 +319,7 @@
                 "ELC": ["CHAMPIONSHIP", "ELC"],
                 "CL": ["CHAMPIONS LEAGUE", "UEFA CHAMPIONS LEAGUE", "CL"],
                 "EC": ["EURO CHAMPIONSHIP", "EUROPEAN CHAMPIONSHIP", "EC"],
-                "WC": ["WORLD CUP", "WC"],
-                "BSA": ["BRASILEIRÃO", "BRASILEIRAO", "SERIE A BRAZIL", "BSA"]
+                "WC": ["WORLD CUP", "WC"]
             };
 
             let allowedKeywords = [];
@@ -371,7 +372,7 @@
                 const formaOspiteObj = calcolaIndiceForma(p.formaOspite, p.vinteOspite, p.pareggiateOspite, persoOspiteVal);
                 
                 const dataDisplay = p.dataOraUTC || p.utcDate || p.dataOra;
-                const matchIdDisplay = p.matchId || p.id || "N.D.";
+                const matchIdDisplay = p.matchId || p.id || Math.abs(`${p.squadraCasa}-${p.squadraOspite}-${dataDisplay}`.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0));
                 const risultatoRealeSalvato = cacheRisultatiReali[matchIdDisplay] || p.risultatoReale || "";
 
                 const card = document.createElement("div");
