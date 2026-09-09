@@ -122,3 +122,342 @@
             <div id="risultati" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
         </section>
     </main>
+
+    <!-- FOOTER INALTERATO -->
+    <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-1.5rem)] z-50">
+        <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center">
+            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[11px] sm:text-xs font-semibold truncate">Palinsesto</button>
+            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate">Validazione</button>
+            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate">Archivio</button>
+            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate">ML Engine</button>
+        </div>
+    </footer>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDvZ6My0UlFyzAIMvKvWdNneQPajryjvsw",
+            authDomain: "betting-pro-db.firebaseapp.com",
+            projectId: "betting-pro-db",
+            storageBucket: "betting-pro-db.firebasestorage.app",
+            messagingSenderId: "157886609369",
+            appId: "1:157886609369:web:565f3a44ec8d1dba3c8bc8"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
+        let cachePartiteFirestore = [];
+
+        function formattaDataIso(d) {
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function ricalcolaDataFine() {
+            const valFrom = document.getElementById("dateFrom").value;
+            const daysOffset = parseInt(document.getElementById("daysOffset").value) || 14;
+            if (valFrom) {
+                const parts = valFrom.split("-");
+                const dInizio = new Date(parts[0], parts[1] - 1, parts[2]);
+                dInizio.setDate(dInizio.getDate() + daysOffset);
+                document.getElementById("dateTo").value = formattaDataIso(dInizio);
+            }
+        }
+
+        window.onload = function() {
+            const oggi = new Date();
+            document.getElementById("dateFrom").value = formattaDataIso(oggi);
+            ricalcolaDataFine();
+
+            db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.partite && Array.isArray(data.partite)) {
+                        cachePartiteFirestore = data.partite;
+                        aggiornaFiltriVisualizzazione();
+                        mostraStato(`Sincronizzato Cloud: ${data.partite.length} partite in archivio - Ultimo aggiornamento: ${data.ultimoAggiornamento}`, "success");
+                    }
+                }
+            });
+        };
+
+        function toggleTuttiCampionati() {
+            const checkboxes = document.querySelectorAll('.comp-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+            aggiornaFiltriVisualizzazione();
+        }
+
+        function formattaData(isoString) {
+            if (!isoString) return "N.D.";
+            const d = new Date(isoString);
+            if (isNaN(d.getTime())) return "N.D.";
+            return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        }
+
+        function calcolaIndiceForma(strForma) {
+            if (!strForma || typeof strForma !== "string" || strForma.trim() === "") {
+                return { simboli: "N/D", punteggio: "N/D" };
+            }
+            
+            const esiti = strForma.includes(",") ? strForma.split(",").map(e => e.trim()) : strForma.split("");
+            let p = 0;
+            let sim = "";
+            
+            esiti.forEach(e => {
+                if (e === "W") { p += 1.0; sim += "🟢 "; }
+                else if (e === "D") { p += 0.5; sim += "🟡 "; }
+                else if (e === "L") { p += 0.0; sim += "🔴 "; }
+            });
+
+            return {
+                simboli: sim.trim() || "N/D",
+                punteggio: p.toFixed(1) + " / " + esiti.length + ".0"
+            };
+        }
+
+        function mostraStato(testo, tipo = 'info') {
+            const stato = document.getElementById("stato");
+            stato.classList.remove('hidden', 'bg-rose-950/80', 'border-rose-800', 'text-rose-300', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+            
+            if (tipo === 'error') stato.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
+            else if (tipo === 'success') stato.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+            else stato.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+
+            stato.innerText = testo;
+        }
+
+        function aggiornaFiltriVisualizzazione() {
+            if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) return;
+            mostraPartite(cachePartiteFirestore);
+        }
+
+        function mostraPartite(partite) {
+            const risultati = document.getElementById("risultati");
+            risultati.innerHTML = "";
+
+            const valFrom = document.getElementById("dateFrom").value;
+            const valTo = document.getElementById("dateTo").value;
+
+            const compMapping = {
+                "SA": ["SERIE A", "SA"],
+                "PL": ["PREMIER LEAGUE", "PL"],
+                "PD": ["LA LIGA", "PRIMERA DIVISION", "PD"],
+                "BL1": ["BUNDESLIGA", "BL1"],
+                "FL1": ["LIGUE 1", "FL1"],
+                "DED": ["EREDIVISIE", "DED"],
+                "PPL": ["LIGA PORTUGAL", "PPL", "PRIMEIRA LIGA"],
+                "ELC": ["CHAMPIONSHIP", "ELC"],
+                "CL": ["CHAMPIONS LEAGUE", "UEFA CHAMPIONS LEAGUE", "CL"],
+                "EC": ["EURO CHAMPIONSHIP", "EUROPEAN CHAMPIONSHIP", "EC"],
+                "WC": ["WORLD CUP", "WC"],
+                "BSA": ["BRASILEIRÃO", "BRASILEIRAO", "SERIE A BRAZIL", "BSA"]
+            };
+
+            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
+            const selectedCodes = Array.from(selectedCheckboxes).map(cb => cb.value.trim().toUpperCase());
+
+            let allowedKeywords = [];
+            selectedCodes.forEach(code => {
+                if (compMapping[code]) {
+                    allowedKeywords.push(...compMapping[code]);
+                } else {
+                    allowedKeywords.push(code);
+                }
+            });
+
+            // FILTRAGGIO RIGOROSO PER DATE E CHECKBOX CAMPIONATI
+            const partiteFiltrate = (partite || []).filter(p => {
+                const rawDate = p.dataOraUTC || p.utcDate || p.dataOra || "";
+                let dataPartitaIso = "";
+                if (rawDate) {
+                    dataPartitaIso = rawDate.split("T")[0];
+                }
+
+                let dentroIntervalloDate = true;
+                if (valFrom && dataPartitaIso) {
+                    dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso >= valFrom);
+                }
+                if (valTo && dataPartitaIso) {
+                    dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso <= valTo);
+                }
+
+                const nomeCamp = (p.campionato || "").toUpperCase();
+                const codeCamp = (p.campionatoCode || "").toUpperCase();
+
+                let campionatoMatch = false;
+                if (selectedCodes.length === 0) {
+                    campionatoMatch = false; // Se nessun checkbox è selezionato non mostra nulla
+                } else {
+                    campionatoMatch = allowedKeywords.some(kw => nomeCamp.includes(kw) || codeCamp.includes(kw) || kw.includes(nomeCamp));
+                }
+
+                return dentroIntervalloDate && campionatoMatch;
+            });
+
+            if (!partiteFiltrate || partiteFiltrate.length === 0) {
+                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata per i filtri temporali e campionati selezionati.</div>`;
+                return;
+            }
+
+            partiteFiltrate.forEach(p => {
+                const formaCasaObj = calcolaIndiceForma(p.formaCasa);
+                const formaOspiteObj = calcolaIndiceForma(p.formaOspite);
+                const dataDisplay = p.dataOraUTC || p.utcDate || p.dataOra;
+
+                const card = document.createElement("div");
+                card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-3.5 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
+                card.innerHTML = `
+                    <div class="min-w-0">
+                        <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
+                            <span class="font-bold text-blue-400 uppercase tracking-wider truncate max-w-[55%] sm:max-w-[60%]">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
+                            <span class="font-mono text-slate-300 text-[10px] sm:text-[11px] shrink-0">${formattaData(dataDisplay)}</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 my-3 items-start min-w-0">
+                            <div class="space-y-1 min-w-0">
+                                <div class="text-xs sm:text-base font-bold text-slate-100 truncate break-words">${p.squadraCasa}</div>
+                                <div class="text-[10px] sm:text-[11px] text-emerald-400 font-medium">Casa</div>
+                                <div class="text-[10px] text-slate-300 bg-slate-950 px-2 py-1 rounded border border-slate-800 mt-1 inline-block max-w-full overflow-hidden">
+                                    <div class="truncate">${formaCasaObj.simboli}</div>
+                                    <div class="text-[9px] text-slate-400 mt-0.5">${formaCasaObj.punteggio}</div>
+                                </div>
+                            </div>
+                            <div class="space-y-1 text-right min-w-0">
+                                <div class="text-xs sm:text-base font-bold text-slate-100 truncate break-words">${p.squadraOspite}</div>
+                                <div class="text-[10px] sm:text-[11px] text-indigo-400 font-medium">Ospite</div>
+                                <div class="text-[10px] text-slate-300 bg-slate-950 px-2 py-1 rounded border border-slate-800 mt-1 inline-block max-w-full overflow-hidden">
+                                    <div class="truncate">${formaOspiteObj.simboli}</div>
+                                    <div class="text-[9px] text-slate-400 mt-0.5">${formaOspiteObj.punteggio}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-950/60 rounded-2xl p-2.5 sm:p-3 my-3 border border-slate-800/60 text-[11px] sm:text-xs space-y-1.5 min-w-0">
+                            <div class="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Rendimento Generale</div>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">Posizione (Punti)</span>
+                                <span class="font-bold text-slate-100 text-right truncate">${p.posizioneCasa}° (${p.puntiCasa}pt) vs ${p.posizioneOspite}° (${p.puntiOspite}pt)</span>
+                            </div>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">Partite Giocate</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.giocateCasa} vs ${p.giocateOspite}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">V / P / S Generali</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.vinteCasa}-${p.pareggiateCasa}-${p.persoCasa} vs ${p.vinteOspite}-${p.pareggiateOspite}-${p.persoOspite}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">Gol Fatti / Subiti</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.golFattiCasa}/${p.golSubitiCasa} vs ${p.golFattiOspite}/${p.golSubitiOspite}</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-950/60 rounded-2xl p-2.5 sm:p-3 my-3 border border-slate-800/60 text-[11px] sm:text-xs space-y-1.5 min-w-0">
+                            <div class="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Casa vs Trasferta Specifico</div>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">Partite Specifiche</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.giocateCasaInCasa} in casa vs ${p.giocateOspiteInTrasferta} in trasf.</span>
+                            </div>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">Punti Specifici</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.puntiCasaInCasa} pt vs ${p.puntiOspiteInTrasferta} pt</span>
+                            </div>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">V / P / S Specifico</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.vinteCasaInCasa}-${p.pareggiateCasaInCasa}-${p.persoCasaInCasa} vs ${p.vinteOspiteInTrasferta}-${p.pareggiateOspiteInTrasferta}-${p.persoOspiteInTrasferta}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-slate-300 gap-2">
+                                <span class="shrink-0">Gol Segnati / Subiti</span>
+                                <span class="font-semibold text-slate-200 text-right">${p.golFattiCasaInCasa}/${p.golSubitiCasaInCasa} vs ${p.golFattiOspiteInTrasferta}/${p.golSubitiOspiteInTrasferta}</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-1.5 my-3 text-center">
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 sm:p-2 rounded-xl">
+                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold truncate">Media Punti</div>
+                                <div class="text-[11px] sm:text-xs font-bold text-emerald-400 mt-0.5">${p.mediaPuntiCasa} | ${p.mediaPuntiOspite}</div>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 sm:p-2 rounded-xl">
+                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold truncate">Media Gol</div>
+                                <div class="text-[11px] sm:text-xs font-bold text-blue-400 mt-0.5">${p.mediaGolFattiCasa} | ${p.mediaGolFattiOspite}</div>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 sm:p-2 rounded-xl">
+                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold truncate">Gol Attesi</div>
+                                <div class="text-[11px] sm:text-xs font-bold text-indigo-300 mt-0.5">${p.indiceGolAttesi}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-2 sm:p-2.5 flex justify-between items-center mt-2">
+                        <span class="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">ID Partita</span>
+                        <span class="text-xs font-bold text-emerald-400">#${p.matchId}</span>
+                    </div>
+                `;
+                risultati.appendChild(card);
+            });
+        }
+
+        async function sincronizzaESalva(e) {
+            if (e) e.preventDefault();
+
+            const btn = document.getElementById("btnEstrai");
+            const dateFrom = document.getElementById("dateFrom").value;
+            const dateTo = document.getElementById("dateTo").value;
+
+            if (!dateFrom || !dateTo) {
+                alert("Seleziona entrambe le date!");
+                return;
+            }
+
+            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
+            const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim());
+
+            if (selectedComps.length === 0) {
+                alert("Seleziona almeno un campionato da estrarre!");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = "Estrazione in corso...";
+            mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati...`, "info");
+
+            try {
+                // INVIO RIGOROSO DEI PARAMETRI DATA E CAMPIONATI AL WORKER
+                const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
+                const res = await fetch(fullUrl);
+                const data = await res.json();
+
+                if (data.errore) {
+                    mostraStato("Errore Worker: " + data.messaggio, "error");
+                } else if (data.partite && data.partite.length > 0) {
+                    const ora = new Date().toLocaleString("it-IT");
+                    
+                    await db.collection("palinsesto").doc("corrente").set({
+                        partite: data.partite,
+                        intervallo: `${dateFrom} / ${dateTo}`,
+                        campionatiSelezionati: selectedComps,
+                        ultimoAggiornamento: ora,
+                        totale: data.partite.length
+                    });
+
+                    cachePartiteFirestore = data.partite;
+                    aggiornaFiltriVisualizzazione();
+
+                    mostraStato(`Completato! Trovate e sincronizzate ${data.partite.length} partite per i campionati selezionati.`, "success");
+                } else {
+                    mostraStato("Nessuna partita trovata per i campionati e le date selezionate.", "error");
+                }
+            } catch (err) {
+                console.error(err);
+                mostraStato("Errore di connessione: " + err.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Estrai Partite e Sincronizza Cloud";
+            }
+        }
+    </script>
+</body>
+</html>
