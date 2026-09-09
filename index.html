@@ -217,22 +217,29 @@
             stato.innerText = testo;
         }
 
-        // FUNZIONE PER APPLICARE I FILTRI DATE E CAMPIONATI SULLE PARTITE IN MEMORIA/CLOUD
+        // FUNZIONE FILTRAGGIO ROBUSTA CON CONVERSIONE IN TIMESTAMP EPOCH
         function aggiornaFiltriVisualizzazione() {
             if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) return;
 
-            const dateFrom = document.getElementById("dateFrom").value;
-            const dateTo = document.getElementById("dateTo").value;
+            const valFrom = document.getElementById("dateFrom").value;
+            const valTo = document.getElementById("dateTo").value;
+
+            // Imposta tFrom alle 00:00:00 del giorno selezionato
+            const tFrom = valFrom ? new Date(valFrom + "T00:00:00").getTime() : 0;
+            // Imposta tTo alle 23:59:59 del giorno selezionato
+            const tTo = valTo ? new Date(valTo + "T23:59:59").getTime() : Infinity;
+
             const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
             const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim().toUpperCase());
 
             const partiteFiltrate = cachePartiteFirestore.filter(p => {
-                // Filtro Data ISO (YYYY-MM-DD)
-                const dataPartitaIso = p.dataOraUTC ? p.dataOraUTC.substring(0, 10) : "";
-                const dentroIntervalloDate = (!dateFrom || dataPartitaIso >= dateFrom) && (!dateTo || dataPartitaIso <= dateTo);
+                // Conversione data partita in Epoch Time
+                const timePartita = p.dataOraUTC ? new Date(p.dataOraUTC).getTime() : 0;
+                const dentroIntervalloDate = (timePartita >= tFrom && timePartita <= tTo);
                 
-                // Filtro Campionati Selezionati
-                const campionatoMatch = selectedComps.includes(p.campionatoCode);
+                // Verifico corrispondenza sia con il codice univoco sia con il nome
+                const codicePartita = p.campionatoCode ? p.campionatoCode.toUpperCase() : "";
+                const campionatoMatch = selectedComps.length === 0 || selectedComps.includes(codicePartita);
 
                 return dentroIntervalloDate && campionatoMatch;
             });
