@@ -34,7 +34,7 @@
                     Seleziona l'intervallo temporale ed i campionati da analizzare:
                 </p>
 
-                <!-- B: INTERVALLO TEMPORALE CONSERVATO INTEGRALMENTE -->
+                <!-- B: INTERVALLO TEMPORALE CONSERVATO INTEGRALMENTE CON EVENTI ONCHANGE -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
@@ -217,27 +217,27 @@
             stato.innerText = testo;
         }
 
-        // FUNZIONE FILTRAGGIO ROBUSTA CON CONVERSIONE IN TIMESTAMP EPOCH
+        // FUNZIONE FILTRAGGIO ROBUSTA BASATA SU TIMESTAMP EPOCH PER EVITARE BUG FORMATO DATE
         function aggiornaFiltriVisualizzazione() {
             if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) return;
 
             const valFrom = document.getElementById("dateFrom").value;
             const valTo = document.getElementById("dateTo").value;
 
-            // Imposta tFrom alle 00:00:00 del giorno selezionato
+            // Inizio giornata 00:00:00
             const tFrom = valFrom ? new Date(valFrom + "T00:00:00").getTime() : 0;
-            // Imposta tTo alle 23:59:59 del giorno selezionato
+            // Fine giornata 23:59:59
             const tTo = valTo ? new Date(valTo + "T23:59:59").getTime() : Infinity;
 
             const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
             const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim().toUpperCase());
 
             const partiteFiltrate = cachePartiteFirestore.filter(p => {
-                // Conversione data partita in Epoch Time
+                // Conversione robusta data partita UTC in Timestamp
                 const timePartita = p.dataOraUTC ? new Date(p.dataOraUTC).getTime() : 0;
                 const dentroIntervalloDate = (timePartita >= tFrom && timePartita <= tTo);
                 
-                // Verifico corrispondenza sia con il codice univoco sia con il nome
+                // Corrispondenza codice univoco campionato (es. SA, PL, PD)
                 const codicePartita = p.campionatoCode ? p.campionatoCode.toUpperCase() : "";
                 const campionatoMatch = selectedComps.length === 0 || selectedComps.includes(codicePartita);
 
