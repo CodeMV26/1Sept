@@ -10,7 +10,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-28">
 
-    <!-- HEADER (GRAFICA CONSERVATA INALTERATA) -->
+    <!-- HEADER -->
     <header class="p-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -35,7 +35,6 @@
                     Seleziona l'intervallo temporale ed i campionati da analizzare:
                 </p>
 
-                <!-- INPUT DATE E OFFSET GIORNI CONFIGURABILE -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
@@ -51,7 +50,6 @@
                     </div>
                 </div>
 
-                <!-- CHECKBOX CAMPIONATI CON CODICI UFFICIALI FOOTBALL-DATA.ORG -->
                 <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
                     <div class="flex justify-between items-center mb-2.5">
                         <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
@@ -123,7 +121,7 @@
         </section>
     </main>
 
-    <!-- FOOTER (GRAFICA CONSERVATA INALTERATA) -->
+    <!-- FOOTER -->
     <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-1.5rem)] z-50">
         <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center">
             <button class="flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[11px] sm:text-xs font-semibold truncate">Palinsesto</button>
@@ -197,7 +195,6 @@
             return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
 
-        // CALCOLO AVANZATO INDICE FORMA & TREND (CON QUADRATINO ROSSO PER SCONFITTA L/S)
         function calcolaIndiceForma(strForma, vinte = 0, pareggiate = 0, perso = 0) {
             let esiti = [];
 
@@ -244,7 +241,6 @@
             };
         }
 
-        // BADGE STATO MATCH REALE API
         function formattaStatoApi(statoApi) {
             if (!statoApi) return `<span class="bg-slate-800 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">TIMED</span>`;
             
@@ -260,11 +256,15 @@
 
         function mostraStato(testo, tipo = 'info') {
             const stato = document.getElementById("stato");
-            stato.classList.remove('hidden', 'bg-rose-950/80', 'border-rose-800', 'text-rose-300', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+            stato.className = "mt-4 p-3 rounded-xl text-xs text-center border font-semibold block";
             
-            if (tipo === 'error') stato.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
-            else if (tipo === 'success') stato.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
-            else stato.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+            if (tipo === 'error') {
+                stato.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
+            } else if (tipo === 'success') {
+                stato.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+            } else {
+                stato.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+            }
 
             stato.innerText = testo;
         }
@@ -310,28 +310,16 @@
 
             const partiteFiltrate = (partite || []).filter(p => {
                 const rawDate = p.dataOraUTC || p.utcDate || p.dataOra || "";
-                let dataPartitaIso = "";
-                if (rawDate) {
-                    dataPartitaIso = rawDate.split("T")[0];
-                }
+                let dataPartitaIso = rawDate ? rawDate.split("T")[0] : "";
 
                 let dentroIntervalloDate = true;
-                if (valFrom && dataPartitaIso) {
-                    dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso >= valFrom);
-                }
-                if (valTo && dataPartitaIso) {
-                    dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso <= valTo);
-                }
+                if (valFrom && dataPartitaIso) dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso >= valFrom);
+                if (valTo && dataPartitaIso) dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso <= valTo);
 
                 const nomeCamp = (p.campionato || "").toUpperCase();
                 const codeCamp = (p.campionatoCode || "").toUpperCase();
 
-                let campionatoMatch = false;
-                if (selectedCodes.length === 0) {
-                    campionatoMatch = false;
-                } else {
-                    campionatoMatch = allowedKeywords.some(kw => nomeCamp.includes(kw) || codeCamp.includes(kw) || kw.includes(nomeCamp));
-                }
+                let campionatoMatch = selectedCodes.length > 0 && allowedKeywords.some(kw => nomeCamp.includes(kw) || codeCamp.includes(kw) || kw.includes(nomeCamp));
 
                 return dentroIntervalloDate && campionatoMatch;
             });
@@ -340,6 +328,9 @@
                 risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata per i filtri temporali e campionati selezionati.</div>`;
                 return;
             }
+
+            // FRAGMENT PER MINIMIZZARE RE-FLOW DEL DOM
+            const fragment = document.createDocumentFragment();
 
             partiteFiltrate.forEach(p => {
                 const persoCasaVal = (p.persoCasa !== undefined && p.persoCasa !== null) ? p.persoCasa : 0;
@@ -356,16 +347,14 @@
                 card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
                 card.innerHTML = `
                     <div class="min-w-0">
-                        <!-- HEADER CARD -->
                         <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
                             <span class="font-bold text-slate-200 uppercase tracking-wider truncate max-w-[55%] sm:max-w-[60%] bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
                             <div class="flex items-center gap-2">
-                                <span class="font-mono text-slate-300 text-[10px] sm:text-[11px] shrink-0">📅 ${formattaData(dataDisplay)}</span>
+                                <span class="font-mono text-slate-300 text-[10px] sm:text-[11px] shrink-0"> ${formattaData(dataDisplay)}</span>
                                 ${formattaStatoApi(p.stato)}
                             </div>
                         </div>
 
-                        <!-- SQUADRE E RISULTATO REALE AUTOMATICO AL CENTRO -->
                         <div class="my-3 text-base sm:text-lg font-bold text-slate-100 flex items-center justify-between gap-2">
                             <span class="truncate text-left flex-1">${p.squadraCasa}</span>
                             
@@ -379,7 +368,6 @@
                             <span class="truncate text-right flex-1">${p.squadraOspite}</span>
                         </div>
 
-                        <!-- TABELLA DATI GENERALI E SPECIFICI -->
                         <div class="bg-slate-950/70 rounded-2xl p-3 border border-slate-800/80 text-xs space-y-2 my-3">
                             <div class="grid grid-cols-3 text-[10px] font-bold text-slate-400 uppercase border-b border-slate-800/80 pb-1.5">
                                 <div>Dato</div>
@@ -411,7 +399,6 @@
                                 <div class="text-right font-semibold">${p.golFattiOspite ?? 0} / ${p.golSubitiOspite ?? 0}</div>
                             </div>
 
-                            <!-- DATI SPECIFICI CASA / TRASFERTA -->
                             <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
                                 <div class="text-blue-300 font-semibold">Punti Specifici</div>
                                 <div class="text-center font-bold text-blue-400">${p.puntiCasaInCasa ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Casa)</span></div>
@@ -430,7 +417,6 @@
                                 <div class="text-right font-semibold">${p.golFattiOspiteInTrasferta ?? 0} / ${p.golSubitiOspiteInTrasferta ?? 0}</div>
                             </div>
 
-                            <!-- INDICE FORMA & TREND -->
                             <div class="grid grid-cols-3 text-slate-200 py-1.5 items-center border-t border-slate-800/80 bg-slate-900/50 -mx-3 px-3 rounded-b-xl">
                                 <div class="text-indigo-300 font-bold">Indice Forma &amp; Trend</div>
                                 <div class="text-center flex flex-col items-center justify-center gap-0.5">
@@ -444,7 +430,6 @@
                             </div>
                         </div>
 
-                        <!-- TOP SCORERS & TOP ASSISTS -->
                         <div class="bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 my-2 space-y-1 text-xs">
                             <div class="flex justify-between items-center">
                                 <div class="truncate max-w-[48%]">
@@ -468,7 +453,6 @@
                             </div>
                         </div>
 
-                        <!-- METRICHE MEDIE -->
                         <div class="grid grid-cols-3 gap-1.5 my-3 text-center">
                             <div class="bg-slate-950 border border-slate-800 p-1.5 sm:p-2 rounded-xl">
                                 <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold truncate">Media Punti</div>
@@ -485,14 +469,15 @@
                         </div>
                     </div>
 
-                    <!-- FOOTER CARD CON ID MATCH UNIVOCO -->
                     <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-2 sm:p-2.5 flex justify-between items-center mt-2">
                         <span class="text-[10px] uppercase font-bold text-slate-400">ID MATCH: #${matchIdDisplay}</span>
                         <span class="text-[10px] text-slate-500">Validazione Automatica</span>
                     </div>
                 `;
-                risultati.appendChild(card);
+                fragment.appendChild(card);
             });
+
+            risultati.appendChild(fragment);
         }
 
         async function sincronizzaESalva(e) {
