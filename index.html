@@ -10,6 +10,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-28">
 
+    <!-- HEADER INALTERATO -->
     <header class="p-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -22,6 +23,7 @@
         </div>
     </header>
 
+    <!-- CONTENUTO PRINCIPALE -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 my-2">
         <section id="sec-palinsesto" class="space-y-6">
             <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
@@ -33,10 +35,15 @@
                     Seleziona l'intervallo temporale ed i campionati da analizzare:
                 </p>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <!-- INPUT DATE E GIORNI DI DEFAULT CONFIGURABILI -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
-                        <input type="date" id="dateFrom" onchange="aggiornaFiltriVisualizzazione()" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                        <input type="date" id="dateFrom" onchange="ricalcolaDataFine(); aggiornaFiltriVisualizzazione();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Giorni da Estrarre</label>
+                        <input type="number" id="daysOffset" value="14" min="1" max="30" onchange="ricalcolaDataFine(); aggiornaFiltriVisualizzazione();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Fine</label>
@@ -44,6 +51,7 @@
                     </div>
                 </div>
 
+                <!-- CHECKBOX CAMPIONATI CON CODICI UFFICIALI API -->
                 <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
                     <div class="flex justify-between items-center mb-2.5">
                         <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
@@ -115,6 +123,7 @@
         </section>
     </main>
 
+    <!-- FOOTER INALTERATO -->
     <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-1.5rem)] z-50">
         <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center">
             <button class="flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[11px] sm:text-xs font-semibold truncate">Palinsesto</button>
@@ -146,13 +155,21 @@
             return `${yyyy}-${mm}-${dd}`;
         }
 
+        function ricalcolaDataFine() {
+            const valFrom = document.getElementById("dateFrom").value;
+            const daysOffset = parseInt(document.getElementById("daysOffset").value) || 14;
+            if (valFrom) {
+                const parts = valFrom.split("-");
+                const dInizio = new Date(parts[0], parts[1] - 1, parts[2]);
+                dInizio.setDate(dInizio.getDate() + daysOffset);
+                document.getElementById("dateTo").value = formattaDataIso(dInizio);
+            }
+        }
+
         window.onload = function() {
             const oggi = new Date();
-            const futuro = new Date();
-            futuro.setDate(oggi.getDate() + 14);
-
             document.getElementById("dateFrom").value = formattaDataIso(oggi);
-            document.getElementById("dateTo").value = formattaDataIso(futuro);
+            ricalcolaDataFine();
 
             db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
                 if (doc.exists) {
@@ -214,9 +231,15 @@
 
         function aggiornaFiltriVisualizzazione() {
             if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) return;
+            mostraPartite(cachePartiteFirestore);
+        }
 
-            const valFrom = document.getElementById("dateFrom").value; // Formato YYYY-MM-DD
-            const valTo = document.getElementById("dateTo").value;     // Formato YYYY-MM-DD
+        function mostraPartite(partite) {
+            const risultati = document.getElementById("risultati");
+            risultati.innerHTML = "";
+
+            const valFrom = document.getElementById("dateFrom").value;
+            const valTo = document.getElementById("dateTo").value;
 
             const compMapping = {
                 "SA": ["SERIE A", "SA"],
@@ -245,11 +268,10 @@
                 }
             });
 
-            const partiteFiltrate = cachePartiteFirestore.filter(p => {
-                // VERIFICA DATA
+            // FILTRAGGIO RIGOROSO PER DATE E CHECKBOX CAMPIONATI
+            const partiteFiltrate = (partite || []).filter(p => {
                 const rawDate = p.dataOraUTC || p.utcDate || p.dataOra || "";
                 let dataPartitaIso = "";
-                
                 if (rawDate) {
                     dataPartitaIso = rawDate.split("T")[0];
                 }
@@ -262,13 +284,12 @@
                     dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso <= valTo);
                 }
 
-                // VERIFICA CAMPIONATO
                 const nomeCamp = (p.campionato || "").toUpperCase();
                 const codeCamp = (p.campionatoCode || "").toUpperCase();
 
                 let campionatoMatch = false;
                 if (selectedCodes.length === 0) {
-                    campionatoMatch = true;
+                    campionatoMatch = false; // Se nessun checkbox è selezionato non mostra nulla
                 } else {
                     campionatoMatch = allowedKeywords.some(kw => nomeCamp.includes(kw) || codeCamp.includes(kw) || kw.includes(nomeCamp));
                 }
@@ -276,19 +297,12 @@
                 return dentroIntervalloDate && campionatoMatch;
             });
 
-            mostraPartite(partiteFiltrate);
-        }
-
-        function mostraPartite(partite) {
-            const risultati = document.getElementById("risultati");
-            risultati.innerHTML = "";
-
-            if (!partite || partite.length === 0) {
+            if (!partiteFiltrate || partiteFiltrate.length === 0) {
                 risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata per i filtri temporali e campionati selezionati.</div>`;
                 return;
             }
 
-            partite.forEach(p => {
+            partiteFiltrate.forEach(p => {
                 const formaCasaObj = calcolaIndiceForma(p.formaCasa);
                 const formaOspiteObj = calcolaIndiceForma(p.formaOspite);
                 const dataDisplay = p.dataOraUTC || p.utcDate || p.dataOra;
@@ -411,6 +425,7 @@
             mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati...`, "info");
 
             try {
+                // INVIO RIGOROSO DEI PARAMETRI DATA E CAMPIONATI AL WORKER
                 const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
                 const res = await fetch(fullUrl);
                 const data = await res.json();
