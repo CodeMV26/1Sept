@@ -38,11 +38,11 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
-                        <input type="date" id="dateFrom" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                        <input type="date" id="dateFrom" onchange="aggiornaFiltriVisualizzazione()" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Fine</label>
-                        <input type="date" id="dateTo" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                        <input type="date" id="dateTo" onchange="aggiornaFiltriVisualizzazione()" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
                     </div>
                 </div>
 
@@ -57,51 +57,51 @@
                     
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="SA" checked>
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="SA" checked>
                             <span class="text-slate-200 truncate"> Serie A</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PL" checked>
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PL" checked>
                             <span class="text-slate-200 truncate"> Premier League</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PD" checked>
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PD" checked>
                             <span class="text-slate-200 truncate"> La Liga</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BL1" checked>
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BL1" checked>
                             <span class="text-slate-200 truncate"> Bundesliga</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="FL1" checked>
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="FL1" checked>
                             <span class="text-slate-200 truncate"> Ligue 1</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="DED" checked>
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="DED" checked>
                             <span class="text-slate-200 truncate"> Eredivisie</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PPL" checked>
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PPL" checked>
                             <span class="text-slate-200 truncate"> Liga Portugal</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="ELC" checked>
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="ELC" checked>
                             <span class="text-slate-200 truncate"> Championship</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="CL" checked>
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="CL" checked>
                             <span class="text-slate-200 truncate"> Champions League</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="EC" checked>
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="EC" checked>
                             <span class="text-slate-200 truncate"> Euro Championship</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="WC" checked>
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="WC" checked>
                             <span class="text-slate-200 truncate"> World Cup</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BSA" checked>
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BSA" checked>
                             <span class="text-slate-200 truncate"> Brasileirão</span>
                         </label>
                     </div>
@@ -142,6 +142,7 @@
         const db = firebase.firestore();
 
         const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
+        let cachePartiteFirestore = [];
 
         function formattaDataIso(d) {
             const yyyy = d.getFullYear();
@@ -158,12 +159,14 @@
             document.getElementById("dateFrom").value = formattaDataIso(oggi);
             document.getElementById("dateTo").value = formattaDataIso(futuro);
 
+            // Ascoltatore Firestore in tempo reale
             db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
                     if (data.partite && data.partite.length > 0) {
-                        mostraPartite(data.partite);
-                        mostraStato(`Sincronizzato Cloud: ${data.partite.length} partite (${data.intervallo || 'intervallo personalizzato'}) - Aggiornato: ${data.ultimoAggiornamento}`, "success");
+                        cachePartiteFirestore = data.partite;
+                        aggiornaFiltriVisualizzazione();
+                        mostraStato(`Sincronizzato Cloud: ${data.partite.length} partite in archivio - Ultimo aggiornamento: ${data.ultimoAggiornamento}`, "success");
                     }
                 }
             });
@@ -173,6 +176,7 @@
             const checkboxes = document.querySelectorAll('.comp-checkbox');
             const allChecked = Array.from(checkboxes).every(cb => cb.checked);
             checkboxes.forEach(cb => cb.checked = !allChecked);
+            aggiornaFiltriVisualizzazione();
         }
 
         function formattaData(isoString) {
@@ -213,12 +217,35 @@
             stato.innerText = testo;
         }
 
+        // FUNZIONE PER APPLICARE I FILTRI DATE E CAMPIONATI SULLE PARTITE IN MEMORIA/CLOUD
+        function aggiornaFiltriVisualizzazione() {
+            if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) return;
+
+            const dateFrom = document.getElementById("dateFrom").value;
+            const dateTo = document.getElementById("dateTo").value;
+            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
+            const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim().toUpperCase());
+
+            const partiteFiltrate = cachePartiteFirestore.filter(p => {
+                // Filtro Data ISO (YYYY-MM-DD)
+                const dataPartitaIso = p.dataOraUTC ? p.dataOraUTC.substring(0, 10) : "";
+                const dentroIntervalloDate = (!dateFrom || dataPartitaIso >= dateFrom) && (!dateTo || dataPartitaIso <= dateTo);
+                
+                // Filtro Campionati Selezionati
+                const campionatoMatch = selectedComps.includes(p.campionatoCode);
+
+                return dentroIntervalloDate && campionatoMatch;
+            });
+
+            mostraPartite(partiteFiltrate);
+        }
+
         function mostraPartite(partite) {
             const risultati = document.getElementById("risultati");
             risultati.innerHTML = "";
 
             if (!partite || partite.length === 0) {
-                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata per la selezione corrente.</div>`;
+                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata per i filtri temporali e campionati selezionati.</div>`;
                 return;
             }
 
@@ -360,6 +387,9 @@
                         ultimoAggiornamento: ora,
                         totale: data.partite.length
                     });
+
+                    cachePartiteFirestore = data.partite;
+                    aggiornaFiltriVisualizzazione();
 
                     mostraStato(`Completato! Trovate e sincronizzate ${data.partite.length} partite per i campionati selezionati.`, "success");
                 } else {
