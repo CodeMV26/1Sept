@@ -10,7 +10,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-28">
 
-    <!-- HEADER INALTERATO -->
+    <!-- HEADER (GRAFICA CONSERVATA INALTERATA) -->
     <header class="p-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -51,7 +51,7 @@
                     </div>
                 </div>
 
-                <!-- CHECKBOX CAMPIONATI -->
+                <!-- CHECKBOX CAMPIONATI CON CODICI UFFICIALI FOOTBALL-DATA.ORG -->
                 <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
                     <div class="flex justify-between items-center mb-2.5">
                         <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
@@ -123,7 +123,7 @@
         </section>
     </main>
 
-    <!-- FOOTER INALTERATO -->
+    <!-- FOOTER (GRAFICA CONSERVATA INALTERATA) -->
     <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-1.5rem)] z-50">
         <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center">
             <button class="flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[11px] sm:text-xs font-semibold truncate">Palinsesto</button>
@@ -147,7 +147,6 @@
 
         const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
         let cachePartiteFirestore = [];
-        let cacheRisultatiReali = {};
 
         function formattaDataIso(d) {
             const yyyy = d.getFullYear();
@@ -171,15 +170,6 @@
             const oggi = new Date();
             document.getElementById("dateFrom").value = formattaDataIso(oggi);
             ricalcolaDataFine();
-
-            db.collection("palinsesto").doc("risultati_reali").onSnapshot((doc) => {
-                if (doc.exists) {
-                    cacheRisultatiReali = doc.data() || {};
-                    if (cachePartiteFirestore.length > 0) {
-                        mostraPartite(cachePartiteFirestore);
-                    }
-                }
-            });
 
             db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
                 if (doc.exists) {
@@ -207,7 +197,7 @@
             return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
 
-        // CALCOLO AVANZATO INDICE DI FORMA & TREND (BILINGUE W/V, D/P, L/S)
+        // CALCOLO AVANZATO INDICE FORMA & TREND (CON QUADRATINO ROSSO PER SCONFITTA L/S)
         function calcolaIndiceForma(strForma, vinte = 0, pareggiate = 0, perso = 0) {
             let esiti = [];
 
@@ -282,19 +272,6 @@
         function aggiornaFiltriVisualizzazione() {
             if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) return;
             mostraPartite(cachePartiteFirestore);
-        }
-
-        function salvaRisultatoReale(matchId) {
-            const val = document.getElementById(`res-${matchId}`).value;
-            if (!val) {
-                alert("Inserisci il risultato prima di salvare!");
-                return;
-            }
-            db.collection("palinsesto").doc("risultati_reali").set({
-                [matchId]: val
-            }, { merge: true }).then(() => {
-                alert(`Risultato ${val} salvato con successo per il match #${matchId}`);
-            });
         }
 
         function mostraPartite(partite) {
@@ -373,7 +350,7 @@
                 
                 const dataDisplay = p.dataOraUTC || p.utcDate || p.dataOra;
                 const matchIdDisplay = p.matchId || p.id || Math.abs(`${p.squadraCasa}-${p.squadraOspite}-${dataDisplay}`.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0));
-                const risultatoRealeSalvato = cacheRisultatiReali[matchIdDisplay] || p.risultatoReale || "";
+                const risultatoRealeAutomatico = p.risultatoReale || "";
 
                 const card = document.createElement("div");
                 card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
@@ -388,13 +365,13 @@
                             </div>
                         </div>
 
-                        <!-- SQUADRE E RISULTATO REALE AL CENTRO -->
+                        <!-- SQUADRE E RISULTATO REALE AUTOMATICO AL CENTRO -->
                         <div class="my-3 text-base sm:text-lg font-bold text-slate-100 flex items-center justify-between gap-2">
                             <span class="truncate text-left flex-1">${p.squadraCasa}</span>
                             
-                            <div class="flex flex-col items-center justify-center shrink-0 px-2.5 py-1 bg-slate-950 border border-emerald-500/50 rounded-xl min-w-[70px]">
-                                ${risultatoRealeSalvato ? 
-                                    `<span class="text-emerald-400 font-extrabold text-base tracking-widest">${risultatoRealeSalvato}</span>` : 
+                            <div class="flex flex-col items-center justify-center shrink-0 px-3 py-1 bg-slate-950 border border-emerald-500/50 rounded-xl min-w-[75px]">
+                                ${risultatoRealeAutomatico ? 
+                                    `<span class="text-emerald-400 font-extrabold text-lg tracking-widest">${risultatoRealeAutomatico}</span>` : 
                                     `<span class="text-xs text-slate-500 font-normal">vs</span>`
                                 }
                             </div>
@@ -508,15 +485,10 @@
                         </div>
                     </div>
 
-                    <!-- INPUT SALVATAGGIO RISULTATO REALE -->
-                    <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-2 sm:p-2.5 flex justify-between items-center mt-2 gap-2">
-                        <div class="flex items-center gap-1.5">
-                            <span class="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">ID #${matchIdDisplay}</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <input type="text" id="res-${matchIdDisplay}" value="${risultatoRealeSalvato}" placeholder="es. 2-1" class="w-16 bg-slate-900 border border-slate-700 text-center text-xs text-emerald-400 font-bold rounded-lg p-1 focus:outline-none focus:border-emerald-500">
-                            <button onclick="salvaRisultatoReale('${matchIdDisplay}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg transition">Salva Risultato</button>
-                        </div>
+                    <!-- FOOTER CARD CON ID MATCH UNIVOCO -->
+                    <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-2 sm:p-2.5 flex justify-between items-center mt-2">
+                        <span class="text-[10px] uppercase font-bold text-slate-400">ID MATCH: #${matchIdDisplay}</span>
+                        <span class="text-[10px] text-slate-500">Validazione Automatica</span>
                     </div>
                 `;
                 risultati.appendChild(card);
