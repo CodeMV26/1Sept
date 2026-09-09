@@ -35,6 +35,7 @@
                     Seleziona l'intervallo temporale ed i campionati da analizzare:
                 </p>
 
+                <!-- INPUT DATE E OFFSET GIORNI CONFIGURABILE -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
@@ -50,6 +51,7 @@
                     </div>
                 </div>
 
+                <!-- CHECKBOX CAMPIONATI -->
                 <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
                     <div class="flex justify-between items-center mb-2.5">
                         <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
@@ -227,7 +229,7 @@
                 } else if (e === "D" || e === "P") {
                     p += 0.5;
                     simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-amber-400 inline-block shadow-sm" title="Pareggio (+0.5)"></span>`;
-                } else if (e === "L" || e === "S") {
+                } else if (e === "L" || e === "S" || e === "N") {
                     p += 0.0;
                     simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-rose-500 inline-block shadow-sm" title="Sconfitta (+0.0)"></span>`;
                 }
@@ -256,15 +258,11 @@
 
         function mostraStato(testo, tipo = 'info') {
             const stato = document.getElementById("stato");
-            stato.className = "mt-4 p-3 rounded-xl text-xs text-center border font-semibold block";
+            stato.classList.remove('hidden', 'bg-rose-950/80', 'border-rose-800', 'text-rose-300', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-blue-950/80', 'border-blue-800', 'text-blue-300');
             
-            if (tipo === 'error') {
-                stato.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
-            } else if (tipo === 'success') {
-                stato.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
-            } else {
-                stato.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
-            }
+            if (tipo === 'error') stato.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
+            else if (tipo === 'success') stato.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+            else stato.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
 
             stato.innerText = testo;
         }
@@ -310,16 +308,28 @@
 
             const partiteFiltrate = (partite || []).filter(p => {
                 const rawDate = p.dataOraUTC || p.utcDate || p.dataOra || "";
-                let dataPartitaIso = rawDate ? rawDate.split("T")[0] : "";
+                let dataPartitaIso = "";
+                if (rawDate) {
+                    dataPartitaIso = rawDate.split("T")[0];
+                }
 
                 let dentroIntervalloDate = true;
-                if (valFrom && dataPartitaIso) dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso >= valFrom);
-                if (valTo && dataPartitaIso) dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso <= valTo);
+                if (valFrom && dataPartitaIso) {
+                    dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso >= valFrom);
+                }
+                if (valTo && dataPartitaIso) {
+                    dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso <= valTo);
+                }
 
                 const nomeCamp = (p.campionato || "").toUpperCase();
                 const codeCamp = (p.campionatoCode || "").toUpperCase();
 
-                let campionatoMatch = selectedCodes.length > 0 && allowedKeywords.some(kw => nomeCamp.includes(kw) || codeCamp.includes(kw) || kw.includes(nomeCamp));
+                let campionatoMatch = false;
+                if (selectedCodes.length === 0) {
+                    campionatoMatch = false;
+                } else {
+                    campionatoMatch = allowedKeywords.some(kw => nomeCamp.includes(kw) || codeCamp.includes(kw) || kw.includes(nomeCamp));
+                }
 
                 return dentroIntervalloDate && campionatoMatch;
             });
@@ -329,24 +339,36 @@
                 return;
             }
 
-            // FRAGMENT PER MINIMIZZARE RE-FLOW DEL DOM
-            const fragment = document.createDocumentFragment();
-
             partiteFiltrate.forEach(p => {
-                const persoCasaVal = (p.persoCasa !== undefined && p.persoCasa !== null) ? p.persoCasa : 0;
-                const persoOspiteVal = (p.persoOspite !== undefined && p.persoOspite !== null) ? p.persoOspite : 0;
+                const giocateCasa = p.giocateCasa ?? 0;
+                const vinteCasa = p.vinteCasa ?? 0;
+                const pareggiateCasa = p.pareggiateCasa ?? 0;
+                const persoCasaVal = (p.persoCasa !== undefined && p.persoCasa !== null && p.persoCasa > 0) 
+                  ? p.persoCasa 
+                  : Math.max(0, giocateCasa - vinteCasa - pareggiateCasa);
 
-                const formaCasaObj = calcolaIndiceForma(p.formaCasa, p.vinteCasa, p.pareggiateCasa, persoCasaVal);
-                const formaOspiteObj = calcolaIndiceForma(p.formaOspite, p.vinteOspite, p.pareggiateOspite, persoOspiteVal);
+                const giocateOspite = p.giocateOspite ?? 0;
+                const vinteOspite = p.vinteOspite ?? 0;
+                const pareggiateOspite = p.pareggiateOspite ?? 0;
+                const persoOspiteVal = (p.persoOspite !== undefined && p.persoOspite !== null && p.persoOspite > 0) 
+                  ? p.persoOspite 
+                  : Math.max(0, giocateOspite - vinteOspite - pareggiateOspite);
+
+                const formaCasaObj = calcolaIndiceForma(p.formaCasa, vinteCasa, pareggiateCasa, persoCasaVal);
+                const formaOspiteObj = calcolaIndiceForma(p.formaOspite, vinteOspite, pareggiateOspite, persoOspiteVal);
                 
                 const dataDisplay = p.dataOraUTC || p.utcDate || p.dataOra;
                 const matchIdDisplay = p.matchId || p.id || Math.abs(`${p.squadraCasa}-${p.squadraOspite}-${dataDisplay}`.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0));
                 const risultatoRealeAutomatico = p.risultatoReale || "";
 
+                const diffCasa = (p.diffRetiCasa > 0 ? `+${p.diffRetiCasa}` : p.diffRetiCasa ?? 0);
+                const diffOspite = (p.diffRetiOspite > 0 ? `+${p.diffRetiOspite}` : p.diffRetiOspite ?? 0);
+
                 const card = document.createElement("div");
                 card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
                 card.innerHTML = `
                     <div class="min-w-0">
+                        <!-- HEADER CARD -->
                         <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
                             <span class="font-bold text-slate-200 uppercase tracking-wider truncate max-w-[55%] sm:max-w-[60%] bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
                             <div class="flex items-center gap-2">
@@ -355,6 +377,7 @@
                             </div>
                         </div>
 
+                        <!-- SQUADRE E RISULTATO REALE -->
                         <div class="my-3 text-base sm:text-lg font-bold text-slate-100 flex items-center justify-between gap-2">
                             <span class="truncate text-left flex-1">${p.squadraCasa}</span>
                             
@@ -368,6 +391,7 @@
                             <span class="truncate text-right flex-1">${p.squadraOspite}</span>
                         </div>
 
+                        <!-- TABELLA DATI GENERALI E SPECIFICI -->
                         <div class="bg-slate-950/70 rounded-2xl p-3 border border-slate-800/80 text-xs space-y-2 my-3">
                             <div class="grid grid-cols-3 text-[10px] font-bold text-slate-400 uppercase border-b border-slate-800/80 pb-1.5">
                                 <div>Dato</div>
@@ -399,6 +423,14 @@
                                 <div class="text-right font-semibold">${p.golFattiOspite ?? 0} / ${p.golSubitiOspite ?? 0}</div>
                             </div>
 
+                            <!-- DIFFERENZA RETI -->
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                                <div class="text-slate-400 font-medium">Diff. Reti</div>
+                                <div class="text-center font-semibold text-slate-300">${diffCasa}</div>
+                                <div class="text-right font-semibold text-slate-300">${diffOspite}</div>
+                            </div>
+
+                            <!-- DATI SPECIFICI CASA / TRASFERTA -->
                             <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
                                 <div class="text-blue-300 font-semibold">Punti Specifici</div>
                                 <div class="text-center font-bold text-blue-400">${p.puntiCasaInCasa ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Casa)</span></div>
@@ -417,6 +449,7 @@
                                 <div class="text-right font-semibold">${p.golFattiOspiteInTrasferta ?? 0} / ${p.golSubitiOspiteInTrasferta ?? 0}</div>
                             </div>
 
+                            <!-- INDICE FORMA & TREND -->
                             <div class="grid grid-cols-3 text-slate-200 py-1.5 items-center border-t border-slate-800/80 bg-slate-900/50 -mx-3 px-3 rounded-b-xl">
                                 <div class="text-indigo-300 font-bold">Indice Forma &amp; Trend</div>
                                 <div class="text-center flex flex-col items-center justify-center gap-0.5">
@@ -430,54 +463,59 @@
                             </div>
                         </div>
 
+                        <!-- TOP SCORERS & TOP ASSISTS -->
                         <div class="bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 my-2 space-y-1 text-xs">
                             <div class="flex justify-between items-center">
                                 <div class="truncate max-w-[48%]">
                                     <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Scorer Casa</span>
-                                    <span class="text-slate-200 font-bold truncate block">${p.topScorerCasa || "N.D."}</span>
+                                    <span class="text-emerald-400 font-bold truncate block">${p.topScorerCasa || "N.D."}</span>
                                 </div>
                                 <div class="text-right truncate max-w-[48%]">
                                     <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Scorer Ospite</span>
-                                    <span class="text-slate-200 font-bold truncate block">${p.topScorerOspite || "N.D."}</span>
+                                    <span class="text-emerald-400 font-bold truncate block">${p.topScorerOspite || "N.D."}</span>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center border-t border-slate-800/40 pt-1">
                                 <div class="truncate max-w-[48%]">
-                                    <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Assist Casa</span>
-                                    <span class="text-slate-200 font-bold truncate block">${p.topAssistCasa || "N.D."}</span>
+                                    <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Assistman Casa</span>
+                                    <span class="text-blue-400 font-bold truncate block">${p.topAssistCasa || "N.D."}</span>
                                 </div>
                                 <div class="text-right truncate max-w-[48%]">
-                                    <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Assist Ospite</span>
-                                    <span class="text-slate-200 font-bold truncate block">${p.topAssistOspite || "N.D."}</span>
+                                    <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Assistman Ospite</span>
+                                    <span class="text-blue-400 font-bold truncate block">${p.topAssistOspite || "N.D."}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-3 gap-1.5 my-3 text-center">
-                            <div class="bg-slate-950 border border-slate-800 p-1.5 sm:p-2 rounded-xl">
-                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold truncate">Media Punti</div>
-                                <div class="text-[11px] sm:text-xs font-bold text-emerald-400 mt-0.5">${p.mediaPuntiCasa || '0.00'} | ${p.mediaPuntiOspite || '0.00'}</div>
+                        <!-- METRICHE MEDIE (INCLUSO MEDIA GOL SUBITI) -->
+                        <div class="grid grid-cols-4 gap-1.5 my-3 text-center">
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
+                                <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Punti</div>
+                                <div class="text-[11px] font-bold text-emerald-400 mt-0.5">${p.mediaPuntiCasa || '0.00'} | ${p.mediaPuntiOspite || '0.00'}</div>
                             </div>
-                            <div class="bg-slate-950 border border-slate-800 p-1.5 sm:p-2 rounded-xl">
-                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold truncate">Media Gol</div>
-                                <div class="text-[11px] sm:text-xs font-bold text-blue-400 mt-0.5">${p.mediaGolFattiCasa || '0.00'} | ${p.mediaGolFattiOspite || '0.00'}</div>
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
+                                <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Gol Fatti</div>
+                                <div class="text-[11px] font-bold text-blue-400 mt-0.5">${p.mediaGolFattiCasa || '0.00'} | ${p.mediaGolFattiOspite || '0.00'}</div>
                             </div>
-                            <div class="bg-slate-950 border border-slate-800 p-1.5 sm:p-2 rounded-xl">
-                                <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold truncate">Gol Attesi</div>
-                                <div class="text-[11px] sm:text-xs font-bold text-indigo-300 mt-0.5">${p.indiceGolAttesi || '0.00'}</div>
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
+                                <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Gol Subiti</div>
+                                <div class="text-[11px] font-bold text-rose-400 mt-0.5">${p.mediaGolSubitiCasa || '0.00'} | ${p.mediaGolSubitiOspite || '0.00'}</div>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
+                                <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Gol Attesi</div>
+                                <div class="text-[11px] font-bold text-indigo-300 mt-0.5">${p.indiceGolAttesi || '0.00'}</div>
                             </div>
                         </div>
                     </div>
 
+                    <!-- FOOTER CARD -->
                     <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-2 sm:p-2.5 flex justify-between items-center mt-2">
                         <span class="text-[10px] uppercase font-bold text-slate-400">ID MATCH: #${matchIdDisplay}</span>
                         <span class="text-[10px] text-slate-500">Validazione Automatica</span>
                     </div>
                 `;
-                fragment.appendChild(card);
+                risultati.appendChild(card);
             });
-
-            risultati.appendChild(fragment);
         }
 
         async function sincronizzaESalva(e) {
