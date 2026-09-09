@@ -35,7 +35,7 @@
                     Seleziona l'intervallo temporale ed i campionati da analizzare:
                 </p>
 
-                <!-- INPUT DATE E GIORNI OFFSET CONFIGURABILI (DEFAULT OGGI + 14 GIORNI) -->
+                <!-- INPUT DATE E GIORNI OFFSET CONFIGURABILI -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
@@ -70,15 +70,15 @@
                             <span class="text-slate-200 truncate"> Premier League</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PD">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PD" checked>
                             <span class="text-slate-200 truncate"> La Liga</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BL1">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BL1" checked>
                             <span class="text-slate-200 truncate"> Bundesliga</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="FL1">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="FL1" checked>
                             <span class="text-slate-200 truncate"> Ligue 1</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
@@ -94,7 +94,7 @@
                             <span class="text-slate-200 truncate"> Championship</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="CL">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="CL" checked>
                             <span class="text-slate-200 truncate"> Champions League</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
@@ -207,7 +207,7 @@
             return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
 
-        // CALCOLO INDICE DI FORMA CON GESTIONE BILINGUE (W/D/L E V/P/S) E BADGE ROSSO SCONFITTE
+        // CALCOLO AVANZATO INDICE DI FORMA CON RISOLUZIONE COMPLETA SCONFITTE (L/S/W/V/D/P)
         function calcolaIndiceForma(strForma, vinte = 0, pareggiate = 0, perso = 0) {
             let esiti = [];
 
@@ -250,8 +250,21 @@
 
             return {
                 simboliHtml: simboliHtml,
-                punteggio: p.toFixed(1) + " / 5.0"
+                punteggio: p.toFixed(1) + " / " + ultimiEsiti.length + ".0"
             };
+        }
+
+        function formattaStatoApi(statoApi) {
+            if (!statoApi) return `<span class="bg-slate-800 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">IN ATTESA</span>`;
+            
+            const st = statoApi.toUpperCase();
+            if (st === "IN_PLAY" || st === "PAUSED" || st === "LIVE") {
+                return `<span class="bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-700 animate-pulse">LIVE (${st})</span>`;
+            } else if (st === "FINISHED" || st === "AWARDED") {
+                return `<span class="bg-slate-800 text-slate-400 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">TERMINATA</span>`;
+            } else {
+                return `<span class="bg-blue-950 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-blue-800">${st}</span>`;
+            }
         }
 
         function mostraStato(testo, tipo = 'info') {
@@ -290,6 +303,9 @@
             const valFrom = document.getElementById("dateFrom").value;
             const valTo = document.getElementById("dateTo").value;
 
+            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
+            const selectedCodes = Array.from(selectedCheckboxes).map(cb => cb.value.trim().toUpperCase());
+
             const compMapping = {
                 "SA": ["SERIE A", "SA"],
                 "PL": ["PREMIER LEAGUE", "PL"],
@@ -304,9 +320,6 @@
                 "WC": ["WORLD CUP", "WC"],
                 "BSA": ["BRASILEIRÃO", "BRASILEIRAO", "SERIE A BRAZIL", "BSA"]
             };
-
-            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
-            const selectedCodes = Array.from(selectedCheckboxes).map(cb => cb.value.trim().toUpperCase());
 
             let allowedKeywords = [];
             selectedCodes.forEach(code => {
@@ -351,8 +364,8 @@
             }
 
             partiteFiltrate.forEach(p => {
-                const persoCasaVal = (p.persoCasa !== undefined && p.persoCasa !== null && !isNaN(p.persoCasa)) ? p.persoCasa : 0;
-                const persoOspiteVal = (p.persoOspite !== undefined && p.persoOspite !== null && !isNaN(p.persoOspite)) ? p.persoOspite : 0;
+                const persoCasaVal = (p.persoCasa !== undefined && p.persoCasa !== null) ? p.persoCasa : 0;
+                const persoOspiteVal = (p.persoOspite !== undefined && p.persoOspite !== null) ? p.persoOspite : 0;
 
                 const formaCasaObj = calcolaIndiceForma(p.formaCasa, p.vinteCasa, p.pareggiateCasa, persoCasaVal);
                 const formaOspiteObj = calcolaIndiceForma(p.formaOspite, p.vinteOspite, p.pareggiateOspite, persoOspiteVal);
@@ -370,7 +383,7 @@
                             <span class="font-bold text-slate-200 uppercase tracking-wider truncate max-w-[55%] sm:max-w-[60%] bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
                             <div class="flex items-center gap-2">
                                 <span class="font-mono text-slate-300 text-[10px] sm:text-[11px] shrink-0">📅 ${formattaData(dataDisplay)}</span>
-                                <span class="bg-slate-800 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">In attesa</span>
+                                ${formattaStatoApi(p.stato)}
                             </div>
                         </div>
 
@@ -378,7 +391,7 @@
                         <div class="my-3 text-base sm:text-lg font-bold text-slate-100 flex items-center justify-between gap-2">
                             <span class="truncate text-left flex-1">${p.squadraCasa}</span>
                             
-                            <div class="flex flex-col items-center justify-center shrink-0 px-2 py-1 bg-slate-950/80 border border-emerald-500/40 rounded-xl min-w-[70px]">
+                            <div class="flex flex-col items-center justify-center shrink-0 px-2.5 py-1 bg-slate-950 border border-emerald-500/50 rounded-xl min-w-[70px]">
                                 ${risultatoRealeSalvato ? 
                                     `<span class="text-emerald-400 font-extrabold text-base tracking-widest">${risultatoRealeSalvato}</span>` : 
                                     `<span class="text-xs text-slate-500 font-normal">vs</span>`
@@ -421,27 +434,27 @@
                             </div>
 
                             <!-- DATI SPECIFICI CASA / TRASFERTA -->
-                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/20 -mx-1 px-1 rounded">
-                                <div class="text-slate-300 font-semibold">Punti Specifici</div>
-                                <div class="text-center font-semibold text-blue-400">${p.puntiCasaInCasa ?? 0} <span class="text-[9px] text-slate-400">(Casa)</span></div>
-                                <div class="text-right font-semibold text-blue-400">${p.puntiOspiteInTrasferta ?? 0} <span class="text-[9px] text-slate-400">(Trasf.)</span></div>
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
+                                <div class="text-blue-300 font-semibold">Punti Specifici</div>
+                                <div class="text-center font-bold text-blue-400">${p.puntiCasaInCasa ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Casa)</span></div>
+                                <div class="text-right font-bold text-blue-400">${p.puntiOspiteInTrasferta ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Trasf.)</span></div>
                             </div>
 
-                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/20 -mx-1 px-1 rounded">
-                                <div class="text-slate-300 font-semibold">V/P/S Specifici</div>
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
+                                <div class="text-blue-300 font-semibold">V/P/S Specifici</div>
                                 <div class="text-center font-semibold">${p.vinteCasaInCasa ?? 0}/${p.pareggiateCasaInCasa ?? 0}/${p.persoCasaInCasa ?? 0}</div>
                                 <div class="text-right font-semibold">${p.vinteOspiteInTrasferta ?? 0}/${p.pareggiateOspiteInTrasferta ?? 0}/${p.persoOspiteInTrasferta ?? 0}</div>
                             </div>
 
-                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/20 -mx-1 px-1 rounded">
-                                <div class="text-slate-300 font-semibold">Gol Spec. Fatti/Sub.</div>
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
+                                <div class="text-blue-300 font-semibold">Gol Spec. Fatti/Sub.</div>
                                 <div class="text-center font-semibold">${p.golFattiCasaInCasa ?? 0} / ${p.golSubitiCasaInCasa ?? 0}</div>
                                 <div class="text-right font-semibold">${p.golFattiOspiteInTrasferta ?? 0} / ${p.golSubitiOspiteInTrasferta ?? 0}</div>
                             </div>
 
                             <!-- INDICE FORMA & TREND -->
-                            <div class="grid grid-cols-3 text-slate-200 py-1.5 items-center border-t border-slate-800/80 bg-slate-900/40 -mx-3 px-3 rounded-b-xl">
-                                <div class="text-blue-400 font-bold">Indice Forma &amp; Trend</div>
+                            <div class="grid grid-cols-3 text-slate-200 py-1.5 items-center border-t border-slate-800/80 bg-slate-900/50 -mx-3 px-3 rounded-b-xl">
+                                <div class="text-indigo-300 font-bold">Indice Forma &amp; Trend</div>
                                 <div class="text-center flex flex-col items-center justify-center gap-0.5">
                                     <span class="font-bold text-emerald-400">${formaCasaObj.punteggio}</span>
                                     ${formaCasaObj.simboliHtml}
