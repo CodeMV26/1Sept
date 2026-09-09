@@ -197,19 +197,25 @@
             return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
 
+        // FUNZIONE OTTIMIZZATA CALCOLO INDICE FORMA & TREND
         function calcolaIndiceForma(strForma) {
             if (!strForma || typeof strForma !== "string" || strForma.trim() === "") {
                 return { simboli: "N/D", punteggio: "N/D" };
             }
             
+            // Divide la stringa dei risultati (es. "W,D,L" oppure "WDL")
             const esiti = strForma.includes(",") ? strForma.split(",").map(e => e.trim()) : strForma.split("");
             let p = 0;
             let sim = "";
             
+            // Ponderazione degli esiti:
+            // W (Vittoria)  = +1.0 punto
+            // D (Pareggio)  = +0.5 punti
+            // L (Sconfitta) = +0.0 punti
             esiti.forEach(e => {
                 if (e === "W") { p += 1.0; sim += "🟢 "; }
-                else if (e === "D") { p += 0.5; sim += "🟡 "; }
-                else if (e === "L") { p += 0.0; sim += "🔴 "; }
+                if (e === "D") { p += 0.5; sim += "🟡 "; }
+                if (e === "L") { p += 0.0; sim += "🔴 "; }
             });
 
             return {
@@ -289,7 +295,7 @@
 
                 let campionatoMatch = false;
                 if (selectedCodes.length === 0) {
-                    campionatoMatch = false; // Se nessun checkbox è selezionato non mostra nulla
+                    campionatoMatch = false;
                 } else {
                     campionatoMatch = allowedKeywords.some(kw => nomeCamp.includes(kw) || codeCamp.includes(kw) || kw.includes(nomeCamp));
                 }
@@ -303,6 +309,7 @@
             }
 
             partiteFiltrate.forEach(p => {
+                // Calcolo dell'indice per casa e ospite
                 const formaCasaObj = calcolaIndiceForma(p.formaCasa);
                 const formaOspiteObj = calcolaIndiceForma(p.formaOspite);
                 const dataDisplay = p.dataOraUTC || p.utcDate || p.dataOra;
@@ -425,7 +432,7 @@
             mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati...`, "info");
 
             try {
-                // INVIO RIGOROSO DEI PARAMETRI DATA E CAMPIONATI AL WORKER
+                // INVIO PARAMETRI DATA E CAMPIONATI AL WORKER
                 const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
                 const res = await fetch(fullUrl);
                 const data = await res.json();
