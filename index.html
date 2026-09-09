@@ -197,30 +197,52 @@
             return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
 
-        // FUNZIONE OTTIMIZZATA CALCOLO INDICE FORMA & TREND
-        function calcolaIndiceForma(strForma) {
-            if (!strForma || typeof strForma !== "string" || strForma.trim() === "") {
-                return { simboli: "N/D", punteggio: "N/D" };
+        // FUNZIONE OTTIMIZZATA CALCOLO INDICE FORMA & TREND (RISOLVE IL PROBLEMA N/D)
+        function calcolaIndiceForma(strForma, vinte = 0, pareggiate = 0, perso = 0) {
+            let esiti = [];
+
+            if (strForma && typeof strForma === "string" && strForma.trim() !== "") {
+                const pulita = strForma.replace(/,/g, "").trim().toUpperCase();
+                esiti = pulita.split("");
             }
-            
-            // Divide la stringa dei risultati (es. "W,D,L" oppure "WDL")
-            const esiti = strForma.includes(",") ? strForma.split(",").map(e => e.trim()) : strForma.split("");
+
+            // Fallback se la stringa form non viene fornita dall'API
+            if (esiti.length === 0) {
+                for (let i = 0; i < vinte; i++) esiti.push("W");
+                for (let i = 0; i < pareggiate; i++) esiti.push("D");
+                for (let i = 0; i < perso; i++) esiti.push("L");
+            }
+
+            if (esiti.length === 0) {
+                return {
+                    simboliHtml: `<span class="text-slate-500 font-medium">N/D</span>`,
+                    punteggio: "0.0 / 5.0"
+                };
+            }
+
+            // Limita agli ultimi 5 incontri
+            const ultimiEsiti = esiti.slice(-5);
             let p = 0;
-            let sim = "";
-            
-            // Ponderazione degli esiti:
-            // W (Vittoria)  = +1.0 punto
-            // D (Pareggio)  = +0.5 punti
-            // L (Sconfitta) = +0.0 punti
-            esiti.forEach(e => {
-                if (e === "W") { p += 1.0; sim += "🟢 "; }
-                if (e === "D") { p += 0.5; sim += "🟡 "; }
-                if (e === "L") { p += 0.0; sim += "🔴 "; }
+            let simboliHtml = `<div class="flex items-center gap-1 justify-center sm:justify-start">`;
+
+            ultimiEsiti.forEach(e => {
+                if (e === "W") {
+                    p += 1.0;
+                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-emerald-500 inline-block shadow-sm" title="Vittoria (+1.0)"></span>`;
+                } else if (e === "D") {
+                    p += 0.5;
+                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-amber-400 inline-block shadow-sm" title="Pareggio (+0.5)"></span>`;
+                } else if (e === "L") {
+                    p += 0.0;
+                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-rose-500 inline-block shadow-sm" title="Sconfitta (+0.0)"></span>`;
+                }
             });
 
+            simboliHtml += `</div>`;
+
             return {
-                simboli: sim.trim() || "N/D",
-                punteggio: p.toFixed(1) + " / " + esiti.length + ".0"
+                simboliHtml: simboliHtml,
+                punteggio: p.toFixed(1) + " / 5.0"
             };
         }
 
@@ -274,7 +296,6 @@
                 }
             });
 
-            // FILTRAGGIO RIGOROSO PER DATE E CHECKBOX CAMPIONATI
             const partiteFiltrate = (partite || []).filter(p => {
                 const rawDate = p.dataOraUTC || p.utcDate || p.dataOra || "";
                 let dataPartitaIso = "";
@@ -309,79 +330,90 @@
             }
 
             partiteFiltrate.forEach(p => {
-                // Calcolo dell'indice per casa e ospite
-                const formaCasaObj = calcolaIndiceForma(p.formaCasa);
-                const formaOspiteObj = calcolaIndiceForma(p.formaOspite);
+                // Calcolo avanzato dell'indice di forma per entrambe le squadre
+                const formaCasaObj = calcolaIndiceForma(p.formaCasa, p.vinteCasa, p.pareggiateCasa, p.persoCasa);
+                const formaOspiteObj = calcolaIndiceForma(p.formaOspite, p.vinteOspite, p.pareggiateOspite, p.persoOspite);
                 const dataDisplay = p.dataOraUTC || p.utcDate || p.dataOra;
 
                 const card = document.createElement("div");
-                card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-3.5 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
+                card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
                 card.innerHTML = `
                     <div class="min-w-0">
+                        <!-- HEADER CARD CON CAMPIONATO, DATA E STATO -->
                         <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
-                            <span class="font-bold text-blue-400 uppercase tracking-wider truncate max-w-[55%] sm:max-w-[60%]">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
-                            <span class="font-mono text-slate-300 text-[10px] sm:text-[11px] shrink-0">${formattaData(dataDisplay)}</span>
+                            <span class="font-bold text-slate-200 uppercase tracking-wider truncate max-w-[55%] sm:max-w-[60%] bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono text-slate-300 text-[10px] sm:text-[11px] shrink-0">📅 ${formattaData(dataDisplay)}</span>
+                                <span class="bg-slate-800 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">In attesa</span>
+                            </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-2 my-3 items-start min-w-0">
-                            <div class="space-y-1 min-w-0">
-                                <div class="text-xs sm:text-base font-bold text-slate-100 truncate break-words">${p.squadraCasa}</div>
-                                <div class="text-[10px] sm:text-[11px] text-emerald-400 font-medium">Casa</div>
-                                <div class="text-[10px] text-slate-300 bg-slate-950 px-2 py-1 rounded border border-slate-800 mt-1 inline-block max-w-full overflow-hidden">
-                                    <div class="truncate">${formaCasaObj.simboli}</div>
-                                    <div class="text-[9px] text-slate-400 mt-0.5">${formaCasaObj.punteggio}</div>
+                        <!-- TITOLO SQUADRE -->
+                        <div class="my-3 text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2 truncate">
+                            <span>${p.squadraCasa}</span>
+                            <span class="text-xs text-slate-500 font-normal">vs</span>
+                            <span>${p.squadraOspite}</span>
+                        </div>
+
+                        <!-- TABELLA COMPARATIVA STATISTICHE -->
+                        <div class="bg-slate-950/70 rounded-2xl p-3 border border-slate-800/80 text-xs space-y-2 my-3">
+                            <div class="grid grid-cols-3 text-[10px] font-bold text-slate-400 uppercase border-b border-slate-800/80 pb-1.5">
+                                <div>Dato</div>
+                                <div class="text-center truncate">${p.squadraCasa}</div>
+                                <div class="text-right truncate">${p.squadraOspite}</div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center">
+                                <div class="text-slate-400 font-medium">Punti / Posizione</div>
+                                <div class="text-center font-bold text-slate-100">${p.puntiCasa} <span class="text-slate-400 font-normal">(${p.posizioneCasa}°)</span></div>
+                                <div class="text-right font-bold text-slate-100">${p.puntiOspite} <span class="text-slate-400 font-normal">(${p.posizioneOspite}°)</span></div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                                <div class="text-slate-400 font-medium">Partite Giocate</div>
+                                <div class="text-center font-semibold">${p.giocateCasa}</div>
+                                <div class="text-right font-semibold">${p.giocateOspite}</div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                                <div class="text-slate-400 font-medium">V / P / S Generali</div>
+                                <div class="text-center font-semibold">${p.vinteCasa}/${p.pareggiateCasa}/${p.persoCasa}</div>
+                                <div class="text-right font-semibold">${p.vinteOspite}/${p.pareggiateOspite}/${p.persoOspite}</div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                                <div class="text-slate-400 font-medium">Gol Fatti / Subiti</div>
+                                <div class="text-center font-semibold">${p.golFattiCasa} / ${p.golSubitiCasa}</div>
+                                <div class="text-right font-semibold">${p.golFattiOspite} / ${p.golSubitiOspite}</div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                                <div class="text-slate-400 font-medium">Punti (Casa / Trasf.)</div>
+                                <div class="text-center font-semibold">${p.puntiCasaInCasa} <span class="text-[10px] text-slate-400">(Casa)</span></div>
+                                <div class="text-right font-semibold">${p.puntiOspiteInTrasferta} <span class="text-[10px] text-slate-400">(Trasf.)</span></div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                                <div class="text-slate-400 font-medium">V/P/S (Casa / Trasf.)</div>
+                                <div class="text-center font-semibold">${p.vinteCasaInCasa}/${p.pareggiateCasaInCasa}/${p.persoCasaInCasa}</div>
+                                <div class="text-right font-semibold">${p.vinteOspiteInTrasferta}/${p.pareggiateOspiteInTrasferta}/${p.persoOspiteInTrasferta}</div>
+                            </div>
+
+                            <!-- RIGA INDICE FORMA & TREND OTTIMIZZATA -->
+                            <div class="grid grid-cols-3 text-slate-200 py-1.5 items-center border-t border-slate-800/80 bg-slate-900/40 -mx-3 px-3 rounded-b-xl">
+                                <div class="text-blue-400 font-bold">Indice Forma &amp; Trend</div>
+                                <div class="text-center flex flex-col items-center justify-center gap-0.5">
+                                    <span class="font-bold text-emerald-400">${formaCasaObj.punteggio}</span>
+                                    ${formaCasaObj.simboliHtml}
+                                </div>
+                                <div class="text-right flex flex-col items-end justify-center gap-0.5">
+                                    <span class="font-bold text-emerald-400">${formaOspiteObj.punteggio}</span>
+                                    ${formaOspiteObj.simboliHtml}
                                 </div>
                             </div>
-                            <div class="space-y-1 text-right min-w-0">
-                                <div class="text-xs sm:text-base font-bold text-slate-100 truncate break-words">${p.squadraOspite}</div>
-                                <div class="text-[10px] sm:text-[11px] text-indigo-400 font-medium">Ospite</div>
-                                <div class="text-[10px] text-slate-300 bg-slate-950 px-2 py-1 rounded border border-slate-800 mt-1 inline-block max-w-full overflow-hidden">
-                                    <div class="truncate">${formaOspiteObj.simboli}</div>
-                                    <div class="text-[9px] text-slate-400 mt-0.5">${formaOspiteObj.punteggio}</div>
-                                </div>
-                            </div>
                         </div>
 
-                        <div class="bg-slate-950/60 rounded-2xl p-2.5 sm:p-3 my-3 border border-slate-800/60 text-[11px] sm:text-xs space-y-1.5 min-w-0">
-                            <div class="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Rendimento Generale</div>
-                            <div class="flex justify-between items-center text-slate-300 gap-2">
-                                <span class="shrink-0">Posizione (Punti)</span>
-                                <span class="font-bold text-slate-100 text-right truncate">${p.posizioneCasa}° (${p.puntiCasa}pt) vs ${p.posizioneOspite}° (${p.puntiOspite}pt)</span>
-                            </div>
-                            <div class="flex justify-between items-center text-slate-300 gap-2">
-                                <span class="shrink-0">Partite Giocate</span>
-                                <span class="font-semibold text-slate-200 text-right">${p.giocateCasa} vs ${p.giocateOspite}</span>
-                            </div>
-                            <div class="flex justify-between items-center text-slate-300 gap-2">
-                                <span class="shrink-0">V / P / S Generali</span>
-                                <span class="font-semibold text-slate-200 text-right">${p.vinteCasa}-${p.pareggiateCasa}-${p.persoCasa} vs ${p.vinteOspite}-${p.pareggiateOspite}-${p.persoOspite}</span>
-                            </div>
-                            <div class="flex justify-between items-center text-slate-300 gap-2">
-                                <span class="shrink-0">Gol Fatti / Subiti</span>
-                                <span class="font-semibold text-slate-200 text-right">${p.golFattiCasa}/${p.golSubitiCasa} vs ${p.golFattiOspite}/${p.golSubitiOspite}</span>
-                            </div>
-                        </div>
-
-                        <div class="bg-slate-950/60 rounded-2xl p-2.5 sm:p-3 my-3 border border-slate-800/60 text-[11px] sm:text-xs space-y-1.5 min-w-0">
-                            <div class="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800/60 pb-1">Casa vs Trasferta Specifico</div>
-                            <div class="flex justify-between items-center text-slate-300 gap-2">
-                                <span class="shrink-0">Partite Specifiche</span>
-                                <span class="font-semibold text-slate-200 text-right">${p.giocateCasaInCasa} in casa vs ${p.giocateOspiteInTrasferta} in trasf.</span>
-                            </div>
-                            <div class="flex justify-between items-center text-slate-300 gap-2">
-                                <span class="shrink-0">Punti Specifici</span>
-                                <span class="font-semibold text-slate-200 text-right">${p.puntiCasaInCasa} pt vs ${p.puntiOspiteInTrasferta} pt</span>
-                            </div>
-                            <div class="flex justify-between items-center text-slate-300 gap-2">
-                                <span class="shrink-0">V / P / S Specifico</span>
-                                <span class="font-semibold text-slate-200 text-right">${p.vinteCasaInCasa}-${p.pareggiateCasaInCasa}-${p.persoCasaInCasa} vs ${p.vinteOspiteInTrasferta}-${p.pareggiateOspiteInTrasferta}-${p.persoOspiteInTrasferta}</span>
-                            </div>
-                            <div class="flex justify-between items-center text-slate-300 gap-2">
-                                <span class="shrink-0">Gol Segnati / Subiti</span>
-                                <span class="font-semibold text-slate-200 text-right">${p.golFattiCasaInCasa}/${p.golSubitiCasaInCasa} vs ${p.golFattiOspiteInTrasferta}/${p.golSubitiOspiteInTrasferta}</span>
-                            </div>
-                        </div>
-
+                        <!-- METRICHE MEDIE E GOL ATTESI -->
                         <div class="grid grid-cols-3 gap-1.5 my-3 text-center">
                             <div class="bg-slate-950 border border-slate-800 p-1.5 sm:p-2 rounded-xl">
                                 <div class="text-[8px] sm:text-[9px] text-slate-400 uppercase font-semibold truncate">Media Punti</div>
@@ -432,7 +464,6 @@
             mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati...`, "info");
 
             try {
-                // INVIO PARAMETRI DATA E CAMPIONATI AL WORKER
                 const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
                 const res = await fetch(fullUrl);
                 const data = await res.json();
