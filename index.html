@@ -1,579 +1,345 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SoccerStats ML</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Palinsesto Calcio</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 950: '#030712' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Firebase SDK (v9 compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-28">
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
 
-    <!-- HEADER -->
-    <header class="p-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <div class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
-                <h1 class="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">SoccerStats ML</h1>
+    <!-- HEADER / CONTROL PANEL -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-wide">Palinsesto Calcistico</h1>
+                    <p class="text-xs text-slate-400">Analisi quote, dati e metriche avanzate</p>
+                </div>
+
+                <!-- CONTROLLI ESECUZIONE -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+                        <label for="inputDataInizio" class="text-xs text-slate-300 font-medium">Inizio:</label>
+                        <input type="date" id="inputDataInizio" class="bg-slate-900 text-xs text-white px-2 py-1 rounded border border-slate-700 focus:outline-none focus:border-indigo-500">
+                    </div>
+
+                    <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+                        <label for="inputOffsetGiorni" class="text-xs text-slate-300 font-medium">+Giorni:</label>
+                        <input type="number" id="inputOffsetGiorni" value="14" min="1" max="30" class="w-14 bg-slate-900 text-xs text-white px-2 py-1 rounded border border-slate-700 focus:outline-none focus:border-indigo-500 text-center">
+                    </div>
+
+                    <button id="btnEstrai" onclick="estraiEdAggiorna()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 shadow-lg shadow-indigo-600/20">
+                        <span id="labelEstrai">Estrai Dati</span>
+                        <div id="spinnerEstrai" class="hidden w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </button>
+                </div>
             </div>
-            <div id="syncBadge" class="px-3 py-1 bg-emerald-950/80 text-emerald-400 rounded-full text-xs font-semibold border border-emerald-800/60 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Live Sync
+
+            <!-- FILTRI CAMPIONATI (CHECKBOXES) -->
+            <div class="mt-4 pt-3 border-t border-slate-800/60">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Filtra Campionati:</span>
+                    <div class="space-x-2 text-[11px]">
+                        <button onclick="selezionaTuttiCampionati(true)" class="text-indigo-400 hover:underline">Seleziona Tutti</button>
+                        <span class="text-slate-600">|</span>
+                        <button onclick="selezionaTuttiCampionati(false)" class="text-slate-400 hover:underline">Deseleziona Tutti</button>
+                    </div>
+                </div>
+                <div id="containerCampionati" class="flex flex-wrap gap-2 text-xs">
+                    <!-- Dinamico tramite JS -->
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- CONTENUTO PRINCIPALE -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 my-2">
-        <section id="sec-palinsesto" class="space-y-6">
-            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
-                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2 flex items-center gap-2">
-                    ESTRAZIONE &amp; SINCRONIZZAZIONE PALINSESTO
-                </h2>
-                
-                <p class="text-xs text-slate-400 mb-4">
-                    Seleziona l'intervallo temporale ed i campionati da analizzare:
-                </p>
+    <!-- CONTAINER PARTITE -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Partite In programma</h2>
+            <span id="badgeTotalePartite" class="bg-slate-800 text-indigo-400 text-xs font-bold px-2.5 py-1 rounded-full border border-slate-700">0 Match</span>
+        </div>
 
-                <!-- INPUT DATE E OFFSET GIORNI CONFIGURABILE -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
-                        <input type="date" id="dateFrom" onchange="ricalcolaDataFine(); aggiornaFiltriVisualizzazione();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Giorni da Estrarre</label>
-                        <input type="number" id="daysOffset" value="14" min="1" max="30" onchange="ricalcolaDataFine(); aggiornaFiltriVisualizzazione();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Fine</label>
-                        <input type="date" id="dateTo" onchange="aggiornaFiltriVisualizzazione()" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
-                    </div>
-                </div>
-
-                <!-- CHECKBOX CAMPIONATI -->
-                <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
-                    <div class="flex justify-between items-center mb-2.5">
-                        <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
-                        <button type="button" onclick="toggleTuttiCampionati()" class="text-[10px] text-blue-400 hover:text-blue-300 font-semibold underline">
-                            Seleziona / Deseleziona Tutti
-                        </button>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="SA" checked>
-                            <span class="text-slate-200 truncate"> Serie A</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BSA" checked>
-                            <span class="text-slate-200 truncate"> Brasileirão</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PL" checked>
-                            <span class="text-slate-200 truncate"> Premier League</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PD" checked>
-                            <span class="text-slate-200 truncate"> La Liga</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BL1" checked>
-                            <span class="text-slate-200 truncate"> Bundesliga</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="FL1" checked>
-                            <span class="text-slate-200 truncate"> Ligue 1</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="DED">
-                            <span class="text-slate-200 truncate"> Eredivisie</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PPL">
-                            <span class="text-slate-200 truncate"> Liga Portugal</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="ELC">
-                            <span class="text-slate-200 truncate"> Championship</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="CL" checked>
-                            <span class="text-slate-200 truncate"> Champions League</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="EC">
-                            <span class="text-slate-200 truncate"> Euro Championship</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="WC">
-                            <span class="text-slate-200 truncate"> World Cup</span>
-                        </label>
-                    </div>
-                </div>
-
-                <button id="btnEstrai" type="button" onclick="sincronizzaESalva(event)" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                    Estrai Partite e Sincronizza Cloud
-                </button>
-
-                <div id="stato" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
-            </div>
-
-            <div id="risultati" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
-        </section>
+        <div id="gridPartite" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Cards caricate da Firestore -->
+        </div>
     </main>
 
-    <!-- FOOTER -->
-    <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-1.5rem)] z-50">
-        <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center">
-            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[11px] sm:text-xs font-semibold truncate">Palinsesto</button>
-            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate">Validazione</button>
-            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate">Archivio</button>
-            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate">ML Engine</button>
-        </div>
-    </footer>
-
     <script>
+        // Configurazione Firebase
         const firebaseConfig = {
-            apiKey: "AIzaSyDvZ6My0UlFyzAIMvKvWdNneQPajryjvsw",
-            authDomain: "betting-pro-db.firebaseapp.com",
-            projectId: "betting-pro-db",
-            storageBucket: "betting-pro-db.firebasestorage.app",
-            messagingSenderId: "157886609369",
-            appId: "1:157886609369:web:565f3a44ec8d1dba3c8bc8"
+            apiKey: "AIzaSyDummyKey_ReplaceIfRequired",
+            authDomain: "your-app.firebaseapp.com",
+            projectId: "your-app-id",
+            storageBucket: "your-app.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef"
         };
-        firebase.initializeApp(firebaseConfig);
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const db = firebase.firestore();
 
-        const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
+        const WORKER_URL = "https://tuo-worker.workers.dev"; // Sostituire con l'URL reale del Worker
+        const LISTA_CAMPIONATI = [
+            { code: "SA", name: "Serie A" },
+            { code: "PL", name: "Premier League" },
+            { code: "PD", name: "La Liga" },
+            { code: "BL1", name: "Bundesliga" },
+            { code: "FL1", name: "Ligue 1" },
+            { code: "BSA", name: "Brasileirao" },
+            { code: "DED", name: "Eredivisie" },
+            { code: "PPL", name: "Primeira Liga" },
+            { code: "ELC", name: "Championship" },
+            { code: "CL", name: "Champions League" },
+            { code: "EC", name: "Europei" },
+            { code: "WC", name: "Mondiali" }
+        ];
+
         let cachePartiteFirestore = [];
 
-        function formattaDataIso(d) {
-            const yyyy = d.getFullYear();
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd}`;
+        // Inizializzazione pagina
+        document.addEventListener("DOMContentLoaded", () => {
+            const oggi = new Date().toISOString().split('T')[0];
+            document.getElementById("inputDataInizio").value = oggi;
+            
+            renderizzaFiltriCampionati();
+            ascoltaPalinsestoFirestore();
+        });
+
+        function renderizzaFiltriCampionati() {
+            const container = document.getElementById("containerCampionati");
+            container.innerHTML = LISTA_CAMPIONATI.map(c => `
+                <label class="inline-flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded cursor-pointer hover:border-slate-700 transition-colors">
+                    <input type="checkbox" value="${c.code}" checked onchange="applicaFiltri()" class="chkCampionato rounded text-indigo-600 focus:ring-0 bg-slate-950 border-slate-700">
+                    <span class="text-slate-300">${c.name}</span>
+                </label>
+            `).join('');
         }
 
-        function ricalcolaDataFine() {
-            const valFrom = document.getElementById("dateFrom").value;
-            const daysOffset = parseInt(document.getElementById("daysOffset").value) || 14;
-            if (valFrom) {
-                const parts = valFrom.split("-");
-                const dInizio = new Date(parts[0], parts[1] - 1, parts[2]);
-                dInizio.setDate(dInizio.getDate() + daysOffset);
-                document.getElementById("dateTo").value = formattaDataIso(dInizio);
-            }
+        function selezionaTuttiCampionati(stato) {
+            document.querySelectorAll('.chkCampionato').forEach(chk => chk.checked = stato);
+            applicaFiltri();
         }
 
-        window.onload = function() {
-            const oggi = new Date();
-            document.getElementById("dateFrom").value = formattaDataIso(oggi);
-            ricalcolaDataFine();
-
-            db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
+        function ascoltaPalinsestoFirestore() {
+            db.collection("palinsesto").doc("corrente").onSnapshot(doc => {
                 if (doc.exists) {
                     const data = doc.data();
-                    if (data.partite && Array.isArray(data.partite)) {
-                        cachePartiteFirestore = data.partite;
-                        aggiornaFiltriVisualizzazione();
-                        mostraStato(`Sincronizzato Cloud: ${data.partite.length} partite in archivio - Ultimo aggiornamento: ${data.ultimoAggiornamento}`, "success");
-                    }
+                    cachePartiteFirestore = data.partite || [];
+                    applicaFiltri();
                 }
             });
-        };
-
-        function toggleTuttiCampionati() {
-            const checkboxes = document.querySelectorAll('.comp-checkbox');
-            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-            checkboxes.forEach(cb => cb.checked = !allChecked);
-            aggiornaFiltriVisualizzazione();
         }
 
-        function formattaData(isoString) {
-            if (!isoString) return "N.D.";
-            const d = new Date(isoString);
-            if (isNaN(d.getTime())) return "N.D.";
-            return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-        }
-
-        function calcolaIndiceForma(strForma, vinte = 0, pareggiate = 0, perso = 0) {
-            let esiti = [];
-
-            if (strForma && typeof strForma === "string" && strForma.trim() !== "") {
-                const pulita = strForma.replace(/,/g, "").trim().toUpperCase();
-                esiti = pulita.split("");
-            }
-
-            if (esiti.length === 0) {
-                for (let i = 0; i < vinte; i++) esiti.push("W");
-                for (let i = 0; i < pareggiate; i++) esiti.push("D");
-                for (let i = 0; i < perso; i++) esiti.push("L");
-            }
-
-            if (esiti.length === 0) {
-                return {
-                    simboliHtml: `<span class="text-slate-500 font-medium text-[10px]">N/D</span>`,
-                    punteggio: "0.0 / 5.0"
-                };
-            }
-
-            const ultimiEsiti = esiti.slice(-5);
-            let p = 0;
-            let simboliHtml = `<div class="flex items-center gap-1 justify-center sm:justify-start">`;
-
-            ultimiEsiti.forEach(e => {
-                if (e === "W" || e === "V") {
-                    p += 1.0;
-                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-emerald-500 inline-block shadow-sm" title="Vittoria (+1.0)"></span>`;
-                } else if (e === "D" || e === "P") {
-                    p += 0.5;
-                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-amber-400 inline-block shadow-sm" title="Pareggio (+0.5)"></span>`;
-                } else if (e === "L" || e === "S" || e === "N") {
-                    p += 0.0;
-                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-rose-500 inline-block shadow-sm" title="Sconfitta (+0.0)"></span>`;
-                }
-            });
-
-            simboliHtml += `</div>`;
-
-            return {
-                simboliHtml: simboliHtml,
-                punteggio: p.toFixed(1) + " / " + ultimiEsiti.length + ".0"
-            };
-        }
-
-        function formattaStatoApi(statoApi) {
-            if (!statoApi) return `<span class="bg-slate-800 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">TIMED</span>`;
-            
-            const st = statoApi.toUpperCase();
-            if (st === "IN_PLAY" || st === "PAUSED" || st === "LIVE") {
-                return `<span class="bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-700 animate-pulse">${st}</span>`;
-            } else if (st === "FINISHED" || st === "AWARDED") {
-                return `<span class="bg-slate-800 text-slate-400 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">${st}</span>`;
-            } else {
-                return `<span class="bg-blue-950 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-blue-800">${st}</span>`;
-            }
-        }
-
-        function mostraStato(testo, tipo = 'info') {
-            const stato = document.getElementById("stato");
-            stato.classList.remove('hidden', 'bg-rose-950/80', 'border-rose-800', 'text-rose-300', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-blue-950/80', 'border-blue-800', 'text-blue-300');
-            
-            if (tipo === 'error') stato.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
-            else if (tipo === 'success') stato.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
-            else stato.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
-
-            stato.innerText = testo;
-        }
-
-        function aggiornaFiltriVisualizzazione() {
-            if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) return;
-            mostraPartite(cachePartiteFirestore);
-        }
-
-        function mostraPartite(partite) {
-            const risultati = document.getElementById("risultati");
-            risultati.innerHTML = "";
-
-            const valFrom = document.getElementById("dateFrom").value;
-            const valTo = document.getElementById("dateTo").value;
-
-            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
-            const selectedCodes = Array.from(selectedCheckboxes).map(cb => cb.value.trim().toUpperCase());
-
-            const compMapping = {
-                "SA": ["SERIE A", "SA"],
-                "BSA": ["BRASILEIRÃO", "BRASILEIRAO", "SERIE A BRAZIL", "BSA"],
-                "PL": ["PREMIER LEAGUE", "PL"],
-                "PD": ["LA LIGA", "PRIMERA DIVISION", "PD"],
-                "BL1": ["BUNDESLIGA", "BL1"],
-                "FL1": ["LIGUE 1", "FL1"],
-                "DED": ["EREDIVISIE", "DED"],
-                "PPL": ["LIGA PORTUGAL", "PPL", "PRIMEIRA LIGA"],
-                "ELC": ["CHAMPIONSHIP", "ELC"],
-                "CL": ["CHAMPIONS LEAGUE", "UEFA CHAMPIONS LEAGUE", "CL"],
-                "EC": ["EURO CHAMPIONSHIP", "EUROPEAN CHAMPIONSHIP", "EC"],
-                "WC": ["WORLD CUP", "WC"]
-            };
-
-            let allowedKeywords = [];
-            selectedCodes.forEach(code => {
-                if (compMapping[code]) {
-                    allowedKeywords.push(...compMapping[code]);
-                } else {
-                    allowedKeywords.push(code);
-                }
-            });
-
-            const partiteFiltrate = (partite || []).filter(p => {
-                const rawDate = p.dataOraUTC || p.utcDate || p.dataOra || "";
-                let dataPartitaIso = "";
-                if (rawDate) {
-                    dataPartitaIso = rawDate.split("T")[0];
-                }
-
-                let dentroIntervalloDate = true;
-                if (valFrom && dataPartitaIso) {
-                    dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso >= valFrom);
-                }
-                if (valTo && dataPartitaIso) {
-                    dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso <= valTo);
-                }
-
-                const nomeCamp = (p.campionato || "").toUpperCase();
-                const codeCamp = (p.campionatoCode || "").toUpperCase();
-
-                let campionatoMatch = false;
-                if (selectedCodes.length === 0) {
-                    campionatoMatch = false;
-                } else {
-                    campionatoMatch = allowedKeywords.some(kw => nomeCamp.includes(kw) || codeCamp.includes(kw) || kw.includes(nomeCamp));
-                }
-
-                return dentroIntervalloDate && campionatoMatch;
-            });
-
-            if (!partiteFiltrate || partiteFiltrate.length === 0) {
-                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata per i filtri temporali e campionati selezionati.</div>`;
-                return;
-            }
-
-            partiteFiltrate.forEach(p => {
-                const giocateCasa = p.giocateCasa ?? 0;
-                const vinteCasa = p.vinteCasa ?? 0;
-                const pareggiateCasa = p.pareggiateCasa ?? 0;
-                const persoCasaVal = (p.persoCasa !== undefined && p.persoCasa !== null && p.persoCasa > 0) 
-                  ? p.persoCasa 
-                  : Math.max(0, giocateCasa - vinteCasa - pareggiateCasa);
-
-                const giocateOspite = p.giocateOspite ?? 0;
-                const vinteOspite = p.vinteOspite ?? 0;
-                const pareggiateOspite = p.pareggiateOspite ?? 0;
-                const persoOspiteVal = (p.persoOspite !== undefined && p.persoOspite !== null && p.persoOspite > 0) 
-                  ? p.persoOspite 
-                  : Math.max(0, giocateOspite - vinteOspite - pareggiateOspite);
-
-                const formaCasaObj = calcolaIndiceForma(p.formaCasa, vinteCasa, pareggiateCasa, persoCasaVal);
-                const formaOspiteObj = calcolaIndiceForma(p.formaOspite, vinteOspite, pareggiateOspite, persoOspiteVal);
-                
-                const dataDisplay = p.dataOraUTC || p.utcDate || p.dataOra;
-                const matchIdDisplay = p.matchId || p.id || Math.abs(`${p.squadraCasa}-${p.squadraOspite}-${dataDisplay}`.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0));
-                const risultatoRealeAutomatico = p.risultatoReale || "";
-
-                const diffCasa = (p.diffRetiCasa > 0 ? `+${p.diffRetiCasa}` : p.diffRetiCasa ?? 0);
-                const diffOspite = (p.diffRetiOspite > 0 ? `+${p.diffRetiOspite}` : p.diffRetiOspite ?? 0);
-
-                const card = document.createElement("div");
-                card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
-                card.innerHTML = `
-                    <div class="min-w-0">
-                        <!-- HEADER CARD -->
-                        <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
-                            <span class="font-bold text-slate-200 uppercase tracking-wider truncate max-w-[55%] sm:max-w-[60%] bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
-                            <div class="flex items-center gap-2">
-                                <span class="font-mono text-slate-300 text-[10px] sm:text-[11px] shrink-0"> ${formattaData(dataDisplay)}</span>
-                                ${formattaStatoApi(p.stato)}
-                            </div>
-                        </div>
-
-                        <!-- SQUADRE E RISULTATO REALE -->
-                        <div class="my-3 text-base sm:text-lg font-bold text-slate-100 flex items-center justify-between gap-2">
-                            <span class="truncate text-left flex-1">${p.squadraCasa}</span>
-                            
-                            <div class="flex flex-col items-center justify-center shrink-0 px-3 py-1 bg-slate-950 border border-emerald-500/50 rounded-xl min-w-[75px]">
-                                ${risultatoRealeAutomatico ? 
-                                    `<span class="text-emerald-400 font-extrabold text-lg tracking-widest">${risultatoRealeAutomatico}</span>` : 
-                                    `<span class="text-xs text-slate-500 font-normal">vs</span>`
-                                }
-                            </div>
-
-                            <span class="truncate text-right flex-1">${p.squadraOspite}</span>
-                        </div>
-
-                        <!-- TABELLA DATI GENERALI E SPECIFICI -->
-                        <div class="bg-slate-950/70 rounded-2xl p-3 border border-slate-800/80 text-xs space-y-2 my-3">
-                            <div class="grid grid-cols-3 text-[10px] font-bold text-slate-400 uppercase border-b border-slate-800/80 pb-1.5">
-                                <div>Dato</div>
-                                <div class="text-center truncate">${p.squadraCasa}</div>
-                                <div class="text-right truncate">${p.squadraOspite}</div>
-                            </div>
-
-                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center">
-                                <div class="text-slate-400 font-medium">Punti / Posizione</div>
-                                <div class="text-center font-bold text-slate-100">${p.puntiCasa ?? 0} <span class="text-slate-400 font-normal">(${p.posizioneCasa ?? '-'}°)</span></div>
-                                <div class="text-right font-bold text-slate-100">${p.puntiOspite ?? 0} <span class="text-slate-400 font-normal">(${p.posizioneOspite ?? '-'}°)</span></div>
-                            </div>
-
-                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
-                                <div class="text-slate-400 font-medium">Partite Giocate</div>
-                                <div class="text-center font-semibold">${p.giocateCasa ?? 0}</div>
-                                <div class="text-right font-semibold">${p.giocateOspite ?? 0}</div>
-                            </div>
-
-                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
-                                <div class="text-slate-400 font-medium">V / P / S Generali</div>
-                                <div class="text-center font-semibold">${p.vinteCasa ?? 0}/${p.pareggiateCasa ?? 0}/${persoCasaVal}</div>
-                                <div class="text-right font-semibold">${p.vinteOspite ?? 0}/${p.pareggiateOspite ?? 0}/${persoOspiteVal}</div>
-                            </div>
-
-                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
-                                <div class="text-slate-400 font-medium">Gol Fatti / Subiti</div>
-                                <div class="text-center font-semibold">${p.golFattiCasa ?? 0} / ${p.golSubitiCasa ?? 0}</div>
-                                <div class="text-right font-semibold">${p.golFattiOspite ?? 0} / ${p.golSubitiOspite ?? 0}</div>
-                            </div>
-
-                            <!-- DIFFERENZA RETI -->
-                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
-                                <div class="text-slate-400 font-medium">Diff. Reti</div>
-                                <div class="text-center font-semibold text-slate-300">${diffCasa}</div>
-                                <div class="text-right font-semibold text-slate-300">${diffOspite}</div>
-                            </div>
-
-                            <!-- DATI SPECIFICI CASA / TRASFERTA -->
-                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
-                                <div class="text-blue-300 font-semibold">Punti Specifici</div>
-                                <div class="text-center font-bold text-blue-400">${p.puntiCasaInCasa ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Casa)</span></div>
-                                <div class="text-right font-bold text-blue-400">${p.puntiOspiteInTrasferta ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Trasf.)</span></div>
-                            </div>
-
-                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
-                                <div class="text-blue-300 font-semibold">V/P/S Specifici</div>
-                                <div class="text-center font-semibold">${p.vinteCasaInCasa ?? 0}/${p.pareggiateCasaInCasa ?? 0}/${p.persoCasaInCasa ?? 0}</div>
-                                <div class="text-right font-semibold">${p.vinteOspiteInTrasferta ?? 0}/${p.pareggiateOspiteInTrasferta ?? 0}/${p.persoOspiteInTrasferta ?? 0}</div>
-                            </div>
-
-                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
-                                <div class="text-blue-300 font-semibold">Gol Spec. Fatti/Sub.</div>
-                                <div class="text-center font-semibold">${p.golFattiCasaInCasa ?? 0} / ${p.golSubitiCasaInCasa ?? 0}</div>
-                                <div class="text-right font-semibold">${p.golFattiOspiteInTrasferta ?? 0} / ${p.golSubitiOspiteInTrasferta ?? 0}</div>
-                            </div>
-
-                            <!-- INDICE FORMA & TREND -->
-                            <div class="grid grid-cols-3 text-slate-200 py-1.5 items-center border-t border-slate-800/80 bg-slate-900/50 -mx-3 px-3 rounded-b-xl">
-                                <div class="text-indigo-300 font-bold">Indice Forma &amp; Trend</div>
-                                <div class="text-center flex flex-col items-center justify-center gap-0.5">
-                                    <span class="font-bold text-emerald-400">${formaCasaObj.punteggio}</span>
-                                    ${formaCasaObj.simboliHtml}
-                                </div>
-                                <div class="text-right flex flex-col items-end justify-center gap-0.5">
-                                    <span class="font-bold text-emerald-400">${formaOspiteObj.punteggio}</span>
-                                    ${formaOspiteObj.simboliHtml}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- TOP SCORERS & TOP ASSISTS -->
-                        <div class="bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 my-2 space-y-1 text-xs">
-                            <div class="flex justify-between items-center">
-                                <div class="truncate max-w-[48%]">
-                                    <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Scorer Casa</span>
-                                    <span class="text-emerald-400 font-bold truncate block">${p.topScorerCasa || "N.D."}</span>
-                                </div>
-                                <div class="text-right truncate max-w-[48%]">
-                                    <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Scorer Ospite</span>
-                                    <span class="text-emerald-400 font-bold truncate block">${p.topScorerOspite || "N.D."}</span>
-                                </div>
-                            </div>
-                            <div class="flex justify-between items-center border-t border-slate-800/40 pt-1">
-                                <div class="truncate max-w-[48%]">
-                                    <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Assistman Casa</span>
-                                    <span class="text-blue-400 font-bold truncate block">${p.topAssistCasa || "N.D."}</span>
-                                </div>
-                                <div class="text-right truncate max-w-[48%]">
-                                    <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Assistman Ospite</span>
-                                    <span class="text-blue-400 font-bold truncate block">${p.topAssistOspite || "N.D."}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- METRICHE MEDIE (INCLUSO MEDIA GOL SUBITI) -->
-                        <div class="grid grid-cols-4 gap-1.5 my-3 text-center">
-                            <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
-                                <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Punti</div>
-                                <div class="text-[11px] font-bold text-emerald-400 mt-0.5">${p.mediaPuntiCasa || '0.00'} | ${p.mediaPuntiOspite || '0.00'}</div>
-                            </div>
-                            <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
-                                <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Gol Fatti</div>
-                                <div class="text-[11px] font-bold text-blue-400 mt-0.5">${p.mediaGolFattiCasa || '0.00'} | ${p.mediaGolFattiOspite || '0.00'}</div>
-                            </div>
-                            <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
-                                <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Gol Subiti</div>
-                                <div class="text-[11px] font-bold text-rose-400 mt-0.5">${p.mediaGolSubitiCasa || '0.00'} | ${p.mediaGolSubitiOspite || '0.00'}</div>
-                            </div>
-                            <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
-                                <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Gol Attesi</div>
-                                <div class="text-[11px] font-bold text-indigo-300 mt-0.5">${p.indiceGolAttesi || '0.00'}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- FOOTER CARD -->
-                    <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-2 sm:p-2.5 flex justify-between items-center mt-2">
-                        <span class="text-[10px] uppercase font-bold text-slate-400">ID MATCH: #${matchIdDisplay}</span>
-                        <span class="text-[10px] text-slate-500">Validazione Automatica</span>
-                    </div>
-                `;
-                risultati.appendChild(card);
-            });
-        }
-
-        async function sincronizzaESalva(e) {
-            if (e) e.preventDefault();
-
+        async function estraiEdAggiorna() {
             const btn = document.getElementById("btnEstrai");
-            const dateFrom = document.getElementById("dateFrom").value;
-            const dateTo = document.getElementById("dateTo").value;
+            const label = document.getElementById("labelEstrai");
+            const spinner = document.getElementById("spinnerEstrai");
 
-            if (!dateFrom || !dateTo) {
-                alert("Seleziona entrambe le date!");
-                return;
-            }
+            const dataInizio = document.getElementById("inputDataInizio").value;
+            const offset = parseInt(document.getElementById("inputOffsetGiorni").value) || 14;
+            
+            const dFine = new Date(dataInizio);
+            dFine.setDate(dFine.getDate() + offset);
+            const dataFine = dFine.toISOString().split('T')[0];
 
-            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
-            const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim());
-
-            if (selectedComps.length === 0) {
-                alert("Seleziona almeno un campionato da estrarre!");
-                return;
-            }
+            const compSelezionati = Array.from(document.querySelectorAll('.chkCampionato:checked')).map(cb => cb.value).join(',');
 
             btn.disabled = true;
-            btn.textContent = "Estrazione in corso...";
-            mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati...`, "info");
+            label.innerText = "Estrazione in corso...";
+            spinner.classList.remove("hidden");
 
             try {
-                const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
-                const res = await fetch(fullUrl);
+                const res = await fetch(`${WORKER_URL}?dateFrom=${dataInizio}&dateTo=${dataFine}&competitions=${compSelezionati}`);
                 const data = await res.json();
 
-                if (data.errore) {
-                    mostraStato("Errore Worker: " + data.messaggio, "error");
-                } else if (data.partite && data.partite.length > 0) {
-                    const ora = new Date().toLocaleString("it-IT");
-                    
+                if (data && data.partite) {
                     await db.collection("palinsesto").doc("corrente").set({
-                        partite: data.partite,
-                        intervallo: `${dateFrom} / ${dateTo}`,
-                        campionatiSelezionati: selectedComps,
-                        ultimoAggiornamento: ora,
-                        totale: data.partite.length
+                        aggiornatoIl: new Date().toISOString(),
+                        totalePartiteTrovate: data.totalePartiteTrovate,
+                        partite: data.partite
                     });
-
-                    cachePartiteFirestore = data.partite;
-                    aggiornaFiltriVisualizzazione();
-
-                    mostraStato(`Completato! Trovate e sincronizzate ${data.partite.length} partite per i campionati selezionati.`, "success");
-                } else {
-                    mostraStato("Nessuna partita trovata per i campionati e le date selezionate.", "error");
                 }
             } catch (err) {
-                console.error(err);
-                mostraStato("Errore di connessione: " + err.message, "error");
+                console.error("Errore nell'estrazione:", err);
+                alert("Si è verificato un errore durante l'estrazione dei dati.");
             } finally {
                 btn.disabled = false;
-                btn.textContent = "Estrai Partite e Sincronizza Cloud";
+                label.innerText = "Estrai Dati";
+                spinner.classList.add("hidden");
             }
+        }
+
+        function applicaFiltri() {
+            const campionatiAttivi = Array.from(document.querySelectorAll('.chkCampionato:checked')).map(cb => cb.value);
+            
+            const partiteFiltrate = cachePartiteFirestore.filter(p => 
+                campionatiAttivi.includes(p.campionatoCode)
+            );
+
+            document.getElementById("badgeTotalePartite").innerText = `${partiteFiltrate.length} Match`;
+            renderizzaCards(partiteFiltrate);
+        }
+
+        function generaBadgeForma(formaStr) {
+            if (!formaStr) return '<span class="text-slate-600">-</span>';
+            const charArray = formaStr.toUpperCase().split('').slice(-5);
+            return charArray.map(c => {
+                if (c === 'W') return `<span class="inline-block w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold text-center leading-4">V</span>`;
+                if (c === 'D') return `<span class="inline-block w-4 h-4 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-bold text-center leading-4">P</span>`;
+                if (c === 'L') return `<span class="inline-block w-4 h-4 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[9px] font-bold text-center leading-4">S</span>`;
+                return '';
+            }).join(' ');
+        }
+
+        function renderizzaCards(partite) {
+            const grid = document.getElementById("gridPartite");
+            grid.innerHTML = "";
+
+            if (partite.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-500 text-xs">Nessuna partita trovata per i filtri selezionati.</div>`;
+                return;
+            }
+
+            partite.forEach(p => {
+                // Formatting e Fallback Metriche Medie
+                const mediaPuntiC = p.mediaPuntiCasa || (p.giocateCasa ? (p.puntiCasa / p.giocateCasa).toFixed(2) : "0.00");
+                const mediaPuntiO = p.mediaPuntiOspite || (p.giocateOspite ? (p.puntiOspite / p.giocateOspite).toFixed(2) : "0.00");
+
+                const mediaGolFattiC = p.mediaGolFattiCasa || (p.giocateCasa ? (p.golFattiCasa / p.giocateCasa).toFixed(2) : "0.00");
+                const mediaGolFattiO = p.mediaGolFattiOspite || (p.giocateOspite ? (p.golFattiOspite / p.giocateOspite).toFixed(2) : "0.00");
+
+                const mediaGolSubitiC = p.mediaGolSubitiCasa || (p.giocateCasa ? (p.golSubitiCasa / p.giocateCasa).toFixed(2) : "0.00");
+                const mediaGolSubitiO = p.mediaGolSubitiOspite || (p.giocateOspite ? (p.golSubitiOspite / p.giocateOspite).toFixed(2) : "0.00");
+
+                const golAttesiVal = p.indiceGolAttesi || (parseFloat(mediaGolFattiC) + parseFloat(mediaGolFattiO)).toFixed(2);
+
+                // Formatting e Fallback Top Scorer / Top Assistman
+                const scorerCasaDisplay = (p.topScorerCasa && p.topScorerCasa !== "N.D.") ? p.topScorerCasa : "Non disponibile";
+                const scorerOspiteDisplay = (p.topScorerOspite && p.topScorerOspite !== "N.D.") ? p.topScorerOspite : "Non disponibile";
+                const assistCasaDisplay = (p.topAssistCasa && p.topAssistCasa !== "N.D.") ? p.topAssistCasa : "Dato non tracciato";
+                const assistOspiteDisplay = (p.topAssistOspite && p.topAssistOspite !== "N.D.") ? p.topAssistOspite : "Dato non tracciato";
+
+                const diffCasa = (p.diffRetiCasa > 0 ? `+${p.diffRetiCasa}` : p.diffRetiCasa);
+                const diffOspite = (p.diffRetiOspite > 0 ? `+${p.diffRetiOspite}` : p.diffRetiOspite);
+
+                const dataFormatted = new Date(p.dataOraUTC || p.utcDate).toLocaleString('it-IT', {
+                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                });
+
+                const cardHtml = `
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition-all shadow-md">
+                        <!-- HEADER CARD -->
+                        <div>
+                            <div class="flex justify-between items-center text-[10px] text-slate-400 border-b border-slate-800 pb-2 mb-3">
+                                <span class="font-bold text-indigo-400 uppercase tracking-wider">${p.campionato}</span>
+                                <span>${dataFormatted}</span>
+                            </div>
+
+                            <!-- SQUADRE E RISULTATO -->
+                            <div class="grid grid-cols-7 items-center mb-3">
+                                <div class="col-span-3 text-left">
+                                    <div class="font-bold text-sm text-white truncate" title="${p.squadraCasa}">${p.squadraCasa}</div>
+                                    <div class="text-[10px] text-slate-400 mt-0.5">Pos: <span class="text-slate-200 font-semibold">${p.posizioneCasa}°</span> (${p.puntiCasa} pt)</div>
+                                </div>
+                                <div class="col-span-1 text-center">
+                                    ${p.risultatoReale ? `<span class="bg-indigo-600 text-white font-extrabold text-xs px-2 py-0.5 rounded">${p.risultatoReale}</span>` : `<span class="text-xs font-bold text-slate-600">VS</span>`}
+                                </div>
+                                <div class="col-span-3 text-right">
+                                    <div class="font-bold text-sm text-white truncate" title="${p.squadraOspite}">${p.squadraOspite}</div>
+                                    <div class="text-[10px] text-slate-400 mt-0.5">Pos: <span class="text-slate-200 font-semibold">${p.posizioneOspite}°</span> (${p.puntiOspite} pt)</div>
+                                </div>
+                            </div>
+
+                            <!-- CLASSIFICA DETTAGLIATA (TOTALE E CASA/TRASFERTA) -->
+                            <div class="bg-slate-950/40 rounded-xl p-2.5 border border-slate-800/60 mb-3 space-y-2 text-[11px]">
+                                <div class="flex justify-between items-center">
+                                    <div class="text-slate-400">Totale (V/P/S):</div>
+                                    <div class="font-semibold text-slate-200">${p.vinteCasa}-${p.pareggiateCasa}-${p.persoCasa} <span class="text-slate-500">vs</span> ${p.vinteOspite}-${p.pareggiateOspite}-${p.persoOspite}</div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <div class="text-slate-400">Casa/Trasferta:</div>
+                                    <div class="font-semibold text-slate-200">${p.vinteCasaInCasa}-${p.pareggiateCasaInCasa}-${p.persoCasaInCasa} <span class="text-slate-500">vs</span> ${p.vinteOspiteInTrasferta}-${p.pareggiateOspiteInTrasferta}-${p.persoOspiteInTrasferta}</div>
+                                </div>
+                                <div class="flex justify-between items-center border-t border-slate-800/50 pt-1.5">
+                                    <div class="text-slate-400">Diff. Reti:</div>
+                                    <div class="font-semibold text-slate-200">${diffCasa} <span class="text-slate-500">vs</span> ${diffOspite}</div>
+                                </div>
+                            </div>
+
+                            <!-- FORMA DISSOCIATA -->
+                            <div class="flex justify-between items-center px-1 mb-3">
+                                <div class="flex gap-0.5 items-center">${generaBadgeForma(p.formaCasa)}</div>
+                                <span class="text-[9px] text-slate-500 uppercase font-bold">Forma</span>
+                                <div class="flex gap-0.5 items-center">${generaBadgeForma(p.formaOspite)}</div>
+                            </div>
+
+                            <!-- TOP SCORERS & TOP ASSISTS -->
+                            <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 my-2 space-y-2 text-xs">
+                                <div class="flex justify-between items-start gap-2">
+                                    <div class="truncate w-1/2">
+                                        <span class="text-[9px] text-slate-400 block uppercase font-bold tracking-wider">Top Scorer Casa</span>
+                                        <span class="text-emerald-400 font-bold truncate block text-xs mt-0.5" title="${scorerCasaDisplay}">${scorerCasaDisplay}</span>
+                                    </div>
+                                    <div class="text-right truncate w-1/2">
+                                        <span class="text-[9px] text-slate-400 block uppercase font-bold tracking-wider">Top Scorer Ospite</span>
+                                        <span class="text-emerald-400 font-bold truncate block text-xs mt-0.5" title="${scorerOspiteDisplay}">${scorerOspiteDisplay}</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-start gap-2 border-t border-slate-800/60 pt-2">
+                                    <div class="truncate w-1/2">
+                                        <span class="text-[9px] text-slate-400 block uppercase font-bold tracking-wider">Top Assistman Casa</span>
+                                        <span class="text-blue-400 font-bold truncate block text-xs mt-0.5" title="${assistCasaDisplay}">${assistCasaDisplay}</span>
+                                    </div>
+                                    <div class="text-right truncate w-1/2">
+                                        <span class="text-[9px] text-slate-400 block uppercase font-bold tracking-wider">Top Assistman Ospite</span>
+                                        <span class="text-blue-400 font-bold truncate block text-xs mt-0.5" title="${assistOspiteDisplay}">${assistOspiteDisplay}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- METRICHE MEDIE (GRIGLIA METRICHE SINTETICHE) -->
+                            <div class="grid grid-cols-4 gap-1.5 my-3 text-center">
+                                <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
+                                    <div class="text-[8px] text-slate-400 uppercase font-bold truncate">Media Punti</div>
+                                    <div class="text-xs font-extrabold text-emerald-400 mt-1">${mediaPuntiC} | ${mediaPuntiO}</div>
+                                </div>
+                                <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
+                                    <div class="text-[8px] text-slate-400 uppercase font-bold truncate">Media Gol Fatti</div>
+                                    <div class="text-xs font-extrabold text-blue-400 mt-1">${mediaGolFattiC} | ${mediaGolFattiO}</div>
+                                </div>
+                                <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
+                                    <div class="text-[8px] text-slate-400 uppercase font-bold truncate">Media Gol Subiti</div>
+                                    <div class="text-xs font-extrabold text-rose-400 mt-1">${mediaGolSubitiC} | ${mediaGolSubitiO}</div>
+                                </div>
+                                <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
+                                    <div class="text-[8px] text-slate-400 uppercase font-bold truncate">Gol Attesi</div>
+                                    <div class="text-xs font-extrabold text-indigo-300 mt-1">${golAttesiVal}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += cardHtml;
+            });
         }
     </script>
 </body>
