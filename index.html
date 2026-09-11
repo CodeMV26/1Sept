@@ -197,6 +197,20 @@
             return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
 
+        function formatVal(val, defaultVal = "0.00") {
+            if (val === undefined || val === null || val === "" || val === "NaN" || val === "undefined") {
+                return defaultVal;
+            }
+            return val;
+        }
+
+        function formatPlayer(playerStr) {
+            if (!playerStr || playerStr === "" || playerStr === "undefined" || playerStr === "null") {
+                return "N.D.";
+            }
+            return playerStr;
+        }
+
         function calcolaIndiceForma(strForma, vinte = 0, pareggiate = 0, perso = 0) {
             let esiti = [];
 
@@ -364,6 +378,19 @@
                 const diffCasa = (p.diffRetiCasa > 0 ? `+${p.diffRetiCasa}` : p.diffRetiCasa ?? 0);
                 const diffOspite = (p.diffRetiOspite > 0 ? `+${p.diffRetiOspite}` : p.diffRetiOspite ?? 0);
 
+                const topScorerCasaVal = formatPlayer(p.topScorerCasa);
+                const topScorerOspiteVal = formatPlayer(p.topScorerOspite);
+                const topAssistCasaVal = formatPlayer(p.topAssistCasa || p.topAssistmanCasa);
+                const topAssistOspiteVal = formatPlayer(p.topAssistOspite || p.topAssistmanOspite);
+
+                const mediaPuntiCasaVal = formatVal(p.mediaPuntiCasa);
+                const mediaPuntiOspiteVal = formatVal(p.mediaPuntiOspite);
+                const mediaGolFattiCasaVal = formatVal(p.mediaGolFattiCasa);
+                const mediaGolFattiOspiteVal = formatVal(p.mediaGolFattiOspite);
+                const mediaGolSubitiCasaVal = formatVal(p.mediaGolSubitiCasa);
+                const mediaGolSubitiOspiteVal = formatVal(p.mediaGolSubitiOspite);
+                const indiceGolAttesiVal = formatVal(p.indiceGolAttesi || p.golAttesi);
+
                 const card = document.createElement("div");
                 card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
                 card.innerHTML = `
@@ -423,14 +450,12 @@
                                 <div class="text-right font-semibold">${p.golFattiOspite ?? 0} / ${p.golSubitiOspite ?? 0}</div>
                             </div>
 
-                            <!-- DIFFERENZA RETI -->
                             <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
                                 <div class="text-slate-400 font-medium">Diff. Reti</div>
                                 <div class="text-center font-semibold text-slate-300">${diffCasa}</div>
                                 <div class="text-right font-semibold text-slate-300">${diffOspite}</div>
                             </div>
 
-                            <!-- DATI SPECIFICI CASA / TRASFERTA -->
                             <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
                                 <div class="text-blue-300 font-semibold">Punti Specifici</div>
                                 <div class="text-center font-bold text-blue-400">${p.puntiCasaInCasa ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Casa)</span></div>
@@ -449,7 +474,6 @@
                                 <div class="text-right font-semibold">${p.golFattiOspiteInTrasferta ?? 0} / ${p.golSubitiOspiteInTrasferta ?? 0}</div>
                             </div>
 
-                            <!-- INDICE FORMA & TREND -->
                             <div class="grid grid-cols-3 text-slate-200 py-1.5 items-center border-t border-slate-800/80 bg-slate-900/50 -mx-3 px-3 rounded-b-xl">
                                 <div class="text-indigo-300 font-bold">Indice Forma &amp; Trend</div>
                                 <div class="text-center flex flex-col items-center justify-center gap-0.5">
@@ -468,42 +492,42 @@
                             <div class="flex justify-between items-center">
                                 <div class="truncate max-w-[48%]">
                                     <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Scorer Casa</span>
-                                    <span class="text-emerald-400 font-bold truncate block">${p.topScorerCasa && p.topScorerCasa !== "" ? p.topScorerCasa : "N.D."}</span>
+                                    <span class="text-emerald-400 font-bold truncate block">${topScorerCasaVal}</span>
                                 </div>
                                 <div class="text-right truncate max-w-[48%]">
                                     <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Scorer Ospite</span>
-                                    <span class="text-emerald-400 font-bold truncate block">${p.topScorerOspite && p.topScorerOspite !== "" ? p.topScorerOspite : "N.D."}</span>
+                                    <span class="text-emerald-400 font-bold truncate block">${topScorerOspiteVal}</span>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center border-t border-slate-800/40 pt-1">
                                 <div class="truncate max-w-[48%]">
                                     <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Assistman Casa</span>
-                                    <span class="text-blue-400 font-bold truncate block">${p.topAssistCasa && p.topAssistCasa !== "" ? p.topAssistCasa : "N.D."}</span>
+                                    <span class="text-blue-400 font-bold truncate block">${topAssistCasaVal}</span>
                                 </div>
                                 <div class="text-right truncate max-w-[48%]">
                                     <span class="text-[9px] text-slate-400 block uppercase font-semibold">Top Assistman Ospite</span>
-                                    <span class="text-blue-400 font-bold truncate block">${p.topAssistOspite && p.topAssistOspite !== "" ? p.topAssistOspite : "N.D."}</span>
+                                    <span class="text-blue-400 font-bold truncate block">${topAssistOspiteVal}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- METRICHE MEDIE (INCLUSO MEDIA GOL SUBITI) -->
+                        <!-- METRICHE MEDIE -->
                         <div class="grid grid-cols-4 gap-1.5 my-3 text-center">
                             <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
                                 <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Punti</div>
-                                <div class="text-[11px] font-bold text-emerald-400 mt-0.5">${p.mediaPuntiCasa || '0.00'} | ${p.mediaPuntiOspite || '0.00'}</div>
+                                <div class="text-[11px] font-bold text-emerald-400 mt-0.5">${mediaPuntiCasaVal} | ${mediaPuntiOspiteVal}</div>
                             </div>
                             <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
                                 <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Gol Fatti</div>
-                                <div class="text-[11px] font-bold text-blue-400 mt-0.5">${p.mediaGolFattiCasa || '0.00'} | ${p.mediaGolFattiOspite || '0.00'}</div>
+                                <div class="text-[11px] font-bold text-blue-400 mt-0.5">${mediaGolFattiCasaVal} | ${mediaGolFattiOspiteVal}</div>
                             </div>
                             <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
                                 <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Gol Subiti</div>
-                                <div class="text-[11px] font-bold text-rose-400 mt-0.5">${p.mediaGolSubitiCasa || '0.00'} | ${p.mediaGolSubitiOspite || '0.00'}</div>
+                                <div class="text-[11px] font-bold text-rose-400 mt-0.5">${mediaGolSubitiCasaVal} | ${mediaGolSubitiOspiteVal}</div>
                             </div>
                             <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
                                 <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Gol Attesi</div>
-                                <div class="text-[11px] font-bold text-indigo-300 mt-0.5">${p.indiceGolAttesi || '0.00'}</div>
+                                <div class="text-[11px] font-bold text-indigo-300 mt-0.5">${indiceGolAttesiVal}</div>
                             </div>
                         </div>
                     </div>
