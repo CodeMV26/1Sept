@@ -354,7 +354,23 @@
                   ? p.persoOspite 
                   : Math.max(0, giocateOspite - vinteOspite - pareggiateOspite);
 
-                // --- CALCOLO METRICHE SINTETICHE IN FRONTEND (JAVASCRIPT) ---
+                // --- CALCOLO METRICHE GENERALI E SPECIFICHE INTERAMENTE IN FRONTEND ---
+                const puntiCasaInCasa = p.puntiCasaInCasa ?? (p.vinteCasaInCasa * 3 + p.pareggiateCasaInCasa);
+                const puntiOspiteInTrasferta = p.puntiOspiteInTrasferta ?? (p.vinteOspiteInTrasferta * 3 + p.pareggiateOspiteInTrasferta);
+
+                const vinteCasaInCasa = p.vinteCasaInCasa ?? 0;
+                const pareggiateCasaInCasa = p.pareggiateCasaInCasa ?? 0;
+                const persoCasaInCasa = p.persoCasaInCasa ?? 0;
+
+                const vinteOspiteInTrasferta = p.vinteOspiteInTrasferta ?? 0;
+                const pareggiateOspiteInTrasferta = p.pareggiateOspiteInTrasferta ?? 0;
+                const persoOspiteInTrasferta = p.persoOspiteInTrasferta ?? 0;
+
+                const golFattiCasaInCasa = p.golFattiCasaInCasa ?? 0;
+                const golSubitiCasaInCasa = p.golSubitiCasaInCasa ?? 0;
+                const golFattiOspiteInTrasferta = p.golFattiOspiteInTrasferta ?? 0;
+                const golSubitiOspiteInTrasferta = p.golSubitiOspiteInTrasferta ?? 0;
+
                 const mediaPuntiCasa = giocateCasa > 0 ? ((p.puntiCasa || 0) / giocateCasa).toFixed(2) : "0.00";
                 const mediaPuntiOspite = giocateOspite > 0 ? ((p.puntiOspite || 0) / giocateOspite).toFixed(2) : "0.00";
 
@@ -366,11 +382,11 @@
 
                 const indiceGolAttesi = (parseFloat(mediaGolFattiCasa) + parseFloat(mediaGolFattiOspite)).toFixed(2);
 
-                // --- FALLBACK SICURI MARCATORI ---
-                const topScorerCasaText = p.topScorerCasa && p.topScorerCasa !== "N.D." ? p.topScorerCasa : "Non disponibile";
-                const topScorerOspiteText = p.topScorerOspite && p.topScorerOspite !== "N.D." ? p.topScorerOspite : "Non disponibile";
-                const topAssistCasaText = p.topAssistCasa && p.topAssistCasa !== "N.D." ? p.topAssistCasa : "Non disponibile";
-                const topAssistOspiteText = p.topAssistOspite && p.topAssistOspite !== "N.D." ? p.topAssistOspite : "Non disponibile";
+                // --- FALLBACK SICURI MARCATORI E ASSISTMAN ---
+                const topScorerCasaText = (p.topScorerCasa && p.topScorerCasa !== "N.D.") ? p.topScorerCasa : "Non disponibile";
+                const topScorerOspiteText = (p.topScorerOspite && p.topScorerOspite !== "N.D.") ? p.topScorerOspite : "Non disponibile";
+                const topAssistCasaText = (p.topAssistCasa && p.topAssistCasa !== "N.D.") ? p.topAssistCasa : "Non disponibile";
+                const topAssistOspiteText = (p.topAssistOspite && p.topAssistOspite !== "N.D.") ? p.topAssistOspite : "Non disponibile";
 
                 const formaCasaObj = calcolaIndiceForma(p.formaCasa, vinteCasa, pareggiateCasa, persoCasaVal);
                 const formaOspiteObj = calcolaIndiceForma(p.formaOspite, vinteOspite, pareggiateOspite, persoOspiteVal);
@@ -451,20 +467,20 @@
                             <!-- DATI SPECIFICI CASA / TRASFERTA -->
                             <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
                                 <div class="text-blue-300 font-semibold">Punti Specifici</div>
-                                <div class="text-center font-bold text-blue-400">${p.puntiCasaInCasa ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Casa)</span></div>
-                                <div class="text-right font-bold text-blue-400">${p.puntiOspiteInTrasferta ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Trasf.)</span></div>
+                                <div class="text-center font-bold text-blue-400">${puntiCasaInCasa} <span class="text-[9px] text-slate-400 font-normal">(Casa)</span></div>
+                                <div class="text-right font-bold text-blue-400">${puntiOspiteInTrasferta} <span class="text-[9px] text-slate-400 font-normal">(Trasf.)</span></div>
                             </div>
 
                             <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
                                 <div class="text-blue-300 font-semibold">V/P/S Specifici</div>
-                                <div class="text-center font-semibold">${p.vinteCasaInCasa ?? 0}/${p.pareggiateCasaInCasa ?? 0}/${p.persoCasaInCasa ?? 0}</div>
-                                <div class="text-right font-semibold">${p.vinteOspiteInTrasferta ?? 0}/${p.pareggiateOspiteInTrasferta ?? 0}/${p.persoOspiteInTrasferta ?? 0}</div>
+                                <div class="text-center font-semibold">${vinteCasaInCasa}/${pareggiateCasaInCasa}/${persoCasaInCasa}</div>
+                                <div class="text-right font-semibold">${vinteOspiteInTrasferta}/${pareggiateOspiteInTrasferta}/${persoOspiteInTrasferta}</div>
                             </div>
 
                             <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
                                 <div class="text-blue-300 font-semibold">Gol Spec. Fatti/Sub.</div>
-                                <div class="text-center font-semibold">${p.golFattiCasaInCasa ?? 0} / ${p.golSubitiCasaInCasa ?? 0}</div>
-                                <div class="text-right font-semibold">${p.golFattiOspiteInTrasferta ?? 0} / ${p.golSubitiOspiteInTrasferta ?? 0}</div>
+                                <div class="text-center font-semibold">${golFattiCasaInCasa} / ${golSubitiCasaInCasa}</div>
+                                <div class="text-right font-semibold">${golFattiOspiteInTrasferta} / ${golSubitiOspiteInTrasferta}</div>
                             </div>
 
                             <!-- INDICE FORMA & TREND -->
