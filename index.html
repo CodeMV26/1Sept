@@ -197,11 +197,13 @@
             return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
 
+        // PARSER NUMERICO CORRETTO PER EVITARE VALORI '0.00' O NaN
         function formatVal(val, defaultVal = "0.00") {
             if (val === undefined || val === null || val === "" || String(val) === "NaN" || String(val) === "undefined") {
                 return defaultVal;
             }
-            return String(val);
+            const num = parseFloat(val);
+            return isNaN(num) ? defaultVal : num.toFixed(2);
         }
 
         function formatPlayer(playerStr) {
