@@ -8,51 +8,98 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen pb-28 font-sans">
+<body class="bg-slate-950 text-slate-100 min-h-screen pb-28 font-sans antialiased">
 
+    <!-- HEADER -->
     <header class="p-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold text-blue-400">SoccerStats ML</h1>
-            <div id="syncBadge" class="px-3 py-1 bg-emerald-950 text-emerald-400 rounded-full text-xs font-semibold border border-emerald-800">
-                Live Sync
+            <div class="flex items-center space-x-3">
+                <div class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
+                <h1 class="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">SoccerStats ML</h1>
+            </div>
+            <div id="syncBadge" class="px-3 py-1 bg-emerald-950/80 text-emerald-400 rounded-full text-xs font-semibold border border-emerald-800/60 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Live Sync
             </div>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto p-4 my-2">
-        <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl max-w-2xl mx-auto mb-6">
-            <h2 class="text-xs font-bold text-blue-400 uppercase mb-3">ESTRAZIONE PALINSESTO</h2>
+    <!-- MAIN -->
+    <main class="max-w-7xl w-full mx-auto p-3 sm:p-6 my-2">
+        <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto mb-6">
+            <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
+                ESTRAZIONE &amp; SINCRONIZZAZIONE PALINSESTO
+            </h2>
 
-            <div class="flex flex-wrap gap-2 mb-4">
-                <button onclick="impostaIntervalloPreset('oggi')" class="bg-slate-800 text-xs px-3 py-1 rounded border border-slate-700">Oggi</button>
-                <button onclick="impostaIntervalloPreset('domani')" class="bg-slate-800 text-xs px-3 py-1 rounded border border-slate-700">Domani</button>
-                <button onclick="impostaIntervalloPreset('weekend')" class="bg-slate-800 text-xs px-3 py-1 rounded border border-slate-700">Weekend</button>
-                <button onclick="impostaIntervalloPreset(7)" class="bg-slate-800 text-xs px-3 py-1 rounded border border-slate-700">+7 Giorni</button>
-                <button onclick="impostaIntervalloPreset(14)" class="bg-slate-800 text-xs px-3 py-1 rounded border border-slate-700">+14 Giorni</button>
+            <p class="text-xs text-slate-400 mb-3">Seleziona i parametri temporali e i campionati da estrarre:</p>
+
+            <!-- PRESET RAPIDI -->
+            <div class="flex flex-wrap gap-1.5 mb-4">
+                <button type="button" onclick="impostaIntervalloPreset('oggi')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">Oggi</button>
+                <button type="button" onclick="impostaIntervalloPreset('domani')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">Domani</button>
+                <button type="button" onclick="impostaIntervalloPreset('weekend')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">Weekend</button>
+                <button type="button" onclick="impostaIntervalloPreset(7)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">+7 Giorni</button>
+                <button type="button" onclick="impostaIntervalloPreset(14)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">+14 Giorni</button>
             </div>
 
-            <div class="grid grid-cols-3 gap-3 mb-4">
+            <!-- DATE -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                 <div>
-                    <label class="text-[11px] text-slate-400 block mb-1">Inizio</label>
-                    <input type="date" id="dateFrom" class="w-full bg-slate-950 border border-slate-800 text-xs p-2 rounded-xl">
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
+                    <input type="date" id="dateFrom" onchange="ricalcolaDataFine(); aggiornaFiltriVisualizzazione();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
                 </div>
                 <div>
-                    <label class="text-[11px] text-slate-400 block mb-1">Giorni</label>
-                    <input type="number" id="daysOffset" value="14" class="w-full bg-slate-950 border border-slate-800 text-xs p-2 rounded-xl">
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Giorni</label>
+                    <input type="number" id="daysOffset" value="14" min="1" max="30" onchange="ricalcolaDataFine(); aggiornaFiltriVisualizzazione();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
                 </div>
                 <div>
-                    <label class="text-[11px] text-slate-400 block mb-1">Fine</label>
-                    <input type="date" id="dateTo" class="w-full bg-slate-950 border border-slate-800 text-xs p-2 rounded-xl">
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Fine</label>
+                    <input type="date" id="dateTo" onchange="aggiornaFiltriVisualizzazione()" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
                 </div>
             </div>
 
-            <button id="btnEstrai" onclick="sincronizzaESalva()" class="w-full bg-emerald-600 hover:bg-emerald-500 font-bold py-3 rounded-xl text-sm">
+            <!-- FILTRO CAMPIONATI -->
+            <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
+                <div class="flex justify-between items-center mb-2.5">
+                    <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
+                    <button type="button" onclick="toggleTuttiCampionati()" class="text-[10px] text-blue-400 hover:text-blue-300 font-semibold underline">Seleziona / Deseleziona Tutti</button>
+                </div>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
+                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="SA" checked>
+                        <span class="text-slate-200 truncate">Serie A</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
+                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="PL" checked>
+                        <span class="text-slate-200 truncate">Premier League</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
+                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="PD" checked>
+                        <span class="text-slate-200 truncate">La Liga</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
+                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="BL1" checked>
+                        <span class="text-slate-200 truncate">Bundesliga</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
+                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="FL1" checked>
+                        <span class="text-slate-200 truncate">Ligue 1</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
+                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="CL" checked>
+                        <span class="text-slate-200 truncate">Champions League</span>
+                    </label>
+                </div>
+            </div>
+
+            <button id="btnEstrai" type="button" onclick="sincronizzaESalva(event)" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer">
                 Estrai Partite e Sincronizza Cloud
             </button>
-            <div id="stato" class="hidden mt-3 p-3 rounded-xl text-xs text-center border"></div>
+
+            <div id="stato" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
         </div>
 
-        <div id="risultati" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+        <div id="risultati" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
     </main>
 
     <script>
@@ -68,176 +115,374 @@
         const db = firebase.firestore();
 
         const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
-        let cachePartite = [];
+        let cachePartiteFirestore = [];
 
-        function formattaIso(d) { return d.toISOString().split("T")[0]; }
+        function formattaDataIso(d) {
+            return d.toISOString().split("T")[0];
+        }
 
         function impostaIntervalloPreset(tipo) {
-            const d1 = new Date();
-            const d2 = new Date();
-            if (tipo === 'domani') { d1.setDate(d1.getDate() + 1); d2.setDate(d2.getDate() + 1); }
-            else if (tipo === 'weekend') {
-                const day = d1.getDay();
-                const diff = (5 - day + 7) % 7;
-                d1.setDate(d1.getDate() + diff);
-                d2.setDate(d1.getDate() + 2);
+            const dInizio = new Date();
+            const dFine = new Date();
+
+            if (tipo === 'oggi') {
+                document.getElementById("daysOffset").value = 0;
+            } else if (tipo === 'domani') {
+                dInizio.setDate(dInizio.getDate() + 1);
+                dFine.setDate(dFine.getDate() + 1);
+                document.getElementById("daysOffset").value = 0;
+            } else if (tipo === 'weekend') {
+                const giornoSettimana = dInizio.getDay();
+                const giorniA_Venerdi = (5 - giornoSettimana + 7) % 7;
+                dInizio.setDate(dInizio.getDate() + giorniA_Venerdi);
+                dFine.setDate(dInizio.getDate() + 2);
+                document.getElementById("daysOffset").value = 2;
             } else if (typeof tipo === 'number') {
-                d2.setDate(d1.getDate() + tipo);
+                dFine.setDate(dInizio.getDate() + tipo);
+                document.getElementById("daysOffset").value = tipo;
             }
-            document.getElementById("dateFrom").value = formattaIso(d1);
-            document.getElementById("dateTo").value = formattaIso(d2);
+
+            document.getElementById("dateFrom").value = formattaDataIso(dInizio);
+            document.getElementById("dateTo").value = formattaDataIso(dFine);
+            aggiornaFiltriVisualizzazione();
+        }
+
+        function ricalcolaDataFine() {
+            const valFrom = document.getElementById("dateFrom").value;
+            const daysOffset = parseInt(document.getElementById("daysOffset").value) || 0;
+            if (valFrom) {
+                const parts = valFrom.split("-");
+                const dInizio = new Date(parts[0], parts[1] - 1, parts[2]);
+                dInizio.setDate(dInizio.getDate() + daysOffset);
+                document.getElementById("dateTo").value = formattaDataIso(dInizio);
+            }
         }
 
         window.onload = function() {
-            impostaIntervalloPreset(14);
-            db.collection("palinsesto").doc("corrente").onSnapshot(doc => {
+            const oggi = new Date();
+            document.getElementById("dateFrom").value = formattaDataIso(oggi);
+            ricalcolaDataFine();
+
+            db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
                 if (doc.exists) {
-                    cachePartite = doc.data().partite || [];
-                    mostraPartite(cachePartite);
+                    const data = doc.data();
+                    if (data.partite && Array.isArray(data.partite)) {
+                        cachePartiteFirestore = data.partite;
+                        aggiornaFiltriVisualizzazione();
+                        mostraStato(`Sincronizzato Cloud: ${data.partite.length} partite in archivio`, "success");
+                    }
                 }
             });
         };
 
-        function calcolaForma(ultime) {
-            if (!ultime || ultime.length === 0) return { html: `<span class="text-slate-500 text-[10px]">N/D</span>`, val: "0.0 / 5.0" };
-            let p = 0;
-            let h = `<div class="flex gap-1 justify-center sm:justify-start">`;
-            ultime.forEach(m => {
-                if (m.esito === "W") { p += 1.0; h += `<span class="w-3.5 h-3.5 rounded-sm bg-emerald-500"></span>`; }
-                else if (m.esito === "D") { p += 0.5; h += `<span class="w-3.5 h-3.5 rounded-sm bg-amber-400"></span>`; }
-                else { h += `<span class="w-3.5 h-3.5 rounded-sm bg-rose-500"></span>`; }
-            });
-            h += `</div>`;
-            return { html: h, val: `${p.toFixed(1)} / 5.0` };
+        function toggleTuttiCampionati() {
+            const checkboxes = document.querySelectorAll('.comp-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+            aggiornaFiltriVisualizzazione();
         }
 
-        function renderUltime5(ultime) {
-            if (!ultime || ultime.length === 0) return `<div class="text-[10px] text-slate-500">Nessun dato</div>`;
-            return ultime.map(m => `
-                <div class="flex justify-between text-[10px] py-0.5">
-                    <span class="text-slate-400">${m.esito === "W" ? "Vittoria" : (m.esito === "D" ? "Pareggio" : "Sconfitta")}</span>
-                    <span class="font-bold ${m.esito === "W" ? 'text-emerald-400' : m.esito === "D" ? 'text-amber-400' : 'text-rose-400'}">${m.esito}</span>
-                </div>
-            `).join("");
+        function formattaData(isoString) {
+            if (!isoString) return "N.D.";
+            const d = new Date(isoString);
+            if (isNaN(d.getTime())) return "N.D.";
+            return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        }
+
+        function calcolaIndiceForma(ultime, formaStr) {
+            let lista = ultime || [];
+
+            // Se l'array delle ultime 5 è vuoto ma esiste la stringa dall'API
+            if (lista.length === 0 && formaStr) {
+                lista = formaStr.split(",").map(e => ({ esito: e.trim() }));
+            }
+
+            if (lista.length === 0) {
+                return {
+                    simboliHtml: `<span class="text-slate-500 font-medium text-[10px]">N/D</span>`,
+                    punteggio: "0.0 / 5.0"
+                };
+            }
+
+            let p = 0;
+            let simboliHtml = `<div class="flex items-center gap-1 justify-center sm:justify-start">`;
+
+            lista.forEach(m => {
+                const e = m.esito;
+                if (e === "W") {
+                    p += 1.0;
+                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-emerald-500 inline-block shadow-sm" title="Vittoria"></span>`;
+                } else if (e === "D") {
+                    p += 0.5;
+                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-amber-400 inline-block shadow-sm" title="Pareggio"></span>`;
+                } else {
+                    p += 0.0;
+                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-rose-500 inline-block shadow-sm" title="Sconfitta"></span>`;
+                }
+            });
+
+            simboliHtml += `</div>`;
+
+            return {
+                simboliHtml: simboliHtml,
+                punteggio: `${p.toFixed(1)} / ${lista.length}.0`
+            };
+        }
+
+        function generaHtmlUltimePartite(ultime) {
+            if (!ultime || ultime.length === 0) {
+                return `<div class="text-[10px] text-slate-500">In attesa di partite concluse</div>`;
+            }
+
+            return ultime.map(m => {
+                let badgeColor = "bg-slate-800 text-slate-300";
+                if (m.esito === "W") badgeColor = "bg-emerald-950 text-emerald-400 border border-emerald-800/50";
+                else if (m.esito === "D") badgeColor = "bg-amber-950 text-amber-400 border border-amber-800/50";
+                else if (m.esito === "L") badgeColor = "bg-rose-950 text-rose-400 border border-rose-800/50";
+
+                return `
+                    <div class="flex items-center justify-between text-[10px] py-0.5">
+                        <span class="truncate max-w-[90px] text-slate-300">${m.isHome ? 'vs' : '@'} ${m.avversario}</span>
+                        <span class="font-mono font-bold ${badgeColor} px-1.5 py-0.5 rounded">${m.risultato}</span>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function mostraStato(testo, tipo = 'info') {
+            const stato = document.getElementById("stato");
+            stato.classList.remove('hidden', 'bg-rose-950/80', 'border-rose-800', 'text-rose-300', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+
+            if (tipo === 'error') stato.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
+            else if (tipo === 'success') stato.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+            else stato.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+
+            stato.innerText = testo;
+        }
+
+        function aggiornaFiltriVisualizzazione() {
+            if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) return;
+            mostraPartite(cachePartiteFirestore);
         }
 
         function mostraPartite(partite) {
-            const container = document.getElementById("risultati");
-            container.innerHTML = "";
+            const risultati = document.getElementById("risultati");
+            risultati.innerHTML = "";
 
-            partite.forEach(p => {
-                const formaC = calcolaForma(p.ultimePartiteCasa);
-                const formaO = calcolaForma(p.ultimePartiteOspite);
+            const valFrom = document.getElementById("dateFrom").value;
+            const valTo = document.getElementById("dateTo").value;
+
+            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
+            const selectedCodes = Array.from(selectedCheckboxes).map(cb => cb.value.trim().toUpperCase());
+
+            const partiteFiltrate = (partite || []).filter(p => {
+                const rawDate = p.dataOraUTC || p.utcDate || "";
+                const dataPartitaIso = rawDate ? rawDate.split("T")[0] : "";
+
+                let dentroIntervalloDate = true;
+                if (valFrom && dataPartitaIso) dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso >= valFrom);
+                if (valTo && dataPartitaIso) dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso <= valTo);
+
+                const codeCamp = (p.campionatoCode || "").toUpperCase();
+                const campionatoMatch = selectedCodes.includes(codeCamp);
+
+                return dentroIntervalloDate && campionatoMatch;
+            });
+
+            if (partiteFiltrate.length === 0) {
+                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata per i filtri selezionati.</div>`;
+                return;
+            }
+
+            partiteFiltrate.forEach(p => {
+                const gCasa = p.giocateCasa ?? 0;
+                const gOspite = p.giocateOspite ?? 0;
+
+                const mediaPuntiCasa = gCasa > 0 ? ((p.puntiCasa || 0) / gCasa).toFixed(2) : "0.00";
+                const mediaPuntiOspite = gOspite > 0 ? ((p.puntiOspite || 0) / gOspite).toFixed(2) : "0.00";
+
+                const mediaGolFattiCasa = gCasa > 0 ? ((p.golFattiCasa || 0) / gCasa).toFixed(2) : "0.00";
+                const mediaGolFattiOspite = gOspite > 0 ? ((p.golFattiOspite || 0) / gOspite).toFixed(2) : "0.00";
+
+                const mediaGolSubitiCasa = gCasa > 0 ? ((p.golSubitiCasa || 0) / gCasa).toFixed(2) : "0.00";
+                const mediaGolSubitiOspite = gOspite > 0 ? ((p.golSubitiOspite || 0) / gOspite).toFixed(2) : "0.00";
+
+                const golAttesi = (parseFloat(mediaGolFattiCasa) + parseFloat(mediaGolFattiOspite)).toFixed(2);
+
+                const formaCasaObj = calcolaIndiceForma(p.ultimePartiteCasa, p.formaCasaStringa);
+                const formaOspiteObj = calcolaIndiceForma(p.ultimePartiteOspite, p.formaOspiteStringa);
+
+                const htmlUltimeCasa = generaHtmlUltimePartite(p.ultimePartiteCasa);
+                const htmlUltimeOspite = generaHtmlUltimePartite(p.ultimePartiteOspite);
+
+                const diffCasa = p.diffRetiCasa > 0 ? `+${p.diffRetiCasa}` : `${p.diffRetiCasa ?? 0}`;
+                const diffOspite = p.diffRetiOspite > 0 ? `+${p.diffRetiOspite}` : `${p.diffRetiOspite ?? 0}`;
 
                 const card = document.createElement("div");
-                card.className = "bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl";
+                card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
                 card.innerHTML = `
-                    <div class="flex justify-between text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2">
-                        <span class="font-bold text-slate-200">${p.campionato}</span>
-                        <span>${p.dataOraUTC ? p.dataOraUTC.replace('T', ' ').substring(0, 16) : ''}</span>
-                    </div>
-
-                    <div class="my-3 text-lg font-bold text-slate-100 flex justify-between">
-                        <span>${p.squadraCasa}</span>
-                        <span class="text-emerald-400 font-mono">${p.risultatoReale || "VS"}</span>
-                        <span>${p.squadraOspite}</span>
-                    </div>
-
-                    <div class="bg-slate-950 rounded-2xl p-3 border border-slate-800/80 text-xs space-y-2 my-3">
-                        <div class="grid grid-cols-3 text-[10px] font-bold text-slate-400 border-b border-slate-800 pb-1">
-                            <div>DATO</div>
-                            <div class="text-center">${p.squadraCasa}</div>
-                            <div class="text-right">${p.squadraOspite}</div>
+                    <div class="min-w-0">
+                        <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
+                            <span class="font-bold text-slate-200 uppercase bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
+                            <span class="font-mono text-slate-300 text-[11px]">${formattaData(p.dataOraUTC)}</span>
                         </div>
 
-                        <div class="grid grid-cols-3 py-0.5">
-                            <div class="text-slate-400">Punti / Pos.</div>
-                            <div class="text-center font-bold">${p.puntiCasa} (${p.posizioneCasa}°)</div>
-                            <div class="text-right font-bold">${p.puntiOspite} (${p.posizioneOspite}°)</div>
-                        </div>
-
-                        <div class="grid grid-cols-3 py-0.5 border-t border-slate-800/40">
-                            <div class="text-slate-400">V / P / S Generali</div>
-                            <div class="text-center">${p.vinteCasa}/${p.pareggiateCasa}/${p.persoCasa}</div>
-                            <div class="text-right">${p.vinteOspite}/${p.pareggiateOspite}/${p.persoOspite}</div>
-                        </div>
-
-                        <div class="grid grid-cols-3 py-0.5 border-t border-slate-800/40">
-                            <div class="text-slate-400">Diff. Reti</div>
-                            <div class="text-center">${p.diffRetiCasa > 0 ? '+'+p.diffRetiCasa : p.diffRetiCasa}</div>
-                            <div class="text-right">${p.diffRetiOspite > 0 ? '+'+p.diffRetiOspite : p.diffRetiOspite}</div>
-                        </div>
-
-                        <div class="grid grid-cols-3 py-0.5 border-t border-slate-800/40 bg-slate-900/60 px-1 rounded">
-                            <div class="text-blue-300 font-semibold">Punti Specifici</div>
-                            <div class="text-center font-bold text-blue-400">${p.puntiCasaInCasa ?? 0} (Casa)</div>
-                            <div class="text-right font-bold text-blue-400">${p.puntiOspiteInTrasferta ?? 0} (Trasf.)</div>
-                        </div>
-
-                        <div class="grid grid-cols-3 py-0.5 border-t border-slate-800/40 bg-slate-900/60 px-1 rounded">
-                            <div class="text-blue-300 font-semibold">V/P/S Specifici</div>
-                            <div class="text-center font-semibold">${p.vinteCasaInCasa ?? 0}/${p.pareggiateCasaInCasa ?? 0}/${p.persoCasaInCasa ?? 0}</div>
-                            <div class="text-right font-semibold">${p.vinteOspiteInTrasferta ?? 0}/${p.pareggiateOspiteInTrasferta ?? 0}/${p.persoOspiteInTrasferta ?? 0}</div>
-                        </div>
-
-                        <div class="grid grid-cols-3 py-0.5 border-t border-slate-800/40 bg-slate-900/60 px-1 rounded">
-                            <div class="text-blue-300 font-semibold">Gol Spec. Fatti/Sub.</div>
-                            <div class="text-center font-semibold">${p.golFattiCasaInCasa ?? 0} / ${p.golSubitiCasaInCasa ?? 0}</div>
-                            <div class="text-right font-semibold">${p.golFattiOspiteInTrasferta ?? 0} / ${p.golSubitiOspiteInTrasferta ?? 0}</div>
-                        </div>
-
-                        <div class="grid grid-cols-3 py-2 border-t border-slate-800 bg-slate-900 px-1 rounded">
-                            <div class="text-indigo-300 font-bold">Indice Forma</div>
-                            <div class="text-center flex flex-col items-center">
-                                <span class="font-bold text-emerald-400">${formaC.val}</span>
-                                ${formaC.html}
+                        <div class="my-3 text-base sm:text-lg font-bold text-slate-100 flex items-center justify-between gap-2">
+                            <span class="truncate text-left flex-1">${p.squadraCasa}</span>
+                            <div class="px-3 py-1 bg-slate-950 border border-emerald-500/50 rounded-xl min-w-[70px] text-center">
+                                <span class="text-emerald-400 font-extrabold text-base">${p.risultatoReale || "vs"}</span>
                             </div>
-                            <div class="text-right flex flex-col items-end">
-                                <span class="font-bold text-emerald-400">${formaO.val}</span>
-                                ${formaO.html}
+                            <span class="truncate text-right flex-1">${p.squadraOspite}</span>
+                        </div>
+
+                        <div class="bg-slate-950/70 rounded-2xl p-3 border border-slate-800/80 text-xs space-y-2 my-3">
+                            <div class="grid grid-cols-3 text-[10px] font-bold text-slate-400 uppercase border-b border-slate-800 pb-1.5">
+                                <div>Dato</div>
+                                <div class="text-center truncate">${p.squadraCasa}</div>
+                                <div class="text-right truncate">${p.squadraOspite}</div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center">
+                                <div class="text-slate-400 font-medium">Punti / Posizione</div>
+                                <div class="text-center font-bold text-slate-100">${p.puntiCasa ?? 0} <span class="text-slate-400 font-normal">(${p.posizioneCasa ?? '-'}°)</span></div>
+                                <div class="text-right font-bold text-slate-100">${p.puntiOspite ?? 0} <span class="text-slate-400 font-normal">(${p.posizioneOspite ?? '-'}°)</span></div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                                <div class="text-slate-400 font-medium">Partite Giocate</div>
+                                <div class="text-center font-semibold">${gCasa}</div>
+                                <div class="text-right font-semibold">${gOspite}</div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                                <div class="text-slate-400 font-medium">V / P / S Generali</div>
+                                <div class="text-center font-semibold">${p.vinteCasa ?? 0}/${p.pareggiateCasa ?? 0}/${p.persoCasa ?? 0}</div>
+                                <div class="text-right font-semibold">${p.vinteOspite ?? 0}/${p.pareggiateOspite ?? 0}/${p.persoOspite ?? 0}</div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                                <div class="text-slate-400 font-medium">Gol Fatti / Subiti</div>
+                                <div class="text-center font-semibold">${p.golFattiCasa ?? 0} / ${p.golSubitiCasa ?? 0}</div>
+                                <div class="text-right font-semibold">${p.golFattiOspite ?? 0} / ${p.golSubitiOspite ?? 0}</div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                                <div class="text-slate-400 font-medium">Diff. Reti</div>
+                                <div class="text-center font-semibold text-slate-300">${diffCasa}</div>
+                                <div class="text-right font-semibold text-slate-300">${diffOspite}</div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/40 px-1 rounded">
+                                <div class="text-blue-300 font-semibold">Punti Specifici</div>
+                                <div class="text-center font-bold text-blue-400">${p.puntiCasaInCasa ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Casa)</span></div>
+                                <div class="text-right font-bold text-blue-400">${p.puntiOspiteInTrasferta ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Trasf.)</span></div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/40 px-1 rounded">
+                                <div class="text-blue-300 font-semibold">V/P/S Specifici</div>
+                                <div class="text-center font-semibold">${p.vinteCasaInCasa ?? 0}/${p.pareggiateCasaInCasa ?? 0}/${p.persoCasaInCasa ?? 0}</div>
+                                <div class="text-right font-semibold">${p.vinteOspiteInTrasferta ?? 0}/${p.pareggiateOspiteInTrasferta ?? 0}/${p.persoOspiteInTrasferta ?? 0}</div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/40 px-1 rounded">
+                                <div class="text-blue-300 font-semibold">Gol Spec. Fatti/Sub.</div>
+                                <div class="text-center font-semibold">${p.golFattiCasaInCasa ?? 0} / ${p.golSubitiCasaInCasa ?? 0}</div>
+                                <div class="text-right font-semibold">${p.golFattiOspiteInTrasferta ?? 0} / ${p.golSubitiOspiteInTrasferta ?? 0}</div>
+                            </div>
+
+                            <div class="grid grid-cols-3 text-slate-200 py-1.5 items-center border-t border-slate-800/80 bg-slate-900/80 px-2 rounded-b-xl">
+                                <div class="text-indigo-300 font-bold">Indice Forma &amp; Trend</div>
+                                <div class="text-center flex flex-col items-center justify-center gap-0.5">
+                                    <span class="font-bold text-emerald-400">${formaCasaObj.punteggio}</span>
+                                    ${formaCasaObj.simboliHtml}
+                                </div>
+                                <div class="text-right flex flex-col items-end justify-center gap-0.5">
+                                    <span class="font-bold text-emerald-400">${formaOspiteObj.punteggio}</span>
+                                    ${formaOspiteObj.simboliHtml}
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-xs my-2">
-                        <div class="text-[9px] text-slate-400 font-bold border-b border-slate-800 pb-1 mb-1 flex justify-between">
-                            <span>Ultime 5 Casa</span>
-                            <span>Ultime 5 Trasferta</span>
+                        <!-- ULTIME PARTITE -->
+                        <div class="bg-slate-950/60 border border-slate-800/60 rounded-xl p-2.5 my-2 text-xs">
+                            <div class="text-[9px] text-slate-400 uppercase font-semibold border-b border-slate-800 pb-1 mb-1.5 flex justify-between">
+                                <span>Ultime Partite Casa</span>
+                                <span>Ultime Partite Trasferta</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>${htmlUltimeCasa}</div>
+                                <div class="border-l border-slate-800 pl-3">${htmlUltimeOspite}</div>
+                            </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>${renderUltime5(p.ultimePartiteCasa)}</div>
-                            <div class="border-l border-slate-800 pl-2">${renderUltime5(p.ultimePartiteOspite)}</div>
+
+                        <!-- MEDIE E GOL ATTESI -->
+                        <div class="grid grid-cols-4 gap-1.5 my-3 text-center">
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
+                                <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Punti</div>
+                                <div class="text-[11px] font-bold text-emerald-400 mt-0.5">${mediaPuntiCasa} | ${mediaPuntiOspite}</div>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
+                                <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Gol Fatti</div>
+                                <div class="text-[11px] font-bold text-blue-400 mt-0.5">${mediaGolFattiCasa} | ${mediaGolFattiOspite}</div>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
+                                <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Gol Subiti</div>
+                                <div class="text-[11px] font-bold text-rose-400 mt-0.5">${mediaGolSubitiCasa} | ${mediaGolSubitiOspite}</div>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
+                                <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Gol Attesi</div>
+                                <div class="text-[11px] font-bold text-indigo-300 mt-0.5">${golAttesi}</div>
+                            </div>
                         </div>
                     </div>
                 `;
-                container.appendChild(card);
+                risultati.appendChild(card);
             });
         }
 
-        async function sincronizzaESalva() {
+        async function sincronizzaESalva(e) {
+            if (e) e.preventDefault();
+
             const btn = document.getElementById("btnEstrai");
-            const dFrom = document.getElementById("dateFrom").value;
-            const dTo = document.getElementById("dateTo").value;
-            const st = document.getElementById("stato");
+            const dateFrom = document.getElementById("dateFrom").value;
+            const dateTo = document.getElementById("dateTo").value;
+
+            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
+            const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim());
+
+            if (selectedComps.length === 0) {
+                alert("Seleziona almeno un campionato!");
+                return;
+            }
 
             btn.disabled = true;
-            st.classList.remove("hidden");
-            st.innerText = "Estrazione dati dall'API in corso...";
+            btn.textContent = "Estrazione in corso...";
+            mostraStato("Chiamata API Football-Data in corso per i campionati selezionati...", "info");
 
             try {
-                const res = await fetch(`${WORKER_URL}?dateFrom=${dFrom}&dateTo=${dTo}`);
+                const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
+                const res = await fetch(fullUrl);
                 const data = await res.json();
-                if (data.partite) {
+
+                if (data.errore) {
+                    mostraStato("Errore: " + data.messaggio, "error");
+                } else if (data.partite && data.partite.length > 0) {
                     await db.collection("palinsesto").doc("corrente").set({
                         partite: data.partite,
-                        ultimoAggiornamento: new Date().toLocaleString()
+                        ultimoAggiornamento: new Date().toLocaleString("it-IT")
                     });
-                    st.innerText = `Sincronizzate ${data.partite.length} partite con successo!`;
+
+                    cachePartiteFirestore = data.partite;
+                    aggiornaFiltriVisualizzazione();
+                    mostraStato(`Estrazione completata con successo! ${data.partite.length} partite sincronizzate.`, "success");
+                } else {
+                    mostraStato("Nessuna partita trovata per il range di date selezionato.", "error");
                 }
-            } catch (e) {
-                st.innerText = "Errore: " + e.message;
+            } catch (err) {
+                mostraStato("Errore di connessione: " + err.message, "error");
             } finally {
                 btn.disabled = false;
+                btn.textContent = "Estrai Partite e Sincronizza Cloud";
             }
         }
     </script>
