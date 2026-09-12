@@ -10,6 +10,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-28">
 
+    <!-- HEADER -->
     <header class="p-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -22,6 +23,7 @@
         </div>
     </header>
 
+    <!-- CONTENUTO PRINCIPALE -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 my-2">
         <section id="sec-palinsesto" class="space-y-6">
             <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
@@ -29,10 +31,20 @@
                     ESTRAZIONE &amp; SINCRONIZZAZIONE PALINSESTO
                 </h2>
                 
-                <p class="text-xs text-slate-400 mb-4">
-                    Seleziona l'intervallo temporale ed i campionati da analizzare:
+                <p class="text-xs text-slate-400 mb-3">
+                    Seleziona un intervallo predefinito o imposta le date personalizzate:
                 </p>
 
+                <!-- PRESET RAPIDI INTERVALLO TEMPORALE -->
+                <div class="flex flex-wrap gap-1.5 mb-4">
+                    <button type="button" onclick="impostaIntervalloPreset('oggi')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">Oggi</button>
+                    <button type="button" onclick="impostaIntervalloPreset('domani')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">Domani</button>
+                    <button type="button" onclick="impostaIntervalloPreset('weekend')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">Weekend</button>
+                    <button type="button" onclick="impostaIntervalloPreset(7)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">+7 Giorni</button>
+                    <button type="button" onclick="impostaIntervalloPreset(14)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">+14 Giorni</button>
+                </div>
+
+                <!-- INPUT DATE E OFFSET GIORNI CONFIGURABILE -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
@@ -48,6 +60,7 @@
                     </div>
                 </div>
 
+                <!-- CHECKBOX CAMPIONATI -->
                 <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
                     <div class="flex justify-between items-center mb-2.5">
                         <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
@@ -119,6 +132,7 @@
         </section>
     </main>
 
+    <!-- FOOTER -->
     <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-1.5rem)] z-50">
         <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center">
             <button class="flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[11px] sm:text-xs font-semibold truncate">Palinsesto</button>
@@ -150,9 +164,35 @@
             return `${yyyy}-${mm}-${dd}`;
         }
 
+        function impostaIntervalloPreset(tipo) {
+            const dInizio = new Date();
+            const dFine = new Date();
+
+            if (tipo === 'oggi') {
+                document.getElementById("daysOffset").value = 0;
+            } else if (tipo === 'domani') {
+                dInizio.setDate(dInizio.getDate() + 1);
+                dFine.setDate(dFine.getDate() + 1);
+                document.getElementById("daysOffset").value = 0;
+            } else if (tipo === 'weekend') {
+                const giornoSettimana = dInizio.getDay();
+                const giorniA_Venerdi = (5 - giornoSettimana + 7) % 7;
+                dInizio.setDate(dInizio.getDate() + giorniA_Venerdi);
+                dFine.setDate(dInizio.getDate() + 2);
+                document.getElementById("daysOffset").value = 2;
+            } else if (typeof tipo === 'number') {
+                dFine.setDate(dInizio.getDate() + tipo);
+                document.getElementById("daysOffset").value = tipo;
+            }
+
+            document.getElementById("dateFrom").value = formattaDataIso(dInizio);
+            document.getElementById("dateTo").value = formattaDataIso(dFine);
+            aggiornaFiltriVisualizzazione();
+        }
+
         function ricalcolaDataFine() {
             const valFrom = document.getElementById("dateFrom").value;
-            const daysOffset = parseInt(document.getElementById("daysOffset").value) || 14;
+            const daysOffset = parseInt(document.getElementById("daysOffset").value) || 0;
             if (valFrom) {
                 const parts = valFrom.split("-");
                 const dInizio = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -192,61 +232,56 @@
             return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
         }
 
-        function formattaDataBreve(isoString) {
-            if (!isoString) return "";
-            const d = new Date(isoString);
-            if (isNaN(d.getTime())) return "";
-            return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit" });
-        }
-
-        // Forma calcolata dal Worker sulle ultime partite reali, in ordine cronologico.
-        function calcolaIndiceForma(strForma) {
-            let esiti = [];
-            if (strForma && typeof strForma === "string" && strForma.trim() !== "") {
-                esiti = strForma.split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
-            }
-
-            if (esiti.length === 0) {
+        function calcolaIndiceFormaRigoroso(ultimePartite) {
+            if (!ultimePartite || !Array.isArray(ultimePartite) || ultimePartite.length === 0) {
                 return {
                     simboliHtml: `<span class="text-slate-500 font-medium text-[10px]">N/D</span>`,
-                    punteggio: "N/D"
+                    punteggio: "0.0 / 5.0"
                 };
             }
 
             let p = 0;
             let simboliHtml = `<div class="flex items-center gap-1 justify-center sm:justify-start">`;
-            esiti.forEach(e => {
+
+            ultimePartite.forEach(m => {
+                const e = m.esito;
                 if (e === "W") {
                     p += 1.0;
-                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-emerald-500 inline-block shadow-sm" title="Vittoria (+1.0)"></span>`;
+                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-emerald-500 inline-block shadow-sm" title="Vittoria (${m.risultato} vs ${m.avversario})"></span>`;
                 } else if (e === "D") {
                     p += 0.5;
-                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-amber-400 inline-block shadow-sm" title="Pareggio (+0.5)"></span>`;
-                } else if (e === "L") {
+                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-amber-400 inline-block shadow-sm" title="Pareggio (${m.risultato} vs ${m.avversario})"></span>`;
+                } else {
                     p += 0.0;
-                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-rose-500 inline-block shadow-sm" title="Sconfitta (+0.0)"></span>`;
+                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-rose-500 inline-block shadow-sm" title="Sconfitta (${m.risultato} vs ${m.avversario})"></span>`;
                 }
             });
+
             simboliHtml += `</div>`;
 
-            return { simboliHtml, punteggio: p.toFixed(1) + " / " + esiti.length + ".0" };
+            return {
+                simboliHtml: simboliHtml,
+                punteggio: p.toFixed(1) + " / " + ultimePartite.length + ".0"
+            };
         }
 
-        // Elenco compatto delle ultime partite (ordine cronologico: dalla meno recente alla più recente)
-        function formattaUltimePartite(lista) {
-            if (!lista || lista.length === 0) {
-                return `<span class="text-slate-500 text-[10px]">Nessuna partita conclusa disponibile</span>`;
+        function generaHtmlUltimePartite(ultimePartite) {
+            if (!ultimePartite || ultimePartite.length === 0) {
+                return `<div class="text-[10px] text-slate-500">Nessuna partita recente</div>`;
             }
-            return lista.map(p => {
-                let colore = "text-slate-300";
-                if (p.esito === "W") colore = "text-emerald-400";
-                else if (p.esito === "L") colore = "text-rose-400";
-                else if (p.esito === "D") colore = "text-amber-400";
-                const simbolo = p.casa ? "casa" : "trasf.";
-                return `<div class="flex justify-between gap-1 ${colore}">
-                            <span class="truncate">${formattaDataBreve(p.data)} vs ${p.avversario} (${simbolo})</span>
-                            <span class="font-bold shrink-0">${p.risultato}</span>
-                        </div>`;
+
+            return ultimePartite.map(m => {
+                let badgeColor = "bg-slate-800 text-slate-300";
+                if (m.esito === "W") badgeColor = "bg-emerald-950 text-emerald-400 border border-emerald-800/50";
+                else if (m.esito === "D") badgeColor = "bg-amber-950 text-amber-400 border border-amber-800/50";
+                else if (m.esito === "L") badgeColor = "bg-rose-950 text-rose-400 border border-rose-800/50";
+
+                return `
+                    <div class="flex items-center justify-between text-[10px] py-0.5">
+                        <span class="truncate max-w-[90px] text-slate-300" title="${m.avversario}">${m.isHome ? 'vs' : '@'} ${m.avversario}</span>
+                        <span class="font-mono font-bold ${badgeColor} px-1.5 py-0.5 rounded">${m.risultato}</span>
+                    </div>
+                `;
             }).join("");
         }
 
@@ -350,16 +385,12 @@
                 const giocateCasa = p.giocateCasa ?? 0;
                 const vinteCasa = p.vinteCasa ?? 0;
                 const pareggiateCasa = p.pareggiateCasa ?? 0;
-                const persoCasaVal = (p.persoCasa !== undefined && p.persoCasa !== null && p.persoCasa > 0) 
-                  ? p.persoCasa 
-                  : Math.max(0, giocateCasa - vinteCasa - pareggiateCasa);
+                const persoCasaVal = (p.persoCasa !== undefined && p.persoCasa !== null) ? p.persoCasa : Math.max(0, giocateCasa - vinteCasa - pareggiateCasa);
 
                 const giocateOspite = p.giocateOspite ?? 0;
                 const vinteOspite = p.vinteOspite ?? 0;
                 const pareggiateOspite = p.pareggiateOspite ?? 0;
-                const persoOspiteVal = (p.persoOspite !== undefined && p.persoOspite !== null && p.persoOspite > 0) 
-                  ? p.persoOspite 
-                  : Math.max(0, giocateOspite - vinteOspite - pareggiateOspite);
+                const persoOspiteVal = (p.persoOspite !== undefined && p.persoOspite !== null) ? p.persoOspite : Math.max(0, giocateOspite - vinteOspite - pareggiateOspite);
 
                 const mediaPuntiCasa = giocateCasa > 0 ? ((p.puntiCasa || 0) / giocateCasa).toFixed(2) : "0.00";
                 const mediaPuntiOspite = giocateOspite > 0 ? ((p.puntiOspite || 0) / giocateOspite).toFixed(2) : "0.00";
@@ -372,18 +403,21 @@
 
                 const indiceGolAttesi = (parseFloat(mediaGolFattiCasa) + parseFloat(mediaGolFattiOspite)).toFixed(2);
 
-                const formaCasaObj = calcolaIndiceForma(p.formaCasa);
-                const formaOspiteObj = calcolaIndiceForma(p.formaOspite);
+                const formaCasaObj = calcolaIndiceFormaRigoroso(p.ultimePartiteCasa);
+                const formaOspiteObj = calcolaIndiceFormaRigoroso(p.ultimePartiteOspite);
                 
+                const htmlUltimeCasa = generaHtmlUltimePartite(p.ultimePartiteCasa);
+                const htmlUltimeOspite = generaHtmlUltimePartite(p.ultimePartiteOspite);
+
                 const dataDisplay = p.dataOraUTC || p.utcDate || p.dataOra;
                 const matchIdDisplay = p.matchId || p.id;
                 const risultatoRealeAutomatico = p.risultatoReale || "";
 
-                const diffCasa = (p.diffRetiCasa > 0 ? `+${p.diffRetiCasa}` : p.diffRetiCasa ?? 0);
-                const diffOspite = (p.diffRetiOspite > 0 ? `+${p.diffRetiOspite}` : p.diffRetiOspite ?? 0);
+                const diffCasaVal = p.diffRetiCasa !== undefined ? p.diffRetiCasa : ((p.golFattiCasa ?? 0) - (p.golSubitiCasa ?? 0));
+                const diffOspiteVal = p.diffRetiOspite !== undefined ? p.diffRetiOspite : ((p.golFattiOspite ?? 0) - (p.golSubitiOspite ?? 0));
 
-                const puntiCasaInCasaDisplay = (p.giocateCasaInCasa ?? 0) > 0 ? p.puntiCasaInCasa : "N/D";
-                const puntiOspiteInTrasfertaDisplay = (p.giocateOspiteInTrasferta ?? 0) > 0 ? p.puntiOspiteInTrasferta : "N/D";
+                const diffCasa = (diffCasaVal > 0 ? `+${diffCasaVal}` : `${diffCasaVal}`);
+                const diffOspite = (diffOspiteVal > 0 ? `+${diffOspiteVal}` : `${diffOspiteVal}`);
 
                 const card = document.createElement("div");
                 card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
@@ -449,8 +483,8 @@
 
                             <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
                                 <div class="text-blue-300 font-semibold">Punti Specifici</div>
-                                <div class="text-center font-bold text-blue-400">${puntiCasaInCasaDisplay} <span class="text-[9px] text-slate-400 font-normal">(Casa)</span></div>
-                                <div class="text-right font-bold text-blue-400">${puntiOspiteInTrasfertaDisplay} <span class="text-[9px] text-slate-400 font-normal">(Trasf.)</span></div>
+                                <div class="text-center font-bold text-blue-400">${p.puntiCasaInCasa ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Casa)</span></div>
+                                <div class="text-right font-bold text-blue-400">${p.puntiOspiteInTrasferta ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Trasf.)</span></div>
                             </div>
 
                             <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
@@ -478,11 +512,15 @@
                             </div>
                         </div>
 
+                        <!-- ULTIME 5 PARTITE GIOCATE (IN SOSTITUZIONE A TOP SCORER/ASSIST) -->
                         <div class="bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 my-2 text-xs">
-                            <div class="text-[9px] text-slate-400 uppercase font-semibold mb-1.5">Ultime Partite Concluse</div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div class="space-y-1">${formattaUltimePartite(p.ultimeCasa)}</div>
-                                <div class="space-y-1">${formattaUltimePartite(p.ultimeOspite)}</div>
+                            <div class="text-[9px] text-slate-400 uppercase font-semibold border-b border-slate-800/60 pb-1 mb-1.5 flex justify-between">
+                                <span>Ultime 5 Partite Casa</span>
+                                <span>Ultime 5 Partite Trasferta</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>${htmlUltimeCasa}</div>
+                                <div class="border-l border-slate-800/60 pl-3">${htmlUltimeOspite}</div>
                             </div>
                         </div>
 
@@ -548,8 +586,6 @@
                     mostraStato("Errore Worker: " + data.messaggio, "error");
                 } else if (data.partite && data.partite.length > 0) {
                     const ora = new Date().toLocaleString("it-IT");
-
-                    console.log("Diagnostica estrazione:", data.diagnostica);
                     
                     await db.collection("palinsesto").doc("corrente").set({
                         partite: data.partite,
