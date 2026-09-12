@@ -3,333 +3,328 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SoccerStats ML</title>
+    <title>SoccerStats ML - Palinsesto & Sync</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0b0f17; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
+    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen pb-28 font-sans antialiased">
+<body class="text-slate-100 min-h-screen custom-scrollbar font-sans antialiased pb-12">
 
-    <!-- HEADER -->
-    <header class="p-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-                <div class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
-                <h1 class="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">SoccerStats ML</h1>
+    <!-- HEADER / NAVBAR -->
+    <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30">
+                    <i class="fa-solid fa-chart-line text-xl"></i>
+                </div>
+                <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                    SoccerStats <span class="text-blue-500">ML</span>
+                </h1>
             </div>
-            <div id="syncBadge" class="px-3 py-1 bg-emerald-950/80 text-emerald-400 rounded-full text-xs font-semibold border border-emerald-800/60 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Live Sync
+            <div class="flex items-center gap-2 text-xs text-slate-400 bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Live Sync Active
             </div>
         </div>
     </header>
 
-    <!-- MAIN -->
-    <main class="max-w-7xl w-full mx-auto p-3 sm:p-6 my-2">
-        <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto mb-6">
-            <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
-                ESTRAZIONE &amp; SINCRONIZZAZIONE PALINSESTO
-            </h2>
+    <main class="max-w-7xl mx-auto px-4 mt-8 space-y-8">
 
-            <p class="text-xs text-slate-400 mb-3">Seleziona i parametri temporali e i campionati da estrarre:</p>
-
-            <!-- PRESET RAPIDI -->
-            <div class="flex flex-wrap gap-1.5 mb-4">
-                <button type="button" onclick="impostaIntervalloPreset('oggi')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">Oggi</button>
-                <button type="button" onclick="impostaIntervalloPreset('domani')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">Domani</button>
-                <button type="button" onclick="impostaIntervalloPreset('weekend')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">Weekend</button>
-                <button type="button" onclick="impostaIntervalloPreset(7)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">+7 Giorni</button>
-                <button type="button" onclick="impostaIntervalloPreset(14)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700">+14 Giorni</button>
+        <!-- PANNELLO CONTROL ESTRAZIONE E FILTRI -->
+        <section class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-md">
+            <div class="border-b border-slate-800 pb-4 mb-6">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-blue-400">Estrazione &amp; Sincronizzazione Palinsesto</h2>
+                <p class="text-xs text-slate-400 mt-1">Seleziona i parametri temporali e i campionati da estrarre:</p>
             </div>
 
-            <!-- DATE -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <!-- PRESET TEMPORALI -->
+            <div class="flex flex-wrap gap-2 mb-6">
+                <button onclick="setPreset('oggi')" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700/50 transition">Oggi</button>
+                <button onclick="setPreset('domani')" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700/50 transition">Domani</button>
+                <button onclick="setPreset('weekend')" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700/50 transition">Weekend</button>
+                <button onclick="setPreset(7)" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700/50 transition">+7 Giorni</button>
+                <button onclick="setPreset(14)" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700/50 transition">+14 Giorni</button>
+            </div>
+
+            <!-- INPUT DATE -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
-                    <input type="date" id="dateFrom" onchange="ricalcolaDataFine(); aggiornaFiltriVisualizzazione();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                    <label class="block text-xs font-medium text-slate-400 mb-1.5">Data Inizio</label>
+                    <input type="date" id="dateFrom" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Giorni</label>
-                    <input type="number" id="daysOffset" value="14" min="1" max="30" onchange="ricalcolaDataFine(); aggiornaFiltriVisualizzazione();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                    <label class="block text-xs font-medium text-slate-400 mb-1.5">Giorni</label>
+                    <input type="number" id="daysCount" value="14" min="1" max="30" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Fine</label>
-                    <input type="date" id="dateTo" onchange="aggiornaFiltriVisualizzazione()" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                    <label class="block text-xs font-medium text-slate-400 mb-1.5">Data Fine</label>
+                    <input type="date" id="dateTo" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
                 </div>
             </div>
 
-            <!-- FILTRO CAMPIONATI (12 CAMPIONATI TOTALI) -->
-            <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
-                <div class="flex justify-between items-center mb-2.5">
-                    <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre (12 Totali)</label>
-                    <button type="button" onclick="toggleTuttiCampionati()" class="text-[10px] text-blue-400 hover:text-blue-300 font-semibold underline">Seleziona / Deseleziona Tutti</button>
+            <!-- SELEZIONE CAMPIONATI -->
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs font-bold uppercase text-slate-400">Campionati da estrarre</span>
+                    <button onclick="toggleTuttiCampionati()" class="text-xs text-blue-400 hover:underline">Seleziona / Deseleziona Tutti</button>
                 </div>
                 
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
-                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="SA" checked>
-                        <span class="text-slate-200 truncate">Serie A</span>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
+                    <label class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 p-2.5 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <input type="checkbox" value="SA" checked class="comp-checkbox accent-blue-500 rounded">
+                        <span class="font-medium">Serie A</span>
                     </label>
-                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
-                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="PL" checked>
-                        <span class="text-slate-200 truncate">Premier League</span>
+                    <label class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 p-2.5 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <input type="checkbox" value="PL" checked class="comp-checkbox accent-blue-500 rounded">
+                        <span class="font-medium">Premier League</span>
                     </label>
-                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
-                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="PD" checked>
-                        <span class="text-slate-200 truncate">La Liga</span>
+                    <label class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 p-2.5 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <input type="checkbox" value="PD" checked class="comp-checkbox accent-blue-500 rounded">
+                        <span class="font-medium">La Liga</span>
                     </label>
-                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
-                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="BL1" checked>
-                        <span class="text-slate-200 truncate">Bundesliga</span>
+                    <label class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 p-2.5 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <input type="checkbox" value="BL1" checked class="comp-checkbox accent-blue-500 rounded">
+                        <span class="font-medium">Bundesliga</span>
                     </label>
-                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
-                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="FL1" checked>
-                        <span class="text-slate-200 truncate">Ligue 1</span>
+                    <label class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 p-2.5 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <input type="checkbox" value="FL1" checked class="comp-checkbox accent-blue-500 rounded">
+                        <span class="font-medium">Ligue 1</span>
                     </label>
-                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
-                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="CL" checked>
-                        <span class="text-slate-200 truncate">Champions League</span>
+                    <label class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 p-2.5 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <input type="checkbox" value="CL" checked class="comp-checkbox accent-blue-500 rounded">
+                        <span class="font-medium">Champions League</span>
                     </label>
-                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
-                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="DED" checked>
-                        <span class="text-slate-200 truncate">Eredivisie</span>
+                    <label class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 p-2.5 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <input type="checkbox" value="DED" checked class="comp-checkbox accent-blue-500 rounded">
+                        <span class="font-medium">Eredivisie</span>
                     </label>
-                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
-                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="PPL" checked>
-                        <span class="text-slate-200 truncate">Liga Portugal</span>
+                    <label class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 p-2.5 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <input type="checkbox" value="PPL" checked class="comp-checkbox accent-blue-500 rounded">
+                        <span class="font-medium">Liga Portugal</span>
                     </label>
-                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
-                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="BSA" checked>
-                        <span class="text-slate-200 truncate">Brasileirão</span>
+                    <label class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 p-2.5 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <input type="checkbox" value="BSA" checked class="comp-checkbox accent-blue-500 rounded">
+                        <span class="font-medium">Brasileirão</span>
                     </label>
-                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
-                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="ELC" checked>
-                        <span class="text-slate-200 truncate">Championship</span>
+                    <label class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 p-2.5 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <input type="checkbox" value="ELC" checked class="comp-checkbox accent-blue-500 rounded">
+                        <span class="font-medium">Championship</span>
                     </label>
-                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
-                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="EC" checked>
-                        <span class="text-slate-200 truncate">Europei</span>
+                    <label class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 p-2.5 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <input type="checkbox" value="EC" checked class="comp-checkbox accent-blue-500 rounded">
+                        <span class="font-medium">Europei</span>
                     </label>
-                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
-                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="WC" checked>
-                        <span class="text-slate-200 truncate">Mondiali</span>
+                    <label class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 p-2.5 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <input type="checkbox" value="WC" checked class="comp-checkbox accent-blue-500 rounded">
+                        <span class="font-medium">Mondiali</span>
                     </label>
                 </div>
             </div>
 
-            <button id="btnEstrai" type="button" onclick="sincronizzaESalva(event)" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer">
-                Estrai Partite e Sincronizza Cloud
+            <!-- PULSANTE DI AZIONE -->
+            <button id="btnEstrai" onclick="estraiESincronizza()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold py-3.5 px-6 rounded-2xl transition shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-cloud-arrow-down"></i>
+                <span>Estrai Partite e Sincronizza Cloud</span>
             </button>
 
-            <div id="stato" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
-        </div>
+            <!-- MESSAGGIO DI STATO -->
+            <div id="statusBox" class="hidden mt-4 p-3 rounded-xl border text-xs font-semibold text-center transition"></div>
+        </section>
 
-        <div id="risultati" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
+        <!-- AREA RISULTATI / CARDS PARTITE -->
+        <section id="risultati" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Le schede delle partite verranno iniettate qui via JS -->
+        </section>
+
     </main>
 
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDvZ6My0UlFyzAIMvKvWdNneQPajryjvsw",
-            authDomain: "betting-pro-db.firebaseapp.com",
-            projectId: "betting-pro-db",
-            storageBucket: "betting-pro-db.firebasestorage.app",
-            messagingSenderId: "157886609369",
-            appId: "1:157886609369:web:565f3a44ec8d1dba3c8bc8"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        // MEMORIA PARTITE ESTRATTE LATO CLIENT
+        let partiteCaricate = [];
 
-        const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
-        let cachePartiteFirestore = [];
+        // INIZIALIZZAZIONE
+        document.addEventListener("DOMContentLoaded", () => {
+            const oggi = new Date();
+            const ISOOggi = oggi.toISOString().split("T")[0];
+            document.getElementById("dateFrom").value = ISOOggi;
+            
+            calcolaDataFine(14);
 
-        function formattaDataIso(d) {
-            return d.toISOString().split("T")[0];
+            // Re-filtraggio istantaneo se l'utente cambia manualmente le date
+            document.getElementById("dateFrom").addEventListener("change", triggerFiltroLocal);
+            document.getElementById("dateTo").addEventListener("change", triggerFiltroLocal);
+            document.querySelectorAll(".comp-checkbox").forEach(cb => {
+                cb.addEventListener("change", triggerFiltroLocal);
+            });
+        });
+
+        function calcolaDataFine(giorni) {
+            const dateFromVal = document.getElementById("dateFrom").value;
+            if (!dateFromVal) return;
+
+            const d = new Date(dateFromVal);
+            d.setDate(d.getDate() + parseInt(giorni));
+            document.getElementById("dateTo").value = d.toISOString().split("T")[0];
         }
 
-        function impostaIntervalloPreset(tipo) {
-            const dInizio = new Date();
-            const dFine = new Date();
+        function setPreset(valore) {
+            const oggi = new Date();
+            let dInizio = new Date(oggi);
+            let dFine = new Date(oggi);
 
-            if (tipo === 'oggi') {
-                document.getElementById("daysOffset").value = 0;
-            } else if (tipo === 'domani') {
+            if (valore === 'oggi') {
+                // Inizio e fine coincidenti
+            } else if (valore === 'domani') {
                 dInizio.setDate(dInizio.getDate() + 1);
                 dFine.setDate(dFine.getDate() + 1);
-                document.getElementById("daysOffset").value = 0;
-            } else if (tipo === 'weekend') {
-                const giornoSettimana = dInizio.getDay();
-                const giorniA_Venerdi = (5 - giornoSettimana + 7) % 7;
-                dInizio.setDate(dInizio.getDate() + giorniA_Venerdi);
-                dFine.setDate(dInizio.getDate() + 2);
-                document.getElementById("daysOffset").value = 2;
-            } else if (typeof tipo === 'number') {
-                dFine.setDate(dInizio.getDate() + tipo);
-                document.getElementById("daysOffset").value = tipo;
+            } else if (valore === 'weekend') {
+                const day = oggi.getDay();
+                const distSabato = (6 - day + 7) % 7;
+                dInizio.setDate(dInizio.getDate() + distSabato);
+                dFine.setDate(dInizio.getDate() + 1); // Domenica
+            } else if (typeof valore === 'number') {
+                dFine.setDate(dFine.getDate() + valore);
             }
 
-            document.getElementById("dateFrom").value = formattaDataIso(dInizio);
-            document.getElementById("dateTo").value = formattaDataIso(dFine);
-            aggiornaFiltriVisualizzazione();
+            document.getElementById("dateFrom").value = dInizio.toISOString().split("T")[0];
+            document.getElementById("dateTo").value = dFine.toISOString().split("T")[0];
+
+            triggerFiltroLocal();
         }
-
-        function ricalcolaDataFine() {
-            const valFrom = document.getElementById("dateFrom").value;
-            const daysOffset = parseInt(document.getElementById("daysOffset").value) || 0;
-            if (valFrom) {
-                const parts = valFrom.split("-");
-                const dInizio = new Date(parts[0], parts[1] - 1, parts[2]);
-                dInizio.setDate(dInizio.getDate() + daysOffset);
-                document.getElementById("dateTo").value = formattaDataIso(dInizio);
-            }
-        }
-
-        window.onload = function() {
-            const oggi = new Date();
-            document.getElementById("dateFrom").value = formattaDataIso(oggi);
-            ricalcolaDataFine();
-
-            db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    if (data.partite && Array.isArray(data.partite)) {
-                        cachePartiteFirestore = data.partite;
-                        aggiornaFiltriVisualizzazione();
-                        mostraStato(`Sincronizzato Cloud: ${data.partite.length} partite salvate`, "success");
-                    }
-                }
-            });
-        };
 
         function toggleTuttiCampionati() {
             const checkboxes = document.querySelectorAll('.comp-checkbox');
-            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-            checkboxes.forEach(cb => cb.checked = !allChecked);
-            aggiornaFiltriVisualizzazione();
+            const qualcunoSpuntato = Array.from(checkboxes).some(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !qualcunoSpuntato);
+            triggerFiltroLocal();
         }
 
-        function formattaData(isoString) {
-            if (!isoString) return "N.D.";
-            const d = new Date(isoString);
-            if (isNaN(d.getTime())) return "N.D.";
-            return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        function triggerFiltroLocal() {
+            if (partiteCaricate && partiteCaricate.length > 0) {
+                mostraPartite(partiteCaricate);
+            }
         }
 
-        function calcolaIndiceForma(ultime, formaStr) {
-            let lista = ultime || [];
+        // CHIAMATA API AL WORKER
+        async function estraiESincronizza() {
+            const btn = document.getElementById("btnEstrai");
+            const statusBox = document.getElementById("statusBox");
+            const dateFrom = document.getElementById("dateFrom").value;
+            const dateTo = document.getElementById("dateTo").value;
 
-            if (lista.length === 0 && formaStr) {
-                lista = formaStr.split(",").map(e => ({ esito: e.trim() }));
+            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
+            const selectedCodes = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+            if (!dateFrom || !dateTo) {
+                showStatus("Seleziona entrambe le date per procedere.", "error");
+                return;
             }
 
-            if (lista.length === 0) {
-                return {
-                    simboliHtml: `<span class="text-slate-500 font-medium text-[10px]">N/D</span>`,
-                    punteggio: "0.0 / 5.0"
-                };
-            }
+            btn.disabled = true;
+            btn.classList.add("opacity-50", "cursor-not-allowed");
+            showStatus("Estrazione in corso e sincronizzazione Firestore...", "info");
 
-            let p = 0;
-            let simboliHtml = `<div class="flex items-center gap-1 justify-center sm:justify-start">`;
+            try {
+                // Invia la richiesta al Cloudflare Worker
+                const response = await fetch('/api/estrai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        dateFrom: dateFrom,
+                        dateTo: dateTo,
+                        competitions: selectedCodes
+                    })
+                });
 
-            lista.forEach(m => {
-                const e = m.esito;
-                if (e === "W") {
-                    p += 1.0;
-                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-emerald-500 inline-block shadow-sm" title="Vittoria"></span>`;
-                } else if (e === "D") {
-                    p += 0.5;
-                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-amber-400 inline-block shadow-sm" title="Pareggio"></span>`;
+                const data = await response.json();
+
+                if (data.success) {
+                    partiteCaricate = data.partite || [];
+                    showStatus(`Estrazione completata con successo! ${partiteCaricate.length} partite sincronizzate.`, "success");
+                    mostraPartite(partiteCaricate);
                 } else {
-                    p += 0.0;
-                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-rose-500 inline-block shadow-sm" title="Sconfitta"></span>`;
+                    showStatus(`Errore nell'estrazione: ${data.error || 'Errore sconosciuto'}`, "error");
                 }
-            });
-
-            simboliHtml += `</div>`;
-
-            return {
-                simboliHtml: simboliHtml,
-                punteggio: `${p.toFixed(1)} / ${lista.length}.0`
-            };
+            } catch (err) {
+                console.error(err);
+                showStatus("Si è verificato un errore di connessione con il Server Worker.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove("opacity-50", "cursor-not-allowed");
+            }
         }
 
-        function generaHtmlUltimePartite(ultime) {
-            if (!ultime || ultime.length === 0) {
-                return `<div class="text-[10px] text-slate-500">In attesa di gare concluse</div>`;
+        function showStatus(text, type) {
+            const statusBox = document.getElementById("statusBox");
+            statusBox.classList.remove("hidden", "bg-emerald-950/80", "border-emerald-500", "text-emerald-300", "bg-rose-950/80", "border-rose-500", "text-rose-300", "bg-slate-800", "border-slate-700", "text-slate-300");
+
+            if (type === "success") {
+                statusBox.classList.add("bg-emerald-950/80", "border-emerald-500", "text-emerald-300");
+            } else if (type === "error") {
+                statusBox.classList.add("bg-rose-950/80", "border-rose-500", "text-rose-300");
+            } else {
+                statusBox.classList.add("bg-slate-800", "border-slate-700", "text-slate-300");
             }
 
-            return ultime.map(m => {
-                let badgeColor = "bg-slate-800 text-slate-300";
-                if (m.esito === "W") badgeColor = "bg-emerald-950 text-emerald-400 border border-emerald-800/50";
-                else if (m.esito === "D") badgeColor = "bg-amber-950 text-amber-400 border border-amber-800/50";
-                else if (m.esito === "L") badgeColor = "bg-rose-950 text-rose-400 border border-rose-800/50";
-
-                return `
-                    <div class="flex items-center justify-between text-[10px] py-0.5">
-                        <span class="truncate max-w-[90px] text-slate-300">${m.isHome ? 'vs' : '@'} ${m.avversario}</span>
-                        <span class="font-mono font-bold ${badgeColor} px-1.5 py-0.5 rounded">${m.risultato}</span>
-                    </div>
-                `;
-            }).join("");
+            statusBox.innerText = text;
         }
 
-        function mostraStato(testo, tipo = 'info') {
-            const stato = document.getElementById("stato");
-            stato.classList.remove('hidden', 'bg-rose-950/80', 'border-rose-800', 'text-rose-300', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-blue-950/80', 'border-blue-800', 'text-blue-300');
-
-            if (tipo === 'error') stato.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
-            else if (tipo === 'success') stato.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
-            else stato.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
-
-            stato.innerText = testo;
-        }
-
-        function aggiornaFiltriVisualizzazione() {
-            if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) return;
-            mostraPartite(cachePartiteFirestore);
-        }
-
+        // FUNZIONE DI RENDERING SCHEDE E FILTRAGGIO CLIENT-SIDE
         function mostraPartite(partite) {
             const risultati = document.getElementById("risultati");
             risultati.innerHTML = "";
 
-            const valFrom = document.getElementById("dateFrom").value;
-            const valTo = document.getElementById("dateTo").value;
+            const valFrom = document.getElementById("dateFrom").value; // "YYYY-MM-DD"
+            const valTo = document.getElementById("dateTo").value;     // "YYYY-MM-DD"
 
             const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
             const selectedCodes = Array.from(selectedCheckboxes).map(cb => cb.value.trim().toUpperCase());
 
-            // FILTRAGGIO CORRETTO SENZA PERDITA DI MATCH PER FUSO ORARIO UTC
-            const partiteFiltrate = (partite || []).filter(p => {
-                const rawDate = p.dataOraUTC || p.utcDate || "";
-                let dataPartitaIso = "";
-                
-                if (rawDate) {
-                    const d = new Date(rawDate);
-                    if (!isNaN(d.getTime())) {
-                        const year = d.getFullYear();
-                        const month = String(d.getMonth() + 1).padStart(2, '0');
-                        const day = String(d.getDate()).padStart(2, '0');
-                        dataPartitaIso = `${year}-${month}-${day}`;
-                    } else {
-                        dataPartitaIso = rawDate.split("T")[0];
-                    }
-                }
-
-                let dentroIntervalloDate = true;
-                if (valFrom && dataPartitaIso) dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso >= valFrom);
-                if (valTo && dataPartitaIso) dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso <= valTo);
-
-                const codeCamp = (p.campionatoCode || "").toUpperCase();
-                const campionatoMatch = selectedCodes.includes(codeCamp);
-
-                return dentroIntervalloDate && campionatoMatch;
-            });
-
-            if (partiteFiltrate.length === 0) {
-                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata per i filtri selezionati. Modifica le date o i campionati.</div>`;
+            if (!partite || partite.length === 0) {
+                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita presente in memoria. Clicca su "Estrai Partite".</div>`;
                 return;
             }
 
+            // Normalizzazione e Filtraggio
+            const partiteFiltrate = partite.filter(p => {
+                const rawDate = p.dataOraUTC || p.utcDate || p.data || "";
+                let dataPartitaIso = "";
+
+                if (rawDate) {
+                    dataPartitaIso = rawDate.split("T")[0].trim();
+                }
+
+                let dentroData = true;
+                if (valFrom && dataPartitaIso) {
+                    dentroData = dentroData && (dataPartitaIso >= valFrom);
+                }
+                if (valTo && dataPartitaIso) {
+                    dentroData = dentroData && (dataPartitaIso <= valTo);
+                }
+
+                const codeCamp = (p.campionatoCode || p.campionato || "").toUpperCase();
+                const campionatoMatch = selectedCodes.length === 0 || selectedCodes.some(code => codeCamp.includes(code) || code === codeCamp);
+
+                return dentroData && campionatoMatch;
+            });
+
+            if (partiteFiltrate.length === 0) {
+                risultati.innerHTML = `
+                    <div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">
+                        <p class="font-bold text-rose-400 mb-1">Nessuna partita visibile con i filtri selezionati.</p>
+                        <p class="text-xs text-slate-500">Partite totali estratte dal server: <b>${partite.length}</b></p>
+                        <p class="text-xs text-slate-500">Filtro Date: <b>${valFrom || 'Inizio'}</b> &rarr; <b>${valTo || 'Fine'}</b></p>
+                    </div>`;
+                return;
+            }
+
+            // Renderizzazione vera e propria
             partiteFiltrate.forEach(p => {
                 const gCasa = p.giocateCasa ?? 0;
                 const gOspite = p.giocateOspite ?? 0;
@@ -351,16 +346,16 @@
                 const htmlUltimeCasa = generaHtmlUltimePartite(p.ultimePartiteCasa);
                 const htmlUltimeOspite = generaHtmlUltimePartite(p.ultimePartiteOspite);
 
-                const diffCasa = p.diffRetiCasa > 0 ? `+${p.diffRetiCasa}` : `${p.diffRetiCasa ?? 0}`;
-                const diffOspite = p.diffRetiOspite > 0 ? `+${p.diffRetiOspite}` : `${p.diffRetiOspite ?? 0}`;
+                const diffCasa = (p.diffRetiCasa > 0) ? `+${p.diffRetiCasa}` : `${p.diffRetiCasa ?? 0}`;
+                const diffOspite = (p.diffRetiOspite > 0) ? `+${p.diffRetiOspite}` : `${p.diffRetiOspite ?? 0}`;
 
                 const card = document.createElement("div");
                 card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
                 card.innerHTML = `
                     <div class="min-w-0">
                         <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
-                            <span class="font-bold text-slate-200 uppercase bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
-                            <span class="font-mono text-slate-300 text-[11px]">${formattaData(p.dataOraUTC)}</span>
+                            <span class="font-bold text-slate-200 uppercase bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato || p.campionatoCode} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
+                            <span class="font-mono text-slate-300 text-[11px]">${formattaData(p.dataOraUTC || p.utcDate)}</span>
                         </div>
 
                         <div class="my-3 text-base sm:text-lg font-bold text-slate-100 flex items-center justify-between gap-2">
@@ -476,50 +471,65 @@
             });
         }
 
-        async function sincronizzaESalva(e) {
-            if (e) e.preventDefault();
-
-            const btn = document.getElementById("btnEstrai");
-            const dateFrom = document.getElementById("dateFrom").value;
-            const dateTo = document.getElementById("dateTo").value;
-
-            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
-            const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim());
-
-            if (selectedComps.length === 0) {
-                alert("Seleziona almeno un campionato!");
-                return;
-            }
-
-            btn.disabled = true;
-            btn.textContent = "Estrazione in corso...";
-            mostraStato("Chiamata API Football-Data in corso...", "info");
-
+        // UTILITIES UTILI PER FORMA E DATE
+        function formattaData(isoStr) {
+            if (!isoStr) return "-";
             try {
-                const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
-                const res = await fetch(fullUrl);
-                const data = await res.json();
-
-                if (data.errore) {
-                    mostraStato("Errore: " + data.messaggio, "error");
-                } else if (data.partite && data.partite.length > 0) {
-                    await db.collection("palinsesto").doc("corrente").set({
-                        partite: data.partite,
-                        ultimoAggiornamento: new Date().toLocaleString("it-IT")
-                    });
-
-                    cachePartiteFirestore = data.partite;
-                    aggiornaFiltriVisualizzazione();
-                    mostraStato(`Estrazione completata con successo! ${data.partite.length} partite sincronizzate.`, "success");
-                } else {
-                    mostraStato("Nessuna partita trovata per il range selezionato.", "error");
-                }
-            } catch (err) {
-                mostraStato("Errore di connessione: " + err.message, "error");
-            } finally {
-                btn.disabled = false;
-                btn.textContent = "Estrai Partite e Sincronizza Cloud";
+                const d = new Date(isoStr);
+                return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+            } catch {
+                return isoStr;
             }
+        }
+
+        function calcolaIndiceForma(ultimeArr, strForma) {
+            let ptn = 0;
+            let simboli = "";
+
+            if (Array.isArray(ultimeArr) && ultimeArr.length > 0) {
+                ultimeArr.slice(-5).forEach(m => {
+                    if (m.risultato === 'W' || m.esito === 'V') {
+                        ptn += 3;
+                        simboli += `<span class="inline-block w-2 h-2 rounded-full bg-emerald-500 mx-0.5" title="Vittoria"></span>`;
+                    } else if (m.risultato === 'D' || m.esito === 'P') {
+                        ptn += 1;
+                        simboli += `<span class="inline-block w-2 h-2 rounded-full bg-amber-500 mx-0.5" title="Pareggio"></span>`;
+                    } else {
+                        simboli += `<span class="inline-block w-2 h-2 rounded-full bg-rose-500 mx-0.5" title="Sconfitta"></span>`;
+                    }
+                });
+            } else if (typeof strForma === "string") {
+                const arr = strForma.split(",");
+                arr.slice(-5).forEach(res => {
+                    const r = res.trim().toUpperCase();
+                    if (r === 'W' || r === 'V') {
+                        ptn += 3;
+                        simboli += `<span class="inline-block w-2 h-2 rounded-full bg-emerald-500 mx-0.5"></span>`;
+                    } else if (r === 'D' || r === 'P') {
+                        ptn += 1;
+                        simboli += `<span class="inline-block w-2 h-2 rounded-full bg-amber-500 mx-0.5"></span>`;
+                    } else if (r === 'L' || r === 'S') {
+                        simboli += `<span class="inline-block w-2 h-2 rounded-full bg-rose-500 mx-0.5"></span>`;
+                    }
+                });
+            }
+
+            return {
+                punteggio: `${ptn}/15`,
+                simboliHtml: `<div class="flex items-center">${simboli || '<span class="text-slate-600">-</span>'}</div>`
+            };
+        }
+
+        function generaHtmlUltimePartite(arr) {
+            if (!Array.isArray(arr) || arr.length === 0) {
+                return `<div class="text-slate-500 italic text-[10px]">N.D.</div>`;
+            }
+            return arr.slice(-3).map(m => `
+                <div class="flex justify-between items-center text-[10px] py-0.5">
+                    <span class="truncate text-slate-300 max-w-[80px]">${m.avversario || 'N.D.'}</span>
+                    <span class="font-mono font-bold ${m.risultato === 'W' ? 'text-emerald-400' : m.risultato === 'D' ? 'text-amber-400' : 'text-rose-400'}">${m.punteggio || 'v'}</span>
+                </div>
+            `).join('');
         }
     </script>
 </body>
