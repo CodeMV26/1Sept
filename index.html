@@ -57,10 +57,10 @@
                 </div>
             </div>
 
-            <!-- FILTRO CAMPIONATI -->
+            <!-- FILTRO CAMPIONATI (12 CAMPIONATI TOTALI) -->
             <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
                 <div class="flex justify-between items-center mb-2.5">
-                    <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
+                    <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre (12 Totali)</label>
                     <button type="button" onclick="toggleTuttiCampionati()" class="text-[10px] text-blue-400 hover:text-blue-300 font-semibold underline">Seleziona / Deseleziona Tutti</button>
                 </div>
                 
@@ -88,6 +88,30 @@
                     <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
                         <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="CL" checked>
                         <span class="text-slate-200 truncate">Champions League</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
+                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="DED" checked>
+                        <span class="text-slate-200 truncate">Eredivisie</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
+                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="PPL" checked>
+                        <span class="text-slate-200 truncate">Liga Portugal</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
+                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="BSA" checked>
+                        <span class="text-slate-200 truncate">Brasileirão</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
+                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="ELC" checked>
+                        <span class="text-slate-200 truncate">Championship</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
+                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="EC" checked>
+                        <span class="text-slate-200 truncate">Europei</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer">
+                        <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 bg-slate-950" value="WC" checked>
+                        <span class="text-slate-200 truncate">Mondiali</span>
                     </label>
                 </div>
             </div>
@@ -169,7 +193,7 @@
                     if (data.partite && Array.isArray(data.partite)) {
                         cachePartiteFirestore = data.partite;
                         aggiornaFiltriVisualizzazione();
-                        mostraStato(`Sincronizzato Cloud: ${data.partite.length} partite in archivio`, "success");
+                        mostraStato(`Sincronizzato Cloud: ${data.partite.length} partite salvate`, "success");
                     }
                 }
             });
@@ -192,7 +216,6 @@
         function calcolaIndiceForma(ultime, formaStr) {
             let lista = ultime || [];
 
-            // Se l'array delle ultime 5 è vuoto ma esiste la stringa dall'API
             if (lista.length === 0 && formaStr) {
                 lista = formaStr.split(",").map(e => ({ esito: e.trim() }));
             }
@@ -231,7 +254,7 @@
 
         function generaHtmlUltimePartite(ultime) {
             if (!ultime || ultime.length === 0) {
-                return `<div class="text-[10px] text-slate-500">In attesa di partite concluse</div>`;
+                return `<div class="text-[10px] text-slate-500">In attesa di gare concluse</div>`;
             }
 
             return ultime.map(m => {
@@ -275,9 +298,22 @@
             const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
             const selectedCodes = Array.from(selectedCheckboxes).map(cb => cb.value.trim().toUpperCase());
 
+            // FILTRAGGIO CORRETTO SENZA PERDITA DI MATCH PER FUSO ORARIO UTC
             const partiteFiltrate = (partite || []).filter(p => {
                 const rawDate = p.dataOraUTC || p.utcDate || "";
-                const dataPartitaIso = rawDate ? rawDate.split("T")[0] : "";
+                let dataPartitaIso = "";
+                
+                if (rawDate) {
+                    const d = new Date(rawDate);
+                    if (!isNaN(d.getTime())) {
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        dataPartitaIso = `${year}-${month}-${day}`;
+                    } else {
+                        dataPartitaIso = rawDate.split("T")[0];
+                    }
+                }
 
                 let dentroIntervalloDate = true;
                 if (valFrom && dataPartitaIso) dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso >= valFrom);
@@ -290,7 +326,7 @@
             });
 
             if (partiteFiltrate.length === 0) {
-                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata per i filtri selezionati.</div>`;
+                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata per i filtri selezionati. Modifica le date o i campionati.</div>`;
                 return;
             }
 
@@ -457,7 +493,7 @@
 
             btn.disabled = true;
             btn.textContent = "Estrazione in corso...";
-            mostraStato("Chiamata API Football-Data in corso per i campionati selezionati...", "info");
+            mostraStato("Chiamata API Football-Data in corso...", "info");
 
             try {
                 const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
@@ -476,7 +512,7 @@
                     aggiornaFiltriVisualizzazione();
                     mostraStato(`Estrazione completata con successo! ${data.partite.length} partite sincronizzate.`, "success");
                 } else {
-                    mostraStato("Nessuna partita trovata per il range di date selezionato.", "error");
+                    mostraStato("Nessuna partita trovata per il range selezionato.", "error");
                 }
             } catch (err) {
                 mostraStato("Errore di connessione: " + err.message, "error");
