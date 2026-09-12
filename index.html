@@ -51,7 +51,7 @@
                     </div>
                 </div>
 
-                <!-- CHECKBOX CAMPIONATI -->
+                <!-- CHECKBOX CAMPIONATI (12 campionati ufficiali, Copa Libertadores esclusa) -->
                 <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
                     <div class="flex justify-between items-center mb-2.5">
                         <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
@@ -64,10 +64,6 @@
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
                             <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="SA" checked>
                             <span class="text-slate-200 truncate"> Serie A</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BSA" checked>
-                            <span class="text-slate-200 truncate"> Brasileirão</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
                             <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PL" checked>
@@ -86,6 +82,14 @@
                             <span class="text-slate-200 truncate"> Ligue 1</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="CL" checked>
+                            <span class="text-slate-200 truncate"> Champions League</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="EC">
+                            <span class="text-slate-200 truncate"> Euro Championship</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
                             <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="DED">
                             <span class="text-slate-200 truncate"> Eredivisie</span>
                         </label>
@@ -94,16 +98,12 @@
                             <span class="text-slate-200 truncate"> Liga Portugal</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BSA" checked>
+                            <span class="text-slate-200 truncate"> Brasileirão</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
                             <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="ELC">
                             <span class="text-slate-200 truncate"> Championship</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="CL" checked>
-                            <span class="text-slate-200 truncate"> Champions League</span>
-                        </label>
-                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
-                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="EC">
-                            <span class="text-slate-200 truncate"> Euro Championship</span>
                         </label>
                         <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
                             <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="WC">
@@ -354,23 +354,6 @@
                   ? p.persoOspite 
                   : Math.max(0, giocateOspite - vinteOspite - pareggiateOspite);
 
-                // --- CALCOLO METRICHE GENERALI E SPECIFICHE INTERAMENTE IN FRONTEND ---
-                const puntiCasaInCasa = p.puntiCasaInCasa ?? (p.vinteCasaInCasa * 3 + p.pareggiateCasaInCasa);
-                const puntiOspiteInTrasferta = p.puntiOspiteInTrasferta ?? (p.vinteOspiteInTrasferta * 3 + p.pareggiateOspiteInTrasferta);
-
-                const vinteCasaInCasa = p.vinteCasaInCasa ?? 0;
-                const pareggiateCasaInCasa = p.pareggiateCasaInCasa ?? 0;
-                const persoCasaInCasa = p.persoCasaInCasa ?? 0;
-
-                const vinteOspiteInTrasferta = p.vinteOspiteInTrasferta ?? 0;
-                const pareggiateOspiteInTrasferta = p.pareggiateOspiteInTrasferta ?? 0;
-                const persoOspiteInTrasferta = p.persoOspiteInTrasferta ?? 0;
-
-                const golFattiCasaInCasa = p.golFattiCasaInCasa ?? 0;
-                const golSubitiCasaInCasa = p.golSubitiCasaInCasa ?? 0;
-                const golFattiOspiteInTrasferta = p.golFattiOspiteInTrasferta ?? 0;
-                const golSubitiOspiteInTrasferta = p.golSubitiOspiteInTrasferta ?? 0;
-
                 const mediaPuntiCasa = giocateCasa > 0 ? ((p.puntiCasa || 0) / giocateCasa).toFixed(2) : "0.00";
                 const mediaPuntiOspite = giocateOspite > 0 ? ((p.puntiOspite || 0) / giocateOspite).toFixed(2) : "0.00";
 
@@ -382,17 +365,16 @@
 
                 const indiceGolAttesi = (parseFloat(mediaGolFattiCasa) + parseFloat(mediaGolFattiOspite)).toFixed(2);
 
-                // --- FALLBACK SICURI MARCATORI E ASSISTMAN ---
-                const topScorerCasaText = (p.topScorerCasa && p.topScorerCasa !== "N.D.") ? p.topScorerCasa : "Non disponibile";
-                const topScorerOspiteText = (p.topScorerOspite && p.topScorerOspite !== "N.D.") ? p.topScorerOspite : "Non disponibile";
-                const topAssistCasaText = (p.topAssistCasa && p.topAssistCasa !== "N.D.") ? p.topAssistCasa : "Non disponibile";
-                const topAssistOspiteText = (p.topAssistOspite && p.topAssistOspite !== "N.D.") ? p.topAssistOspite : "Non disponibile";
+                const topScorerCasaText = p.topScorerCasa && p.topScorerCasa !== "N.D." ? p.topScorerCasa : "Non disponibile";
+                const topScorerOspiteText = p.topScorerOspite && p.topScorerOspite !== "N.D." ? p.topScorerOspite : "Non disponibile";
+                const topAssistCasaText = p.topAssistCasa && p.topAssistCasa !== "N.D." ? p.topAssistCasa : "Non disponibile";
+                const topAssistOspiteText = p.topAssistOspite && p.topAssistOspite !== "N.D." ? p.topAssistOspite : "Non disponibile";
 
                 const formaCasaObj = calcolaIndiceForma(p.formaCasa, vinteCasa, pareggiateCasa, persoCasaVal);
                 const formaOspiteObj = calcolaIndiceForma(p.formaOspite, vinteOspite, pareggiateOspite, persoOspiteVal);
                 
                 const dataDisplay = p.dataOraUTC || p.utcDate || p.dataOra;
-                const matchIdDisplay = p.matchId || p.id || Math.abs(`${p.squadraCasa}-${p.squadraOspite}-${dataDisplay}`.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0));
+                const matchIdDisplay = p.matchId || p.id;
                 const risultatoRealeAutomatico = p.risultatoReale || "";
 
                 const diffCasa = (p.diffRetiCasa > 0 ? `+${p.diffRetiCasa}` : p.diffRetiCasa ?? 0);
@@ -402,7 +384,6 @@
                 card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
                 card.innerHTML = `
                     <div class="min-w-0">
-                        <!-- HEADER CARD -->
                         <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
                             <span class="font-bold text-slate-200 uppercase tracking-wider truncate max-w-[55%] sm:max-w-[60%] bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
                             <div class="flex items-center gap-2">
@@ -411,7 +392,6 @@
                             </div>
                         </div>
 
-                        <!-- SQUADRE E RISULTATO REALE -->
                         <div class="my-3 text-base sm:text-lg font-bold text-slate-100 flex items-center justify-between gap-2">
                             <span class="truncate text-left flex-1">${p.squadraCasa}</span>
                             
@@ -425,7 +405,6 @@
                             <span class="truncate text-right flex-1">${p.squadraOspite}</span>
                         </div>
 
-                        <!-- TABELLA DATI GENERALI E SPECIFICI -->
                         <div class="bg-slate-950/70 rounded-2xl p-3 border border-slate-800/80 text-xs space-y-2 my-3">
                             <div class="grid grid-cols-3 text-[10px] font-bold text-slate-400 uppercase border-b border-slate-800/80 pb-1.5">
                                 <div>Dato</div>
@@ -457,33 +436,30 @@
                                 <div class="text-right font-semibold">${p.golFattiOspite ?? 0} / ${p.golSubitiOspite ?? 0}</div>
                             </div>
 
-                            <!-- DIFFERENZA RETI -->
                             <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
                                 <div class="text-slate-400 font-medium">Diff. Reti</div>
                                 <div class="text-center font-semibold text-slate-300">${diffCasa}</div>
                                 <div class="text-right font-semibold text-slate-300">${diffOspite}</div>
                             </div>
 
-                            <!-- DATI SPECIFICI CASA / TRASFERTA -->
                             <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
                                 <div class="text-blue-300 font-semibold">Punti Specifici</div>
-                                <div class="text-center font-bold text-blue-400">${puntiCasaInCasa} <span class="text-[9px] text-slate-400 font-normal">(Casa)</span></div>
-                                <div class="text-right font-bold text-blue-400">${puntiOspiteInTrasferta} <span class="text-[9px] text-slate-400 font-normal">(Trasf.)</span></div>
+                                <div class="text-center font-bold text-blue-400">${p.puntiCasaInCasa ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Casa)</span></div>
+                                <div class="text-right font-bold text-blue-400">${p.puntiOspiteInTrasferta ?? 0} <span class="text-[9px] text-slate-400 font-normal">(Trasf.)</span></div>
                             </div>
 
                             <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
                                 <div class="text-blue-300 font-semibold">V/P/S Specifici</div>
-                                <div class="text-center font-semibold">${vinteCasaInCasa}/${pareggiateCasaInCasa}/${persoCasaInCasa}</div>
-                                <div class="text-right font-semibold">${vinteOspiteInTrasferta}/${pareggiateOspiteInTrasferta}/${persoOspiteInTrasferta}</div>
+                                <div class="text-center font-semibold">${p.vinteCasaInCasa ?? 0}/${p.pareggiateCasaInCasa ?? 0}/${p.persoCasaInCasa ?? 0}</div>
+                                <div class="text-right font-semibold">${p.vinteOspiteInTrasferta ?? 0}/${p.pareggiateOspiteInTrasferta ?? 0}/${p.persoOspiteInTrasferta ?? 0}</div>
                             </div>
 
                             <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
                                 <div class="text-blue-300 font-semibold">Gol Spec. Fatti/Sub.</div>
-                                <div class="text-center font-semibold">${golFattiCasaInCasa} / ${golSubitiCasaInCasa}</div>
-                                <div class="text-right font-semibold">${golFattiOspiteInTrasferta} / ${golSubitiOspiteInTrasferta}</div>
+                                <div class="text-center font-semibold">${p.golFattiCasaInCasa ?? 0} / ${p.golSubitiCasaInCasa ?? 0}</div>
+                                <div class="text-right font-semibold">${p.golFattiOspiteInTrasferta ?? 0} / ${p.golSubitiOspiteInTrasferta ?? 0}</div>
                             </div>
 
-                            <!-- INDICE FORMA & TREND -->
                             <div class="grid grid-cols-3 text-slate-200 py-1.5 items-center border-t border-slate-800/80 bg-slate-900/50 -mx-3 px-3 rounded-b-xl">
                                 <div class="text-indigo-300 font-bold">Indice Forma &amp; Trend</div>
                                 <div class="text-center flex flex-col items-center justify-center gap-0.5">
@@ -497,7 +473,6 @@
                             </div>
                         </div>
 
-                        <!-- TOP SCORERS & TOP ASSISTS (VALORI DI FALLBACK SICURI) -->
                         <div class="bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 my-2 space-y-1 text-xs">
                             <div class="flex justify-between items-center">
                                 <div class="truncate max-w-[48%]">
@@ -521,7 +496,6 @@
                             </div>
                         </div>
 
-                        <!-- METRICHE MEDIE CALCOLATE INTERAMENTE IN JAVASCRIPT -->
                         <div class="grid grid-cols-4 gap-1.5 my-3 text-center">
                             <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
                                 <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Punti</div>
@@ -542,7 +516,6 @@
                         </div>
                     </div>
 
-                    <!-- FOOTER CARD -->
                     <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-2 sm:p-2.5 flex justify-between items-center mt-2">
                         <span class="text-[10px] uppercase font-bold text-slate-400">ID MATCH: #${matchIdDisplay}</span>
                         <span class="text-[10px] text-slate-500">Validazione Automatica</span>
@@ -574,7 +547,7 @@
 
             btn.disabled = true;
             btn.textContent = "Estrazione in corso...";
-            mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati...`, "info");
+            mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati... può richiedere alcuni minuti`, "info");
 
             try {
                 const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
