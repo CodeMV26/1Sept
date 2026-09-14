@@ -830,7 +830,7 @@
             return risultato;
         }
 
-        async function aggiornaQuote() {
+                async function aggiornaQuote() {
             if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) {
                 alert("Estrai prima le partite col pulsante 'Estrai Partite e Sincronizza Cloud'.");
                 return;
@@ -853,6 +853,8 @@
                 const res = await fetch(url);
                 const data = await res.json();
 
+                console.log("Risposta quote (diagnostica):", data);
+
                 if (data.errore) {
                     mostraStato("Errore quote: " + data.messaggio, "error");
                     return;
@@ -863,6 +865,7 @@
                 const nuovePartite = cachePartiteFirestore.map(p => {
                     const bloccoCamp = (data.campionati || []).find(c => c.campionato === p.campionatoCode);
                     if (!bloccoCamp || !bloccoCamp.eventi || bloccoCamp.eventi.length === 0) {
+                        nonAbbinate++;
                         return p;
                     }
 
