@@ -116,6 +116,49 @@
             </div>
 
             <div id="risultati" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-4xl mx-auto p-4 sm:p-5">
+                <details>
+                    <summary class="cursor-pointer text-blue-400 font-bold text-xs uppercase tracking-wider">📖 Legenda Statistiche</summary>
+                    <div class="mt-3 space-y-3 text-[11px] text-slate-300 leading-relaxed">
+                        <div>
+                            <p class="font-bold text-slate-100">Forza Attacco / Forza Difesa</p>
+                            <p>Confronta il rendimento offensivo/difensivo della squadra (in casa o in trasferta) con la media di tutte le squadre del campionato nello stesso contesto. 1.00 = nella media; sopra 1.00 = meglio della media; sotto 1.00 = peggio della media. Base del modello Dixon-Coles.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">Media Gol Ultime 5 / Striscia Attuale / Trend Punti</p>
+                            <p>Rendimento recente della squadra: media gol fatti/subiti solo sulle ultime 5 partite, sequenza di risultati consecutivi in corso (es. "3V" = tre vittorie di fila), e differenza tra punti/partita recenti e punti/partita sull'intera stagione (positivo = squadra in crescita, negativo = in calo).</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">Contesto Campionato</p>
+                            <p>Media gol e distribuzione degli esiti (vittorie casa/pareggi/vittorie trasferta) calcolate su tutte le partite concluse del campionato finora — serve da metro di paragone per interpretare i numeri delle singole squadre.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">Over 1.5 / 2.5 / 3.5 (ultime 10)</p>
+                            <p>Percentuale delle ultime 10 partite della squadra (fino a un massimo di 10, se ne ha giocate meno si usano tutte quelle disponibili) che hanno totalizzato più di 1.5, 2.5 o 3.5 gol complessivi (entrambe le squadre).</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">% Segna / % Clean Sheet (ultime 10)</p>
+                            <p>Percentuale delle ultime 10 partite in cui la squadra ha segnato almeno un gol, e percentuale in cui non ha subito nessun gol.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">Multigol (ultime 10)</p>
+                            <p>Distribuzione di frequenza reale (non stimata) dei gol segnati dalla squadra nelle ultime 10 partite, in tre fasce che non si sovrappongono: 0-1 gol, 2-3 gol, 4+ gol. Le tre percentuali sommano sempre a 100%.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">Split Gol 1° Tempo / 2° Tempo</p>
+                            <p>Percentuale dei gol fatti e subiti dalla squadra realizzati nel primo tempo rispetto al secondo, calcolata su tutte le partite della stagione con dato disponibile.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">IDO (Indice Distanza Obiettivo) / CU (Coefficiente Urgenza)</p>
+                            <p>Disponibili solo per i campionati a girone unico con retrocessione (non per coppe/tornei internazionali). IDO = punti mancanti rispetto a una soglia salvezza storica indicativa (⚠️ stima approssimativa scelta da noi, non un dato ufficiale). CU = punti mancanti / partite rimanenti: sopra 1.5 indica una squadra sotto forte pressione di risultato.</p>
+                        </div>
+                        <div class="pt-2 border-t border-slate-800">
+                            <p class="text-slate-500">Statistiche NON disponibili con la fonte dati gratuita in uso (football-data.org, piano free) e quindi mai calcolate: calci d'angolo, Top Scorer/Assistman per singola partita, pressione societaria/allenatore, fattore rivalsa storica.</p>
+                        </div>
+                    </div>
+                </details>
+            </div>
         </section>
     </main>
 
@@ -246,6 +289,90 @@
                             <span class="font-bold shrink-0">${p.risultato}</span>
                         </div>`;
             }).join("");
+        }
+
+        // --- NUOVO: helper per le statistiche avanzate ---
+        function fv(v, suffisso) {
+            if (v === null || v === undefined) return "N/D";
+            return `${v}${suffisso || ''}`;
+        }
+
+        function formattaMultigol(mg) {
+            if (!mg) return "N/D";
+            return `0-1: ${fv(mg["0-1"],'%')} · 2-3: ${fv(mg["2-3"],'%')} · 4+: ${fv(mg["4+"],'%')}`;
+        }
+
+        function formattaSplitTempiFatti(st) {
+            if (!st) return "N/D";
+            return `${fv(st.percentualeGolFatti1T,'%')} / ${fv(st.percentualeGolFatti2T,'%')}`;
+        }
+
+        function formattaSplitTempiSubiti(st) {
+            if (!st) return "N/D";
+            return `${fv(st.percentualeGolSubiti1T,'%')} / ${fv(st.percentualeGolSubiti2T,'%')}`;
+        }
+
+        function formattaMotivazionale(m) {
+            if (!m) return "N/D";
+            return `IDO ${fv(m.indiceDistanzaObiettivo,' pt')} · CU ${fv(m.coefficienteUrgenza)}`;
+        }
+
+        function formattaStatisticheAvanzate(p) {
+            const sc = p.statCampionato || {};
+            const sac = p.statAvanzateCasa || {};
+            const sao = p.statAvanzateOspite || {};
+            const mot = p.motivazionale || {};
+
+            return `
+                <details class="mt-2 bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 text-[11px]">
+                    <summary class="cursor-pointer text-indigo-300 font-bold text-[10px] uppercase tracking-wider">📊 Statistiche Avanzate (ML)</summary>
+                    <div class="mt-2 space-y-1.5 text-slate-300">
+                        <div class="text-slate-400 pb-1 border-b border-slate-800/60">
+                            Contesto campionato: media gol ${fv(sc.mediaGolTotale)} (casa ${fv(sc.mediaGolCasa)} | trasf. ${fv(sc.mediaGolTrasferta)}) ·
+                            Over2.5 ${fv(sc.percentualeOver25,'%')} ·
+                            1X2 campionato ${fv(sc.percentualeVittorieCasa,'%')}/${fv(sc.percentualePareggi,'%')}/${fv(sc.percentualeVittorieTrasferta,'%')}
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-y-1 pt-1">
+                            <div class="text-slate-500">Forza Attacco/Difesa</div>
+                            <div class="text-center">${fv(sac.forzaAttacco)} / ${fv(sac.forzaDifesa)}</div>
+                            <div class="text-right">${fv(sao.forzaAttacco)} / ${fv(sao.forzaDifesa)}</div>
+
+                            <div class="text-slate-500">Media Gol Ultime 5 (F/S)</div>
+                            <div class="text-center">${fv(sac.mediaGolFattiUltime5)} / ${fv(sac.mediaGolSubitiUltime5)}</div>
+                            <div class="text-right">${fv(sao.mediaGolFattiUltime5)} / ${fv(sao.mediaGolSubitiUltime5)}</div>
+
+                            <div class="text-slate-500">Striscia / Trend Punti</div>
+                            <div class="text-center">${fv(sac.strisciaAttuale)} (${fv(sac.trendPunti)})</div>
+                            <div class="text-right">${fv(sao.strisciaAttuale)} (${fv(sao.trendPunti)})</div>
+
+                            <div class="text-slate-500">Over 1.5/2.5/3.5 (U10)</div>
+                            <div class="text-center">${fv(sac.over15Ultime10,'%')}/${fv(sac.over25Ultime10,'%')}/${fv(sac.over35Ultime10,'%')}</div>
+                            <div class="text-right">${fv(sao.over15Ultime10,'%')}/${fv(sao.over25Ultime10,'%')}/${fv(sao.over35Ultime10,'%')}</div>
+
+                            <div class="text-slate-500">%Segna / %Clean Sheet (U10)</div>
+                            <div class="text-center">${fv(sac.percentualeSegnaUltime10,'%')} / ${fv(sac.percentualeCleanSheetUltime10,'%')}</div>
+                            <div class="text-right">${fv(sao.percentualeSegnaUltime10,'%')} / ${fv(sao.percentualeCleanSheetUltime10,'%')}</div>
+
+                            <div class="text-slate-500">Multigol (U10)</div>
+                            <div class="text-center">${formattaMultigol(sac.multigolUltime10)}</div>
+                            <div class="text-right">${formattaMultigol(sao.multigolUltime10)}</div>
+
+                            <div class="text-slate-500">Split Gol 1T/2T (Fatti)</div>
+                            <div class="text-center">${formattaSplitTempiFatti(sac.splitTempi)}</div>
+                            <div class="text-right">${formattaSplitTempiFatti(sao.splitTempi)}</div>
+
+                            <div class="text-slate-500">Split Gol 1T/2T (Subiti)</div>
+                            <div class="text-center">${formattaSplitTempiSubiti(sac.splitTempi)}</div>
+                            <div class="text-right">${formattaSplitTempiSubiti(sao.splitTempi)}</div>
+
+                            <div class="text-slate-500">Motivazionale (IDO/CU)</div>
+                            <div class="text-center">${formattaMotivazionale(mot.casa)}</div>
+                            <div class="text-right">${formattaMotivazionale(mot.ospite)}</div>
+                        </div>
+                    </div>
+                </details>
+            `;
         }
 
         function formattaStatoApi(statoApi) {
@@ -483,6 +610,8 @@
                                 <div class="space-y-1">${formattaUltimePartite(p.ultimeOspite)}</div>
                             </div>
                         </div>
+
+                        ${formattaStatisticheAvanzate(p)}
 
                         <div class="grid grid-cols-4 gap-1.5 my-3 text-center">
                             <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
