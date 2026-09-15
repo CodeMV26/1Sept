@@ -23,6 +23,7 @@
     </header>
 
     <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 my-2">
+
         <section id="sec-palinsesto" class="space-y-6">
             <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
                 <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2 flex items-center gap-2">
@@ -161,7 +162,7 @@
                         </div>
                         <div>
                             <p class="font-bold text-slate-100">Quote Bookmaker</p>
-                            <p>Quote 1X2, Over/Under (1.5/2.5/3.5) e Goal/No Goal, prese da The Odds API (bookmaker preferito: Pinnacle, poi Bet365, altrimenti il primo disponibile — sempre indicato). Le partite vengono abbinate automaticamente per data (tolleranza ±2 ore) e somiglianza del nome della squadra di casa: se l'abbinamento non è affidabile, la scheda mostra "Quote non disponibili" invece di un dato incerto. Aggiornate solo quando premi "Aggiorna Quote Bookmaker" (azione separata, per non consumare inutilmente le 500 chiamate/mese gratuite).</p>
+                            <p>Quote 1X2 e Over/Under, prese da The Odds API (bookmaker preferito: Pinnacle, poi Bet365, altrimenti il primo disponibile — sempre indicato). Le partite vengono abbinate automaticamente per data (tolleranza ±2 ore) e somiglianza del nome della squadra di casa: se l'abbinamento non è affidabile, la scheda mostra "Quote non disponibili" invece di un dato incerto. Aggiornate solo quando premi "Aggiorna Quote Bookmaker". Goal/No Goal non disponibile sul piano gratuito in questa configurazione. Le linee Over/Under mostrate dipendono da cosa il bookmaker ha effettivamente pubblicato: spesso solo 2.5.</p>
                         </div>
                         <div class="pt-2 border-t border-slate-800">
                             <p class="text-slate-500">Statistiche NON disponibili con le fonti gratuite in uso e quindi mai calcolate: calci d'angolo, Top Scorer/Assistman per singola partita, pressione societaria/allenatore, fattore rivalsa storica.</p>
@@ -170,14 +171,46 @@
                 </details>
             </div>
         </section>
+
+        <section id="sec-validazione" class="hidden space-y-6">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
+                    VALIDAZIONE &amp; AGGIORNAMENTO RISULTATI
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">
+                    Partite con orario di inizio già passato, in attesa di conferma del risultato reale. Le statistiche restano quelle congelate al momento dell'estrazione — solo il risultato viene aggiunto.
+                </p>
+
+                <button id="btnValida" type="button" onclick="validaPartite()" class="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                    Valida e Risolvi Palinsesto
+                </button>
+
+                <div id="statoValidazione" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
+            </div>
+
+            <div id="listaValidazione" class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-6"></div>
+        </section>
+
+        <section id="sec-archivio" class="hidden">
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto p-8 text-center">
+                <p class="text-slate-400 text-sm">Archivio Storico — prossimamente.</p>
+            </div>
+        </section>
+
+        <section id="sec-mlengine" class="hidden">
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto p-8 text-center">
+                <p class="text-slate-400 text-sm">ML Engine — prossimamente.</p>
+            </div>
+        </section>
+
     </main>
 
     <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-1.5rem)] z-50">
         <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center">
-            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[11px] sm:text-xs font-semibold truncate">Palinsesto</button>
-            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate">Validazione</button>
-            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate">Archivio</button>
-            <button class="flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate">ML Engine</button>
+            <button id="tab-palinsesto" onclick="mostraSchermata('palinsesto')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[11px] sm:text-xs font-semibold truncate cursor-pointer">Palinsesto</button>
+            <button id="tab-validazione" onclick="mostraSchermata('validazione')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate cursor-pointer">Validazione</button>
+            <button id="tab-archivio" onclick="mostraSchermata('archivio')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate cursor-pointer">Archivio</button>
+            <button id="tab-mlengine" onclick="mostraSchermata('mlengine')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate cursor-pointer">ML Engine</button>
         </div>
     </footer>
 
@@ -214,6 +247,29 @@
             }
         }
 
+        // --- NUOVO: navigazione tra schermate ---
+        function mostraSchermata(nome) {
+            const sezioni = { palinsesto: 'sec-palinsesto', validazione: 'sec-validazione', archivio: 'sec-archivio', mlengine: 'sec-mlengine' };
+            Object.values(sezioni).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+            const target = document.getElementById(sezioni[nome]);
+            if (target) target.classList.remove('hidden');
+
+            document.querySelectorAll('.footer-tab').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('text-slate-400');
+            });
+            const activeBtn = document.getElementById('tab-' + nome);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-400');
+                activeBtn.classList.add('bg-blue-600', 'text-white');
+            }
+
+            if (nome === 'validazione') mostraPartiteDaValidare();
+        }
+
         window.onload = function() {
             const oggi = new Date();
             document.getElementById("dateFrom").value = formattaDataIso(oggi);
@@ -225,6 +281,7 @@
                     if (data.partite && Array.isArray(data.partite)) {
                         cachePartiteFirestore = data.partite;
                         aggiornaFiltriVisualizzazione();
+                        mostraPartiteDaValidare();
                         mostraStato(`Sincronizzato Cloud: ${data.partite.length} partite in archivio - Ultimo aggiornamento: ${data.ultimoAggiornamento}`, "success");
                     }
                 }
@@ -384,7 +441,6 @@
             `;
         }
 
-        // --- NUOVO: quote bookmaker ---
         function formattaQuoteBookmaker(p) {
             const q = p.quote;
             if (!q) {
@@ -430,6 +486,8 @@
                 return `<span class="bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-700 animate-pulse">${st}</span>`;
             } else if (st === "FINISHED" || st === "AWARDED") {
                 return `<span class="bg-slate-800 text-slate-400 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">${st}</span>`;
+            } else if (st === "POSTPONED" || st === "SUSPENDED" || st === "CANCELLED") {
+                return `<span class="bg-rose-950 text-rose-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-rose-800">${st}</span>`;
             } else {
                 return `<span class="bg-blue-950 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-blue-800">${st}</span>`;
             }
@@ -446,9 +504,133 @@
             stato.innerText = testo;
         }
 
+        function mostraStatoValidazione(testo, tipo = 'info') {
+            const stato = document.getElementById("statoValidazione");
+            if (!stato) return;
+            stato.classList.remove('hidden', 'bg-rose-950/80', 'border-rose-800', 'text-rose-300', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+            
+            if (tipo === 'error') stato.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
+            else if (tipo === 'success') stato.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+            else stato.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+
+            stato.innerText = testo;
+        }
+
         function aggiornaFiltriVisualizzazione() {
             if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) return;
             mostraPartite(cachePartiteFirestore);
+        }
+
+        // --- NUOVO: elenco partite da validare ---
+        function mostraPartiteDaValidare() {
+            const container = document.getElementById("listaValidazione");
+            if (!container) return;
+
+            const adesso = new Date();
+            const daValidare = (cachePartiteFirestore || []).filter(p => {
+                if (p.stato !== "TIMED") return false;
+                const d = new Date(p.dataOraUTC || p.utcDate);
+                return d < adesso;
+            });
+
+            if (daValidare.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita in attesa di validazione al momento.</div>`;
+                return;
+            }
+
+            container.innerHTML = daValidare.map(p => `
+                <div class="bg-slate-900/70 border border-slate-800/90 rounded-2xl p-4 flex justify-between items-center gap-3">
+                    <div class="min-w-0">
+                        <div class="text-[10px] text-slate-400 uppercase font-semibold mb-1">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</div>
+                        <div class="text-sm font-bold text-slate-100 truncate">${p.squadraCasa} vs ${p.squadraOspite}</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">${formattaData(p.dataOraUTC || p.utcDate)}</div>
+                    </div>
+                    ${formattaStatoApi(p.stato)}
+                </div>
+            `).join("");
+        }
+
+        // --- NUOVO: validazione e archiviazione ---
+        async function validaPartite() {
+            const adesso = new Date();
+            const daValidare = (cachePartiteFirestore || []).filter(p => {
+                if (p.stato !== "TIMED") return false;
+                const d = new Date(p.dataOraUTC || p.utcDate);
+                return d < adesso;
+            });
+
+            if (daValidare.length === 0) {
+                alert("Nessuna partita da validare al momento.");
+                return;
+            }
+
+            const btn = document.getElementById("btnValida");
+            btn.disabled = true;
+            btn.textContent = "Validazione in corso...";
+            mostraStatoValidazione(`Verifica in corso per ${daValidare.length} partite... può richiedere alcuni minuti`, "info");
+
+            try {
+                const ids = daValidare.map(p => p.matchId).join(",");
+                const url = `${WORKER_URL}?azione=valida&matchIds=${encodeURIComponent(ids)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data.errore) {
+                    mostraStatoValidazione("Errore validazione: " + data.messaggio, "error");
+                    return;
+                }
+
+                const mappaRisultati = {};
+                (data.risultati || []).forEach(r => { mappaRisultati[r.matchId] = r; });
+
+                let spostate = 0, aggiornateStato = 0, ancoraInAttesa = 0;
+                const nuovoPalinsesto = [];
+
+                for (const p of cachePartiteFirestore) {
+                    const eraDaValidare = p.stato === "TIMED" && new Date(p.dataOraUTC || p.utcDate) < adesso;
+                    const r = eraDaValidare ? mappaRisultati[p.matchId] : null;
+
+                    if (!eraDaValidare || !r || r.errore || !r.stato) {
+                        nuovoPalinsesto.push(p);
+                        if (eraDaValidare) ancoraInAttesa++;
+                        continue;
+                    }
+
+                    if (r.stato === "FINISHED") {
+                        await db.collection("archivio_storico").doc(String(p.matchId)).set({
+                            ...p,
+                            stato: "FINISHED",
+                            risultatoReale: r.risultatoReale || p.risultatoReale || "",
+                            validatoIl: new Date().toLocaleString("it-IT")
+                        });
+                        spostate++;
+                    } else if (r.stato === "TIMED") {
+                        nuovoPalinsesto.push(p);
+                        ancoraInAttesa++;
+                    } else {
+                        nuovoPalinsesto.push({ ...p, stato: r.stato });
+                        aggiornateStato++;
+                    }
+                }
+
+                await db.collection("palinsesto").doc("corrente").update({
+                    partite: nuovoPalinsesto,
+                    validazioneUltimoAggiornamento: new Date().toLocaleString("it-IT")
+                });
+
+                cachePartiteFirestore = nuovoPalinsesto;
+                aggiornaFiltriVisualizzazione();
+                mostraPartiteDaValidare();
+
+                mostraStatoValidazione(`Completato: ${spostate} partite archiviate, ${aggiornateStato} con stato aggiornato (rinviate/sospese/cancellate), ${ancoraInAttesa} ancora in attesa.`, "success");
+
+            } catch (err) {
+                console.error(err);
+                mostraStatoValidazione("Errore durante la validazione: " + err.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Valida e Risolvi Palinsesto";
+            }
         }
 
         function mostraPartite(partite) {
@@ -736,6 +918,7 @@
 
                     cachePartiteFirestore = data.partite;
                     aggiornaFiltriVisualizzazione();
+                    mostraPartiteDaValidare();
 
                     mostraStato(`Completato! Trovate e sincronizzate ${data.partite.length} partite per i campionati selezionati.`, "success");
                 } else {
@@ -749,8 +932,6 @@
                 btn.textContent = "Estrai Partite e Sincronizza Cloud";
             }
         }
-
-        // --- NUOVO: abbinamento e aggiornamento quote ---
 
         function normalizzaNomeSquadra(nome) {
             return (nome || "")
@@ -830,7 +1011,7 @@
             return risultato;
         }
 
-                async function aggiornaQuote() {
+        async function aggiornaQuote() {
             if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) {
                 alert("Estrai prima le partite col pulsante 'Estrai Partite e Sincronizza Cloud'.");
                 return;
