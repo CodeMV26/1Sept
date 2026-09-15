@@ -178,7 +178,7 @@
                     VALIDAZIONE &amp; AGGIORNAMENTO RISULTATI
                 </h2>
                 <p class="text-xs text-slate-400 mb-4">
-                    Partite con orario di inizio già passato, in attesa di conferma del risultato reale. Le statistiche restano quelle congelate al momento dell'estrazione — solo il risultato viene aggiunto.
+                    Partite già iniziate (o con orario passato) in attesa di conferma del risultato reale. Le statistiche restano quelle congelate al momento dell'estrazione — solo il risultato viene aggiunto quando la partita risulta conclusa.
                 </p>
 
                 <button id="btnValida" type="button" onclick="validaPartite()" class="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
@@ -247,7 +247,6 @@
             }
         }
 
-        // --- NUOVO: navigazione tra schermate ---
         function mostraSchermata(nome) {
             const sezioni = { palinsesto: 'sec-palinsesto', validazione: 'sec-validazione', archivio: 'sec-archivio', mlengine: 'sec-mlengine' };
             Object.values(sezioni).forEach(id => {
@@ -521,17 +520,23 @@
             mostraPartite(cachePartiteFirestore);
         }
 
-        // --- NUOVO: elenco partite da validare ---
+        // --- Verifica se una partita va (ri)controllata alla prossima validazione ---
+        // TIMED/SCHEDULED: solo se l'orario è già passato.
+        // IN_PLAY/PAUSED: per definizione già iniziate, sempre da ricontrollare
+        // finché non risultano FINISHED (o un esito anomalo).
+        function partitaDaControllare(p) {
+            const statiInCorsoOAttesa = ["TIMED", "SCHEDULED", "IN_PLAY", "PAUSED"];
+            if (!statiInCorsoOAttesa.includes(p.stato)) return false;
+            if (p.stato === "IN_PLAY" || p.stato === "PAUSED") return true;
+            const d = new Date(p.dataOraUTC || p.utcDate);
+            return d < new Date();
+        }
+
         function mostraPartiteDaValidare() {
             const container = document.getElementById("listaValidazione");
             if (!container) return;
 
-            const adesso = new Date();
-            const daValidare = (cachePartiteFirestore || []).filter(p => {
-                if (p.stato !== "TIMED") return false;
-                const d = new Date(p.dataOraUTC || p.utcDate);
-                return d < adesso;
-            });
+            const daValidare = (cachePartiteFirestore || []).filter(partitaDaControllare);
 
             if (daValidare.length === 0) {
                 container.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita in attesa di validazione al momento.</div>`;
@@ -550,14 +555,8 @@
             `).join("");
         }
 
-        // --- NUOVO: validazione e archiviazione ---
         async function validaPartite() {
-            const adesso = new Date();
-            const daValidare = (cachePartiteFirestore || []).filter(p => {
-                if (p.stato !== "TIMED") return false;
-                const d = new Date(p.dataOraUTC || p.utcDate);
-                return d < adesso;
-            });
+            const daValidare = (cachePartiteFirestore || []).filter(partitaDaControllare);
 
             if (daValidare.length === 0) {
                 alert("Nessuna partita da validare al momento.");
@@ -583,11 +582,13 @@
                 const mappaRisultati = {};
                 (data.risultati || []).forEach(r => { mappaRisultati[r.matchId] = r; });
 
+                const STATI_ANCORA_IN_CORSO = ["TIMED", "SCHEDULED", "IN_PLAY", "PAUSED"];
+
                 let spostate = 0, aggiornateStato = 0, ancoraInAttesa = 0;
                 const nuovoPalinsesto = [];
 
                 for (const p of cachePartiteFirestore) {
-                    const eraDaValidare = p.stato === "TIMED" && new Date(p.dataOraUTC || p.utcDate) < adesso;
+                    const eraDaValidare = partitaDaControllare(p);
                     const r = eraDaValidare ? mappaRisultati[p.matchId] : null;
 
                     if (!eraDaValidare || !r || r.errore || !r.stato) {
@@ -604,10 +605,13 @@
                             validatoIl: new Date().toLocaleString("it-IT")
                         });
                         spostate++;
-                    } else if (r.stato === "TIMED") {
-                        nuovoPalinsesto.push(p);
+                    } else if (STATI_ANCORA_IN_CORSO.includes(r.stato)) {
+                        // Partita iniziata (o ancora da iniziare) ma non conclusa:
+                        // resta nel palinsesto con lo stato aggiornato, verrà ricontrollata.
+                        nuovoPalinsesto.push({ ...p, stato: r.stato });
                         ancoraInAttesa++;
                     } else {
+                        // Stato realmente anomalo: rinviata, sospesa, cancellata, assegnata a tavolino, ecc.
                         nuovoPalinsesto.push({ ...p, stato: r.stato });
                         aggiornateStato++;
                     }
@@ -622,7 +626,7 @@
                 aggiornaFiltriVisualizzazione();
                 mostraPartiteDaValidare();
 
-                mostraStatoValidazione(`Completato: ${spostate} partite archiviate, ${aggiornateStato} con stato aggiornato (rinviate/sospese/cancellate), ${ancoraInAttesa} ancora in attesa.`, "success");
+                mostraStatoValidazione(`Completato: ${spostate} partite archiviate, ${aggiornateStato} con stato realmente anomalo (rinviate/sospese/cancellate), ${ancoraInAttesa} ancora in corso o in attesa di conclusione.`, "success");
 
             } catch (err) {
                 console.error(err);
