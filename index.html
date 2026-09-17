@@ -149,8 +149,8 @@
                             <p>Percentuale delle ultime 10 partite in cui la squadra ha segnato almeno un gol, e percentuale in cui non ha subito nessun gol.</p>
                         </div>
                         <div>
-                            <p class="font-bold text-slate-100">Multigol (ultime 10)</p>
-                            <p>Distribuzione di frequenza reale (non stimata) dei gol segnati dalla squadra nelle ultime 10 partite, in tre fasce che non si sovrappongono: 0-1 gol, 2-3 gol, 4+ gol. Le tre percentuali sommano sempre a 100%.</p>
+                            <p class="font-bold text-slate-100">Multigol (ultime 10, storico)</p>
+                            <p>Distribuzione di frequenza reale (non stimata) dei gol segnati dalla squadra nelle ultime 10 partite, in tre fasce che non si sovrappongono: 0-1 gol, 2-3 gol, 4+ gol. È uno storico osservato, diverso dal pronostico Multigol descritto più sotto.</p>
                         </div>
                         <div>
                             <p class="font-bold text-slate-100">Split Gol 1° Tempo / 2° Tempo</p>
@@ -163,6 +163,10 @@
                         <div>
                             <p class="font-bold text-slate-100">Quote Bookmaker</p>
                             <p>Quote 1X2 e Over/Under, prese da The Odds API (bookmaker preferito: Pinnacle, poi Bet365, altrimenti il primo disponibile — sempre indicato). Le partite vengono abbinate automaticamente per data (tolleranza ±2 ore) e somiglianza del nome della squadra di casa: se l'abbinamento non è affidabile, la scheda mostra "Quote non disponibili" invece di un dato incerto. Aggiornate solo quando premi "Aggiorna Quote Bookmaker". Goal/No Goal non disponibile sul piano gratuito in questa configurazione. Le linee Over/Under mostrate dipendono da cosa il bookmaker ha effettivamente pubblicato: spesso solo 2.5.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">🎯 Pronostici (motore Dixon-Coles)</p>
+                            <p>Calcolati automaticamente ad ogni estrazione da un unico modello statistico: si stimano i gol attesi di ciascuna squadra dalle rispettive Forze Attacco/Difesa, si costruisce una matrice di probabilità di tutti i possibili risultati (0-0, 1-0, 2-1, ecc.), e da quella singola matrice si derivano matematicamente tutti e 13 i mercati — questo garantisce che i pronostici non si contraddicano mai tra loro (es. un Risultato Esatto 0-0 non può mai comparire insieme a un pronostico Over 1.5). ⚠️ Il modello attuale è ancora nella sua versione iniziale, basata sulle statistiche della stagione corrente: non è stato ancora calibrato con il backtesting sui dati dell'Archivio Storico (fase successiva del progetto), quindi va considerato un punto di partenza, non un algoritmo definitivo.</p>
                         </div>
                         <div class="pt-2 border-t border-slate-800">
                             <p class="text-slate-500">Statistiche NON disponibili con le fonti gratuite in uso e quindi mai calcolate: calci d'angolo, Top Scorer/Assistman per singola partita, pressione societaria/allenatore, fattore rivalsa storica.</p>
@@ -197,7 +201,7 @@
                     ARCHIVIO STORICO
                 </h2>
                 <p class="text-xs text-slate-400 mb-4">
-                    Partite validate e conservate per sempre, con tutte le informazioni congelate al momento dell'estrazione (statistiche, quote, indici ML) più il risultato finale reale. Cresce ad ogni validazione, senza limiti di tempo né sovrascritture.
+                    Partite validate e conservate per sempre, con tutte le informazioni congelate al momento dell'estrazione (statistiche, quote, indici ML, pronostici) più il risultato finale reale. Cresce ad ogni validazione, senza limiti di tempo né sovrascritture.
                 </p>
                 <div id="statoArchivio" class="text-xs text-slate-400 text-center"></div>
             </div>
@@ -428,7 +432,7 @@
                             <div class="text-center">${fv(sac.percentualeSegnaUltime10,'%')} / ${fv(sac.percentualeCleanSheetUltime10,'%')}</div>
                             <div class="text-right">${fv(sao.percentualeSegnaUltime10,'%')} / ${fv(sao.percentualeCleanSheetUltime10,'%')}</div>
 
-                            <div class="text-slate-500">Multigol (U10)</div>
+                            <div class="text-slate-500">Multigol (U10, storico)</div>
                             <div class="text-center">${formattaMultigol(sac.multigolUltime10)}</div>
                             <div class="text-right">${formattaMultigol(sao.multigolUltime10)}</div>
 
@@ -481,6 +485,96 @@
                         ${ouHtml}
                         <div class="flex justify-between"><span class="text-slate-500">Goal/No Goal</span><span>${fv(btts.si)} / ${fv(btts.no)}</span></div>
                         <div class="text-slate-600 text-[9px] pt-1">Aggiornate il ${aggiornateData}</div>
+                    </div>
+                </details>
+            `;
+        }
+
+        // --- NUOVO: sezione Pronostici (motore Dixon-Coles, 13 mercati) ---
+        function formattaPercentuali(obj) {
+            if (!obj) return "";
+            return Object.keys(obj).map(k => `${k} ${obj[k]}%`).join(" · ");
+        }
+
+        function formattaPronostici(p) {
+            const pr = p.pronostici;
+            if (!pr) {
+                return `<details class="mt-2 bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 text-[11px]">
+                            <summary class="cursor-pointer text-emerald-300 font-bold text-[10px] uppercase tracking-wider">🎯 Pronostici</summary>
+                            <div class="mt-2 text-slate-500">Pronostici non disponibili (dati storici insufficienti per una o entrambe le squadre)</div>
+                        </details>`;
+            }
+
+            return `
+                <details class="mt-2 bg-slate-950/50 border border-emerald-900/50 rounded-xl p-2.5 text-[11px]">
+                    <summary class="cursor-pointer text-emerald-300 font-bold text-[10px] uppercase tracking-wider">🎯 Pronostici (Gol attesi: ${fv(pr.lambdaCasa)} - ${fv(pr.lambdaOspite)})</summary>
+                    <div class="mt-2 space-y-1 text-slate-300">
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">1X2</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.mercato1X2.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.mercato1X2.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">Risultato Esatto</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.risultatoEsatto.pronostico}</span>
+                            <span class="text-right">${fv(pr.risultatoEsatto.probabilita,'%')}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">Doppia Chance</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.doppiaChance.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.doppiaChance.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">O/U 0.5</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.over05.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.over05.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">O/U 1.5</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.over15.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.over15.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">O/U 2.5</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.over25.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.over25.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">O/U 3.5</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.over35.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.over35.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">O/U 4.5</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.over45.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.over45.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">Goal/No Goal</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.goalNoGoal.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.goalNoGoal.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">Combo DC+O/U2.5</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.comboDcOver25.pronostico}</span>
+                            <span class="text-right">${fv(pr.comboDcOver25.probabilita[pr.comboDcOver25.pronostico],'%')}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">Multigol Casa</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.multigolCasa.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.multigolCasa.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">Multigol Trasferta</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.multigolTrasferta.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.multigolTrasferta.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">MG Casa+Trasferta</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.multigolCombo.pronostico}</span>
+                            <span class="text-right">${fv(pr.multigolCombo.probabilita,'%')}</span>
+                        </div>
+                        <div class="text-slate-600 text-[9px] pt-1 border-t border-slate-800/60 mt-1">Modello: ${pr.versioneModello} · non ancora calibrato dal backtesting</div>
                     </div>
                 </details>
             `;
@@ -639,7 +733,6 @@
             }
         }
 
-        // --- NUOVO: Archivio Storico ---
         async function caricaArchivio() {
             const container = document.getElementById("listaArchivio");
             const statoEl = document.getElementById("statoArchivio");
@@ -676,7 +769,6 @@
             }
         }
 
-        // --- Estratta dalla scheda del Palinsesto, riusata anche in Archivio ---
         function creaSchedaPartitaHtml(p) {
             const giocateCasa = p.giocateCasa ?? 0;
             const vinteCasa = p.vinteCasa ?? 0;
@@ -817,6 +909,7 @@
 
                     ${formattaStatisticheAvanzate(p)}
                     ${formattaQuoteBookmaker(p)}
+                    ${formattaPronostici(p)}
 
                     <div class="grid grid-cols-4 gap-1.5 my-3 text-center">
                         <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
