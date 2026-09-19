@@ -166,7 +166,7 @@
                         </div>
                         <div>
                             <p class="font-bold text-slate-100">🎯 Pronostici (motore Dixon-Coles)</p>
-                            <p>Calcolati automaticamente ad ogni estrazione da un unico modello statistico: si stimano i gol attesi di ciascuna squadra dalle rispettive Forze Attacco/Difesa, si costruisce una matrice di probabilità di tutti i possibili risultati (0-0, 1-0, 2-1, ecc.), e da quella singola matrice si derivano matematicamente tutti e 13 i mercati. I parametri del modello (ρ e fattore di scala) sono quelli confermati nella schermata ML Engine, dopo il backtesting sull'Archivio Storico.</p>
+                            <p>Calcolati automaticamente ad ogni estrazione da un unico modello statistico: si stimano i gol attesi di ciascuna squadra dalle rispettive Forze Attacco/Difesa, si costruisce una matrice di probabilità di tutti i possibili risultati (0-0, 1-0, 2-1, ecc.), e da quella singola matrice si derivano matematicamente tutti e 13 i mercati. Il Risultato Esatto, il Combo DC+O/U2.5 e il Multigol Casa+Trasferta sono sempre coerenti con i mercati singoli che li compongono, mostrati nelle righe sopra. I parametri del modello (ρ e fattore di scala) sono quelli confermati nella schermata ML Engine, dopo il backtesting sull'Archivio Storico.</p>
                         </div>
                         <div class="pt-2 border-t border-slate-800">
                             <p class="text-slate-500">Statistiche NON disponibili con le fonti gratuite in uso e quindi mai calcolate: calci d'angolo, Top Scorer/Assistman per singola partita, pressione societaria/allenatore, fattore rivalsa storica.</p>
@@ -203,7 +203,19 @@
                 <p class="text-xs text-slate-400 mb-4">
                     Partite validate e conservate per sempre, con tutte le informazioni congelate al momento dell'estrazione (statistiche, quote, indici ML, pronostici) più il risultato finale reale. Cresce ad ogni validazione, senza limiti di tempo né sovrascritture.
                 </p>
-                <div id="statoArchivio" class="text-xs text-slate-400 text-center"></div>
+                <div id="statoArchivio" class="text-xs text-slate-400 text-center mb-3"></div>
+
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="eliminaSelezionateArchivio()" class="flex-1 min-w-[140px] bg-rose-700 hover:bg-rose-600 text-white text-xs font-semibold py-2.5 rounded-xl transition cursor-pointer">
+                        Elimina Selezionate
+                    </button>
+                    <button type="button" onclick="esportaArchivioCSV()" class="flex-1 min-w-[140px] bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold py-2.5 rounded-xl transition cursor-pointer">
+                        Esporta Excel (CSV)
+                    </button>
+                    <button type="button" onclick="esportaArchivioPDF()" class="flex-1 min-w-[140px] bg-indigo-700 hover:bg-indigo-600 text-white text-xs font-semibold py-2.5 rounded-xl transition cursor-pointer">
+                        Esporta PDF
+                    </button>
+                </div>
             </div>
 
             <div id="listaArchivio" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
@@ -271,6 +283,7 @@
 
         const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
         let cachePartiteFirestore = [];
+        let archivioCorrenteVisualizzato = [];
 
         function limita(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
@@ -592,7 +605,7 @@
                         <div class="grid grid-cols-3 items-center">
                             <span class="text-slate-500">Combo DC+O/U2.5</span>
                             <span class="font-bold text-emerald-400 text-center">${pr.comboDcOver25.pronostico}</span>
-                            <span class="text-right">${fv(pr.comboDcOver25.probabilita[pr.comboDcOver25.pronostico],'%')}</span>
+                            <span class="text-right">${fv(pr.comboDcOver25.probabilita)}</span>
                         </div>
                         <div class="grid grid-cols-3 items-center">
                             <span class="text-slate-500">Multigol Casa</span>
@@ -784,6 +797,7 @@
                     return db_ - da;
                 });
 
+                archivioCorrenteVisualizzato = partite;
                 statoEl.textContent = `${partite.length} partite in archivio`;
 
                 if (partite.length === 0) {
@@ -795,7 +809,7 @@
                 partite.forEach(p => {
                     const card = document.createElement("div");
                     card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between w-full min-w-0";
-                    card.innerHTML = creaSchedaPartitaHtml(p);
+                    card.innerHTML = creaSchedaPartitaHtml(p, true);
                     container.appendChild(card);
                 });
             } catch (err) {
@@ -804,7 +818,151 @@
             }
         }
 
-        function creaSchedaPartitaHtml(p) {
+        async function eliminaSelezionateArchivio() {
+            const checkboxes = document.querySelectorAll('.archivio-checkbox:checked');
+            if (checkboxes.length === 0) {
+                alert("Nessuna partita selezionata.");
+                return;
+            }
+            if (!confirm(`Confermi l'eliminazione permanente di ${checkboxes.length} partite dall'Archivio? Non influenzeranno più il backtesting, e l'operazione non è reversibile.`)) return;
+
+            const ids = Array.from(checkboxes).map(cb => cb.dataset.matchid);
+
+            try {
+                for (const id of ids) {
+                    await db.collection("archivio_storico").doc(String(id)).delete();
+                }
+                alert(`${ids.length} partite eliminate dall'Archivio.`);
+                caricaArchivio();
+            } catch (err) {
+                console.error(err);
+                alert("Errore durante l'eliminazione: " + err.message);
+            }
+        }
+
+        function csvSafe(v) {
+            if (v === null || v === undefined) return '""';
+            const s = String(v).replace(/"/g, '""');
+            return `"${s}"`;
+        }
+
+        function esportaArchivioCSV() {
+            if (!archivioCorrenteVisualizzato || archivioCorrenteVisualizzato.length === 0) {
+                alert("Nessuna partita in Archivio da esportare.");
+                return;
+            }
+
+            const colonne = [
+                "MatchID","Campionato","Giornata","Data","SquadraCasa","SquadraOspite","RisultatoReale","Stato",
+                "PuntiCasa","PosizioneCasa","PuntiOspite","PosizioneOspite",
+                "ForzaAttaccoCasa","ForzaDifesaCasa","ForzaAttaccoOspite","ForzaDifesaOspite",
+                "QuoteCasa","QuotePareggio","QuoteOspite","QuoteOver25","QuoteUnder25",
+                "Pronostico1X2","PronosticoRisultatoEsatto","PronosticoDoppiaChance",
+                "PronosticoOU05","PronosticoOU15","PronosticoOU25","PronosticoOU35","PronosticoOU45",
+                "PronosticoGoalNoGoal","PronosticoComboDcOu25","PronosticoMultigolCasa","PronosticoMultigolTrasferta","PronosticoMgCombo",
+                "ValidatoIl"
+            ];
+
+            const righe = archivioCorrenteVisualizzato.map(p => {
+                const pr = p.pronostici || {};
+                const q = p.quote || {};
+                const m1x2 = q.mercato1x2 || {};
+                const ou25 = q.overUnder ? q.overUnder["2.5"] : null;
+                const sac = p.statAvanzateCasa || {};
+                const sao = p.statAvanzateOspite || {};
+
+                const valori = [
+                    p.matchId || p.id, p.campionato, p.giornata,
+                    formattaData(p.dataOraUTC || p.utcDate), p.squadraCasa, p.squadraOspite,
+                    p.risultatoReale || "", p.stato,
+                    p.puntiCasa ?? "", p.posizioneCasa ?? "", p.puntiOspite ?? "", p.posizioneOspite ?? "",
+                    fv(sac.forzaAttacco), fv(sac.forzaDifesa), fv(sao.forzaAttacco), fv(sao.forzaDifesa),
+                    fv(m1x2.casa), fv(m1x2.pareggio), fv(m1x2.ospite),
+                    ou25 ? fv(ou25.over) : "N/D", ou25 ? fv(ou25.under) : "N/D",
+                    pr.mercato1X2 ? pr.mercato1X2.pronostico : "N/D",
+                    pr.risultatoEsatto ? pr.risultatoEsatto.pronostico : "N/D",
+                    pr.doppiaChance ? pr.doppiaChance.pronostico : "N/D",
+                    pr.over05 ? pr.over05.pronostico : "N/D",
+                    pr.over15 ? pr.over15.pronostico : "N/D",
+                    pr.over25 ? pr.over25.pronostico : "N/D",
+                    pr.over35 ? pr.over35.pronostico : "N/D",
+                    pr.over45 ? pr.over45.pronostico : "N/D",
+                    pr.goalNoGoal ? pr.goalNoGoal.pronostico : "N/D",
+                    pr.comboDcOver25 ? pr.comboDcOver25.pronostico : "N/D",
+                    pr.multigolCasa ? pr.multigolCasa.pronostico : "N/D",
+                    pr.multigolTrasferta ? pr.multigolTrasferta.pronostico : "N/D",
+                    pr.multigolCombo ? pr.multigolCombo.pronostico : "N/D",
+                    p.validatoIl || ""
+                ];
+                return valori.map(csvSafe).join(",");
+            });
+
+            const csvContent = "\uFEFF" + colonne.map(csvSafe).join(",") + "\n" + righe.join("\n");
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `archivio_storico_${formattaDataIso(new Date())}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function esportaArchivioPDF() {
+            if (!archivioCorrenteVisualizzato || archivioCorrenteVisualizzato.length === 0) {
+                alert("Nessuna partita in Archivio da esportare.");
+                return;
+            }
+
+            const colonne = ["Campionato","Giornata","Data","Casa","Ospite","Risultato","1X2 Pron.","Ris.Esatto Pron.","O/U2.5 Pron.","Goal/NoGoal Pron."];
+
+            const righeHtml = archivioCorrenteVisualizzato.map(p => {
+                const pr = p.pronostici || {};
+                return `<tr>
+                    <td>${p.campionato || ""}</td>
+                    <td>${p.giornata || ""}</td>
+                    <td>${formattaData(p.dataOraUTC || p.utcDate)}</td>
+                    <td>${p.squadraCasa || ""}</td>
+                    <td>${p.squadraOspite || ""}</td>
+                    <td>${p.risultatoReale || ""}</td>
+                    <td>${pr.mercato1X2 ? pr.mercato1X2.pronostico : "N/D"}</td>
+                    <td>${pr.risultatoEsatto ? pr.risultatoEsatto.pronostico : "N/D"}</td>
+                    <td>${pr.over25 ? pr.over25.pronostico : "N/D"}</td>
+                    <td>${pr.goalNoGoal ? pr.goalNoGoal.pronostico : "N/D"}</td>
+                </tr>`;
+            }).join("");
+
+            const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Archivio Storico</title>
+            <style>
+                body { font-family: Arial, sans-serif; font-size: 11px; color: #111; padding: 20px; }
+                h1 { font-size: 16px; margin-bottom: 4px; }
+                p.sub { color: #555; margin-top: 0; margin-bottom: 16px; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
+                th { background: #f0f0f0; }
+                tr:nth-child(even) { background: #fafafa; }
+            </style>
+            </head><body>
+                <h1>SoccerStats ML — Archivio Storico</h1>
+                <p class="sub">Esportato il ${new Date().toLocaleString("it-IT")} — ${archivioCorrenteVisualizzato.length} partite. Nota: qui è riportato un sottoinsieme di colonne per stare su formato stampabile; per il set completo di dati usa l'esportazione Excel (CSV).</p>
+                <table>
+                    <thead><tr>${colonne.map(c => `<th>${c}</th>`).join("")}</tr></thead>
+                    <tbody>${righeHtml}</tbody>
+                </table>
+            </body></html>`;
+
+            const finestra = window.open("", "_blank");
+            if (!finestra) {
+                alert("Il browser ha bloccato l'apertura della finestra di stampa. Consenti i popup per questo sito e riprova.");
+                return;
+            }
+            finestra.document.write(html);
+            finestra.document.close();
+            finestra.onload = () => { finestra.print(); };
+        }
+
+        function creaSchedaPartitaHtml(p, mostraCheckbox) {
             const giocateCasa = p.giocateCasa ?? 0;
             const vinteCasa = p.vinteCasa ?? 0;
             const pareggiateCasa = p.pareggiateCasa ?? 0;
@@ -843,10 +1001,17 @@
             const puntiCasaInCasaDisplay = (p.giocateCasaInCasa ?? 0) > 0 ? p.puntiCasaInCasa : "N/D";
             const puntiOspiteInTrasfertaDisplay = (p.giocateOspiteInTrasferta ?? 0) > 0 ? p.puntiOspiteInTrasferta : "N/D";
 
+            const checkboxHtml = mostraCheckbox
+                ? `<input type="checkbox" class="archivio-checkbox w-4 h-4 rounded border-slate-600 text-rose-600 focus:ring-0 bg-slate-950 mr-2 align-middle" data-matchid="${matchIdDisplay}" title="Seleziona per eliminare">`
+                : "";
+
             return `
                 <div class="min-w-0">
                     <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
-                        <span class="font-bold text-slate-200 uppercase tracking-wider truncate max-w-[55%] sm:max-w-[60%] bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
+                        <span class="flex items-center">
+                            ${checkboxHtml}
+                            <span class="font-bold text-slate-200 uppercase tracking-wider truncate max-w-[45%] sm:max-w-[55%] bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
+                        </span>
                         <div class="flex items-center gap-2">
                             <span class="font-mono text-slate-300 text-[10px] sm:text-[11px] shrink-0"> ${formattaData(dataDisplay)}</span>
                             ${formattaStatoApi(p.stato)}
@@ -1043,7 +1208,7 @@
             partiteFiltrate.forEach(p => {
                 const card = document.createElement("div");
                 card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
-                card.innerHTML = creaSchedaPartitaHtml(p);
+                card.innerHTML = creaSchedaPartitaHtml(p, false);
                 risultati.appendChild(card);
             });
         }
@@ -1344,6 +1509,8 @@
 
         // Calcola SOLO il pronostico (non le probabilità dettagliate) per i 13
         // mercati, in formato "compatto" — usato esclusivamente dal backtesting.
+        // Combo DC+O/U2.5 e MG Casa+Trasferta ora VINCOLATI ai mercati singoli
+        // (stessa correzione applicata nel Worker), per garantire coerenza.
         function pronosticiDaMatriceJS(matrice) {
             const p1 = sommaMatriceJS(matrice, (i, j) => i > j);
             const pX = sommaMatriceJS(matrice, (i, j) => i === j);
@@ -1364,16 +1531,8 @@
             const pGoal = sommaMatriceJS(matrice, (i, j) => i > 0 && j > 0);
             const goalNoGoal = pGoal > 0.5 ? "Goal" : "No Goal";
 
-            const combosDcOu = {
-                "1X-Over": sommaMatriceJS(matrice, (i, j) => i >= j && (i + j) > 2.5),
-                "1X-Under": sommaMatriceJS(matrice, (i, j) => i >= j && (i + j) <= 2.5),
-                "12-Over": sommaMatriceJS(matrice, (i, j) => i !== j && (i + j) > 2.5),
-                "12-Under": sommaMatriceJS(matrice, (i, j) => i !== j && (i + j) <= 2.5),
-                "X2-Over": sommaMatriceJS(matrice, (i, j) => i <= j && (i + j) > 2.5),
-                "X2-Under": sommaMatriceJS(matrice, (i, j) => i <= j && (i + j) <= 2.5)
-            };
-            let comboDcOver25 = "1X-Over", mc = combosDcOu["1X-Over"];
-            Object.keys(combosDcOu).forEach(k => { if (combosDcOu[k] > mc) { comboDcOver25 = k; mc = combosDcOu[k]; } });
+            // Combo DC+O/U2.5 VINCOLATA: riusa i pronostici già scelti sopra
+            const comboDcOver25 = `${doppiaChance}-${over25}`;
 
             const fasceCasa = { "0-1": 0, "2-3": 0, "4+": 0 };
             for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) { const f = fasciaGolJS(i); for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) fasceCasa[f] += matrice[i][j]; }
@@ -1385,21 +1544,18 @@
             let multigolTrasferta = "0-1", mft = fasceTrasferta["0-1"];
             Object.keys(fasceTrasferta).forEach(k => { if (fasceTrasferta[k] > mft) { multigolTrasferta = k; mft = fasceTrasferta[k]; } });
 
-            const fasceNomi = ["0-1", "2-3", "4+"];
-            const combosMg = {};
-            fasceNomi.forEach(fc => fasceNomi.forEach(fo => { combosMg[`${fc}|${fo}`] = 0; }));
-            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) combosMg[`${fasciaGolJS(i)}|${fasciaGolJS(j)}`] += matrice[i][j];
-            let multigolCombo = "0-1|0-1", mmg = combosMg["0-1|0-1"];
-            Object.keys(combosMg).forEach(k => { if (combosMg[k] > mmg) { multigolCombo = k; mmg = combosMg[k]; } });
+            // MG Casa+Trasferta VINCOLATA
+            const multigolCombo = `${multigolCasa}|${multigolTrasferta}`;
 
+            // Risultato esatto vincolato a 1X2 + O/U2.5
             let condEsito;
             if (mercato1X2 === "1") condEsito = (i, j) => i > j;
             else if (mercato1X2 === "X") condEsito = (i, j) => i === j;
             else condEsito = (i, j) => i < j;
-            const condOU = over25 === "Over" ? (i, j) => (i + j) > 2.5 : (i, j) => (i + j) <= 2.5;
+            const condOU25 = over25 === "Over" ? (i, j) => (i + j) > 2.5 : (i, j) => (i + j) <= 2.5;
             let mi = -1, mj = -1, mp = -1;
             for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
-                if (condEsito(i, j) && condOU(i, j) && matrice[i][j] > mp) { mp = matrice[i][j]; mi = i; mj = j; }
+                if (condEsito(i, j) && condOU25(i, j) && matrice[i][j] > mp) { mp = matrice[i][j]; mi = i; mj = j; }
             }
             if (mi === -1) {
                 for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
@@ -1498,6 +1654,8 @@
         let configAlgoritmoCorrente = { rho: -0.1, kScala: 1, versione: "v1", confermatoIl: null };
         let archivioCorrenteML = [];
         let ultimoBacktestNuoviParametri = null;
+        let ultimoBacktestTrainCount = 0;
+        let ultimoBacktestTestCount = 0;
 
         async function caricaConfigAlgoritmo() {
             try {
@@ -1673,6 +1831,8 @@
                 disegnaTabellaAccuratezze(archivio, nuoveAccuratezze);
 
                 ultimoBacktestNuoviParametri = { rho: migliorRho, kScala: migliorK };
+                ultimoBacktestTrainCount = train.length;
+                ultimoBacktestTestCount = test.length;
                 document.getElementById("infoNuoviParametri").textContent =
                     `Parametri proposti: ρ=${migliorRho.toFixed(2)}, k=${migliorK.toFixed(2)} (allenati su ${train.length} partite più vecchie, verificati su ${test.length} più recenti)`;
                 document.getElementById("btnConfermaAlgoritmo").classList.remove("hidden");
@@ -1688,7 +1848,13 @@
 
         async function confermaNuovoAlgoritmo() {
             if (!ultimoBacktestNuoviParametri) return;
-            if (!confirm(`Confermi di sostituire l'algoritmo corrente con ρ=${ultimoBacktestNuoviParametri.rho.toFixed(2)}, k=${ultimoBacktestNuoviParametri.kScala.toFixed(2)}? Verrà usato dalla prossima estrazione partite.`)) return;
+
+            let avviso = "";
+            if (ultimoBacktestTrainCount < 15 || ultimoBacktestTestCount < 15) {
+                avviso = `\n\n⚠️ ATTENZIONE: campione molto piccolo (${ultimoBacktestTrainCount} partite di allenamento, ${ultimoBacktestTestCount} di verifica). I parametri proposti potrebbero non essere affidabili — valuta se aspettare che l'Archivio cresca ancora prima di confermare.`;
+            }
+
+            if (!confirm(`Confermi di sostituire l'algoritmo corrente con ρ=${ultimoBacktestNuoviParametri.rho.toFixed(2)}, k=${ultimoBacktestNuoviParametri.kScala.toFixed(2)}? Verrà usato dalla prossima estrazione partite.${avviso}`)) return;
 
             try {
                 const ora = new Date().toLocaleString("it-IT");
