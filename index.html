@@ -166,7 +166,7 @@
                         </div>
                         <div>
                             <p class="font-bold text-slate-100">🎯 Pronostici (motore Dixon-Coles)</p>
-                            <p>Calcolati automaticamente ad ogni estrazione da un unico modello statistico: si stimano i gol attesi di ciascuna squadra dalle rispettive Forze Attacco/Difesa, si costruisce una matrice di probabilità di tutti i possibili risultati (0-0, 1-0, 2-1, ecc.), e da quella singola matrice si derivano matematicamente tutti e 13 i mercati — questo garantisce che i pronostici non si contraddicano mai tra loro (es. un Risultato Esatto 0-0 non può mai comparire insieme a un pronostico Over 1.5). ⚠️ Il modello attuale è ancora nella sua versione iniziale, basata sulle statistiche della stagione corrente: non è stato ancora calibrato con il backtesting sui dati dell'Archivio Storico (fase successiva del progetto), quindi va considerato un punto di partenza, non un algoritmo definitivo.</p>
+                            <p>Calcolati automaticamente ad ogni estrazione da un unico modello statistico: si stimano i gol attesi di ciascuna squadra dalle rispettive Forze Attacco/Difesa, si costruisce una matrice di probabilità di tutti i possibili risultati (0-0, 1-0, 2-1, ecc.), e da quella singola matrice si derivano matematicamente tutti e 13 i mercati. I parametri del modello (ρ e fattore di scala) sono quelli confermati nella schermata ML Engine, dopo il backtesting sull'Archivio Storico.</p>
                         </div>
                         <div class="pt-2 border-t border-slate-800">
                             <p class="text-slate-500">Statistiche NON disponibili con le fonti gratuite in uso e quindi mai calcolate: calci d'angolo, Top Scorer/Assistman per singola partita, pressione societaria/allenatore, fattore rivalsa storica.</p>
@@ -209,9 +209,40 @@
             <div id="listaArchivio" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
         </section>
 
-        <section id="sec-mlengine" class="hidden">
-            <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto p-8 text-center">
-                <p class="text-slate-400 text-sm">ML Engine — prossimamente.</p>
+        <section id="sec-mlengine" class="hidden space-y-6">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
+                    🤖 ML ENGINE — CALIBRAZIONE ALGORITMO
+                </h2>
+                <p class="text-xs text-slate-400 mb-3">
+                    Confronta l'accuratezza dell'algoritmo attuale con una versione ricalibrata sui dati dell'Archivio Storico (validazione temporale: allenamento sulle partite più vecchie, verifica sulle più recenti — mai sugli stessi dati).
+                </p>
+                <div id="infoAlgoritmoCorrente" class="text-xs text-slate-300 mb-1"></div>
+                <div id="statoArchivioML" class="text-xs text-slate-400 mb-1"></div>
+                <div id="avvisoCampioneML" class="text-xs text-amber-400 mb-3"></div>
+
+                <button id="btnRicalcola" type="button" onclick="eseguiBacktesting()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                    Ricalcola e Confronta
+                </button>
+
+                <div id="infoNuoviParametri" class="text-xs text-emerald-400 mt-3"></div>
+
+                <button id="btnConfermaAlgoritmo" type="button" onclick="confermaNuovoAlgoritmo()" class="hidden w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer">
+                    Conferma Nuovo Algoritmo
+                </button>
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto p-4 sm:p-5 overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="text-slate-400 uppercase text-[10px] border-b border-slate-800">
+                            <th class="text-left py-2 pr-2">Mercato</th>
+                            <th class="text-center py-2 px-2">Accuratezza Corrente</th>
+                            <th class="text-center py-2 pl-2">Accuratezza Nuovo Algoritmo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabellaAccuratezzeBody"></tbody>
+                </table>
             </div>
         </section>
 
@@ -240,6 +271,8 @@
 
         const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
         let cachePartiteFirestore = [];
+
+        function limita(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
         function formattaDataIso(d) {
             const yyyy = d.getFullYear();
@@ -280,12 +313,15 @@
 
             if (nome === 'validazione') mostraPartiteDaValidare();
             if (nome === 'archivio') caricaArchivio();
+            if (nome === 'mlengine') mostraMLEngine();
         }
 
         window.onload = function() {
             const oggi = new Date();
             document.getElementById("dateFrom").value = formattaDataIso(oggi);
             ricalcolaDataFine();
+
+            caricaConfigAlgoritmo();
 
             db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
                 if (doc.exists) {
@@ -490,7 +526,6 @@
             `;
         }
 
-        // --- NUOVO: sezione Pronostici (motore Dixon-Coles, 13 mercati) ---
         function formattaPercentuali(obj) {
             if (!obj) return "";
             return Object.keys(obj).map(k => `${k} ${obj[k]}%`).join(" · ");
@@ -574,7 +609,7 @@
                             <span class="font-bold text-emerald-400 text-center">${pr.multigolCombo.pronostico}</span>
                             <span class="text-right">${fv(pr.multigolCombo.probabilita,'%')}</span>
                         </div>
-                        <div class="text-slate-600 text-[9px] pt-1 border-t border-slate-800/60 mt-1">Modello: ${pr.versioneModello} · non ancora calibrato dal backtesting</div>
+                        <div class="text-slate-600 text-[9px] pt-1 border-t border-slate-800/60 mt-1">Modello: ${pr.versioneModello} · ρ=${fv(pr.rhoUsato)} · k=${fv(pr.kScalaUsato)}</div>
                     </div>
                 </details>
             `;
@@ -1038,7 +1073,9 @@
             mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati... può richiedere alcuni minuti`, "info");
 
             try {
-                const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}`;
+                await caricaConfigAlgoritmo();
+
+                const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}&rho=${configAlgoritmoCorrente.rho}&kScala=${configAlgoritmoCorrente.kScala}`;
                 const res = await fetch(fullUrl);
                 const data = await res.json();
 
@@ -1246,6 +1283,432 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = "Aggiorna Quote Bookmaker";
+            }
+        }
+
+        // ============================================================
+        // ML ENGINE — replica JS del motore Dixon-Coles (solo per il
+        // backtesting locale, non serve al Worker) + tabella accuratezze
+        // ============================================================
+
+        const MAX_GOL_MATRICE_JS = 8;
+
+        function fattorialeJS(n) {
+            let r = 1;
+            for (let i = 2; i <= n; i++) r *= i;
+            return r;
+        }
+        function poissonJS(k, lambda) {
+            if (lambda <= 0) return k === 0 ? 1 : 0;
+            return Math.exp(-lambda) * Math.pow(lambda, k) / fattorialeJS(k);
+        }
+        function tauDixonColesJS(i, j, lambdaCasa, lambdaOspite, rho) {
+            if (i === 0 && j === 0) return 1 - (lambdaCasa * lambdaOspite * rho);
+            if (i === 0 && j === 1) return 1 + (lambdaCasa * rho);
+            if (i === 1 && j === 0) return 1 + (lambdaOspite * rho);
+            if (i === 1 && j === 1) return 1 - rho;
+            return 1;
+        }
+        function costruisciMatriceJS(lambdaCasa, lambdaOspite, rho) {
+            const matrice = [];
+            let somma = 0;
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) {
+                matrice[i] = [];
+                for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
+                    const base = poissonJS(i, lambdaCasa) * poissonJS(j, lambdaOspite);
+                    const tau = tauDixonColesJS(i, j, lambdaCasa, lambdaOspite, rho);
+                    const val = Math.max(0, base * tau);
+                    matrice[i][j] = val;
+                    somma += val;
+                }
+            }
+            if (somma > 0) {
+                for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++)
+                    for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++)
+                        matrice[i][j] = matrice[i][j] / somma;
+            }
+            return matrice;
+        }
+        function sommaMatriceJS(matrice, cond) {
+            let s = 0;
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++)
+                for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++)
+                    if (cond(i, j)) s += matrice[i][j];
+            return s;
+        }
+        function fasciaGolJS(g) {
+            if (g <= 1) return "0-1";
+            if (g <= 3) return "2-3";
+            return "4+";
+        }
+
+        // Calcola SOLO il pronostico (non le probabilità dettagliate) per i 13
+        // mercati, in formato "compatto" — usato esclusivamente dal backtesting.
+        function pronosticiDaMatriceJS(matrice) {
+            const p1 = sommaMatriceJS(matrice, (i, j) => i > j);
+            const pX = sommaMatriceJS(matrice, (i, j) => i === j);
+            const p2 = sommaMatriceJS(matrice, (i, j) => i < j);
+            let mercato1X2 = "1", m = p1;
+            if (pX > m) { mercato1X2 = "X"; m = pX; }
+            if (p2 > m) { mercato1X2 = "2"; m = p2; }
+
+            const opzioniDC = { "1X": p1 + pX, "12": p1 + p2, "X2": pX + p2 };
+            let doppiaChance = "1X", mdc = opzioniDC["1X"];
+            Object.keys(opzioniDC).forEach(k => { if (opzioniDC[k] > mdc) { doppiaChance = k; mdc = opzioniDC[k]; } });
+
+            function overUnder(soglia) {
+                return sommaMatriceJS(matrice, (i, j) => (i + j) > soglia) > 0.5 ? "Over" : "Under";
+            }
+            const over05 = overUnder(0.5), over15 = overUnder(1.5), over25 = overUnder(2.5), over35 = overUnder(3.5), over45 = overUnder(4.5);
+
+            const pGoal = sommaMatriceJS(matrice, (i, j) => i > 0 && j > 0);
+            const goalNoGoal = pGoal > 0.5 ? "Goal" : "No Goal";
+
+            const combosDcOu = {
+                "1X-Over": sommaMatriceJS(matrice, (i, j) => i >= j && (i + j) > 2.5),
+                "1X-Under": sommaMatriceJS(matrice, (i, j) => i >= j && (i + j) <= 2.5),
+                "12-Over": sommaMatriceJS(matrice, (i, j) => i !== j && (i + j) > 2.5),
+                "12-Under": sommaMatriceJS(matrice, (i, j) => i !== j && (i + j) <= 2.5),
+                "X2-Over": sommaMatriceJS(matrice, (i, j) => i <= j && (i + j) > 2.5),
+                "X2-Under": sommaMatriceJS(matrice, (i, j) => i <= j && (i + j) <= 2.5)
+            };
+            let comboDcOver25 = "1X-Over", mc = combosDcOu["1X-Over"];
+            Object.keys(combosDcOu).forEach(k => { if (combosDcOu[k] > mc) { comboDcOver25 = k; mc = combosDcOu[k]; } });
+
+            const fasceCasa = { "0-1": 0, "2-3": 0, "4+": 0 };
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) { const f = fasciaGolJS(i); for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) fasceCasa[f] += matrice[i][j]; }
+            let multigolCasa = "0-1", mfc = fasceCasa["0-1"];
+            Object.keys(fasceCasa).forEach(k => { if (fasceCasa[k] > mfc) { multigolCasa = k; mfc = fasceCasa[k]; } });
+
+            const fasceTrasferta = { "0-1": 0, "2-3": 0, "4+": 0 };
+            for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) { const f = fasciaGolJS(j); for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) fasceTrasferta[f] += matrice[i][j]; }
+            let multigolTrasferta = "0-1", mft = fasceTrasferta["0-1"];
+            Object.keys(fasceTrasferta).forEach(k => { if (fasceTrasferta[k] > mft) { multigolTrasferta = k; mft = fasceTrasferta[k]; } });
+
+            const fasceNomi = ["0-1", "2-3", "4+"];
+            const combosMg = {};
+            fasceNomi.forEach(fc => fasceNomi.forEach(fo => { combosMg[`${fc}|${fo}`] = 0; }));
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) combosMg[`${fasciaGolJS(i)}|${fasciaGolJS(j)}`] += matrice[i][j];
+            let multigolCombo = "0-1|0-1", mmg = combosMg["0-1|0-1"];
+            Object.keys(combosMg).forEach(k => { if (combosMg[k] > mmg) { multigolCombo = k; mmg = combosMg[k]; } });
+
+            let condEsito;
+            if (mercato1X2 === "1") condEsito = (i, j) => i > j;
+            else if (mercato1X2 === "X") condEsito = (i, j) => i === j;
+            else condEsito = (i, j) => i < j;
+            const condOU = over25 === "Over" ? (i, j) => (i + j) > 2.5 : (i, j) => (i + j) <= 2.5;
+            let mi = -1, mj = -1, mp = -1;
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
+                if (condEsito(i, j) && condOU(i, j) && matrice[i][j] > mp) { mp = matrice[i][j]; mi = i; mj = j; }
+            }
+            if (mi === -1) {
+                for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
+                    if (condEsito(i, j) && matrice[i][j] > mp) { mp = matrice[i][j]; mi = i; mj = j; }
+                }
+            }
+            const risultatoEsatto = `${mi}-${mj}`;
+
+            return { mercato1X2, risultatoEsatto, doppiaChance, over05, over15, over25, over35, over45, goalNoGoal, comboDcOver25, multigolCasa, multigolTrasferta, multigolCombo };
+        }
+
+        function estraiPronosticiCompatti(pr) {
+            if (!pr) return null;
+            return {
+                mercato1X2: pr.mercato1X2.pronostico,
+                risultatoEsatto: pr.risultatoEsatto.pronostico,
+                doppiaChance: pr.doppiaChance.pronostico,
+                over05: pr.over05.pronostico,
+                over15: pr.over15.pronostico,
+                over25: pr.over25.pronostico,
+                over35: pr.over35.pronostico,
+                over45: pr.over45.pronostico,
+                goalNoGoal: pr.goalNoGoal.pronostico,
+                comboDcOver25: pr.comboDcOver25.pronostico,
+                multigolCasa: pr.multigolCasa.pronostico,
+                multigolTrasferta: pr.multigolTrasferta.pronostico,
+                multigolCombo: pr.multigolCombo.pronostico
+            };
+        }
+
+        function veritaMercati(gc, go) {
+            const mercato1X2 = gc > go ? "1" : (gc === go ? "X" : "2");
+            const risultatoEsatto = `${gc}-${go}`;
+            const totale = gc + go;
+            function ou(soglia) { return totale > soglia ? "Over" : "Under"; }
+            const goalNoGoal = (gc > 0 && go > 0) ? "Goal" : "No Goal";
+            return {
+                mercato1X2, risultatoEsatto,
+                over05: ou(0.5), over15: ou(1.5), over25: ou(2.5), over35: ou(3.5), over45: ou(4.5),
+                goalNoGoal, fasciaCasa: fasciaGolJS(gc), fasciaTrasferta: fasciaGolJS(go)
+            };
+        }
+
+        function verificaAzzeccati(compatti, gc, go) {
+            const v = veritaMercati(gc, go);
+            const esiti = {};
+
+            esiti.mercato1X2 = compatti.mercato1X2 === v.mercato1X2;
+            esiti.risultatoEsatto = compatti.risultatoEsatto === v.risultatoEsatto;
+
+            const dc = compatti.doppiaChance;
+            esiti.doppiaChance = (dc === "1X" && (v.mercato1X2 === "1" || v.mercato1X2 === "X"))
+                || (dc === "12" && (v.mercato1X2 === "1" || v.mercato1X2 === "2"))
+                || (dc === "X2" && (v.mercato1X2 === "X" || v.mercato1X2 === "2"));
+
+            esiti.over05 = compatti.over05 === v.over05;
+            esiti.over15 = compatti.over15 === v.over15;
+            esiti.over25 = compatti.over25 === v.over25;
+            esiti.over35 = compatti.over35 === v.over35;
+            esiti.over45 = compatti.over45 === v.over45;
+
+            esiti.goalNoGoal = compatti.goalNoGoal === v.goalNoGoal;
+
+            const partiCombo = (compatti.comboDcOver25 || "").split("-");
+            const dcCombo = partiCombo[0], ouCombo = partiCombo[1];
+            const dcOk = (dcCombo === "1X" && (v.mercato1X2 === "1" || v.mercato1X2 === "X"))
+                || (dcCombo === "12" && (v.mercato1X2 === "1" || v.mercato1X2 === "2"))
+                || (dcCombo === "X2" && (v.mercato1X2 === "X" || v.mercato1X2 === "2"));
+            esiti.comboDcOver25 = dcOk && (ouCombo === v.over25);
+
+            esiti.multigolCasa = compatti.multigolCasa === v.fasciaCasa;
+            esiti.multigolTrasferta = compatti.multigolTrasferta === v.fasciaTrasferta;
+
+            const partiMg = (compatti.multigolCombo || "").split("|");
+            esiti.multigolCombo = partiMg[0] === v.fasciaCasa && partiMg[1] === v.fasciaTrasferta;
+
+            return esiti;
+        }
+
+        const MERCATI_LISTA = [
+            { chiave: "mercato1X2", nome: "1X2" },
+            { chiave: "risultatoEsatto", nome: "Risultato Esatto" },
+            { chiave: "doppiaChance", nome: "Doppia Chance" },
+            { chiave: "over05", nome: "Over/Under 0.5" },
+            { chiave: "over15", nome: "Over/Under 1.5" },
+            { chiave: "over25", nome: "Over/Under 2.5" },
+            { chiave: "over35", nome: "Over/Under 3.5" },
+            { chiave: "over45", nome: "Over/Under 4.5" },
+            { chiave: "goalNoGoal", nome: "Goal/No Goal" },
+            { chiave: "comboDcOver25", nome: "Combo DC+O/U2.5" },
+            { chiave: "multigolCasa", nome: "Multigol Casa" },
+            { chiave: "multigolTrasferta", nome: "Multigol Trasferta" },
+            { chiave: "multigolCombo", nome: "MG Casa+Trasferta" }
+        ];
+
+        let configAlgoritmoCorrente = { rho: -0.1, kScala: 1, versione: "v1", confermatoIl: null };
+        let archivioCorrenteML = [];
+        let ultimoBacktestNuoviParametri = null;
+
+        async function caricaConfigAlgoritmo() {
+            try {
+                const doc = await db.collection("config").doc("algoritmo").get();
+                if (doc.exists) {
+                    const d = doc.data();
+                    configAlgoritmoCorrente = {
+                        rho: (typeof d.rho === "number") ? d.rho : -0.1,
+                        kScala: (typeof d.kScala === "number") ? d.kScala : 1,
+                        versione: d.versione || "v1",
+                        confermatoIl: d.confermatoIl || null
+                    };
+                }
+            } catch (err) {
+                console.error("Errore caricamento config algoritmo:", err);
+            }
+        }
+
+        function calcolaAccuratezzePerArchivio(archivio) {
+            const conteggi = {};
+            MERCATI_LISTA.forEach(m => { conteggi[m.chiave] = { corretti: 0, totali: 0 }; });
+
+            archivio.forEach(p => {
+                if (!p.pronostici || !p.risultatoReale) return;
+                const parti = p.risultatoReale.split("-");
+                if (parti.length !== 2) return;
+                const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+                if (isNaN(gc) || isNaN(go)) return;
+
+                const compatti = estraiPronosticiCompatti(p.pronostici);
+                if (!compatti) return;
+                const esiti = verificaAzzeccati(compatti, gc, go);
+
+                MERCATI_LISTA.forEach(m => {
+                    conteggi[m.chiave].totali += 1;
+                    if (esiti[m.chiave]) conteggi[m.chiave].corretti += 1;
+                });
+            });
+
+            const risultato = {};
+            MERCATI_LISTA.forEach(m => {
+                const c = conteggi[m.chiave];
+                risultato[m.chiave] = c.totali > 0 ? +((c.corretti / c.totali) * 100).toFixed(1) : null;
+            });
+            return risultato;
+        }
+
+        function disegnaTabellaAccuratezze(archivio, nuoveAccuratezze) {
+            const accCorrente = calcolaAccuratezzePerArchivio(archivio);
+            const tbody = document.getElementById("tabellaAccuratezzeBody");
+            tbody.innerHTML = MERCATI_LISTA.map(m => {
+                const corrente = accCorrente[m.chiave];
+                const nuova = nuoveAccuratezze ? nuoveAccuratezze[m.chiave] : null;
+                return `<tr class="border-t border-slate-800/60">
+                    <td class="py-1.5 text-slate-300">${m.nome}</td>
+                    <td class="py-1.5 text-center font-semibold text-slate-200">${corrente !== null ? corrente + '%' : 'N/D'}</td>
+                    <td class="py-1.5 text-center font-semibold ${nuova !== null ? 'text-emerald-400' : 'text-slate-600'}">${nuova !== null ? nuova + '%' : '—'}</td>
+                </tr>`;
+            }).join("");
+        }
+
+        async function mostraMLEngine() {
+            await caricaConfigAlgoritmo();
+
+            const infoEl = document.getElementById("infoAlgoritmoCorrente");
+            infoEl.textContent = `Algoritmo attuale: ρ=${configAlgoritmoCorrente.rho.toFixed(2)}, k=${configAlgoritmoCorrente.kScala.toFixed(2)}` +
+                (configAlgoritmoCorrente.confermatoIl ? ` (confermato il ${configAlgoritmoCorrente.confermatoIl})` : " (valori di partenza, mai ricalibrati)");
+
+            let archivio = [];
+            try {
+                const snapshot = await db.collection("archivio_storico").get();
+                snapshot.forEach(doc => archivio.push(doc.data()));
+            } catch (err) {
+                console.error(err);
+            }
+            archivioCorrenteML = archivio;
+
+            document.getElementById("statoArchivioML").textContent = `${archivio.length} partite in archivio`;
+
+            let avviso = "";
+            if (archivio.length < 30) avviso = "⚠️ Campione troppo piccolo, risultati poco affidabili.";
+            else if (archivio.length < 150) avviso = "Campione ancora ridotto: numeri indicativi, non definitivi.";
+            document.getElementById("avvisoCampioneML").textContent = avviso;
+
+            disegnaTabellaAccuratezze(archivio, null);
+            document.getElementById("infoNuoviParametri").textContent = "";
+            document.getElementById("btnConfermaAlgoritmo").classList.add("hidden");
+            ultimoBacktestNuoviParametri = null;
+        }
+
+        async function eseguiBacktesting() {
+            const btn = document.getElementById("btnRicalcola");
+            btn.disabled = true;
+            btn.textContent = "Backtesting in corso...";
+
+            try {
+                let archivio = [];
+                const snapshot = await db.collection("archivio_storico").get();
+                snapshot.forEach(doc => archivio.push(doc.data()));
+                archivioCorrenteML = archivio;
+
+                const validi = archivio.filter(p => p.pronostici && p.pronostici.lambdaCasa && p.pronostici.lambdaOspite && p.risultatoReale);
+
+                if (validi.length < 5) {
+                    alert("Servono almeno 5 partite valide in Archivio (con pronostici e risultato) per un backtesting minimo.");
+                    return;
+                }
+
+                validi.sort((a, b) => new Date(a.dataOraUTC || a.utcDate) - new Date(b.dataOraUTC || b.utcDate));
+
+                const sogliaSplit = Math.max(1, Math.floor(validi.length * 0.7));
+                const train = validi.slice(0, sogliaSplit);
+                let test = validi.slice(sogliaSplit);
+                if (test.length === 0) test = train;
+
+                const rhoCandidati = [];
+                for (let r = -0.20; r <= 0.001; r += 0.02) rhoCandidati.push(+r.toFixed(2));
+                const kCandidati = [];
+                for (let k = 0.85; k <= 1.151; k += 0.05) kCandidati.push(+k.toFixed(2));
+
+                function punteggioSuInsieme(insieme, rho, kScala) {
+                    const conteggi = {};
+                    MERCATI_LISTA.forEach(m => { conteggi[m.chiave] = { corretti: 0, totali: 0 }; });
+
+                    insieme.forEach(p => {
+                        const parti = p.risultatoReale.split("-");
+                        const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+                        if (isNaN(gc) || isNaN(go)) return;
+
+                        const lambdaC = limita(p.pronostici.lambdaCasa * kScala, 0.1, 6);
+                        const lambdaO = limita(p.pronostici.lambdaOspite * kScala, 0.1, 6);
+                        const matrice = costruisciMatriceJS(lambdaC, lambdaO, rho);
+                        const compatti = pronosticiDaMatriceJS(matrice);
+                        const esiti = verificaAzzeccati(compatti, gc, go);
+
+                        MERCATI_LISTA.forEach(m => {
+                            conteggi[m.chiave].totali += 1;
+                            if (esiti[m.chiave]) conteggi[m.chiave].corretti += 1;
+                        });
+                    });
+
+                    let somma = 0, n = 0;
+                    MERCATI_LISTA.forEach(m => {
+                        if (conteggi[m.chiave].totali > 0) {
+                            somma += conteggi[m.chiave].corretti / conteggi[m.chiave].totali;
+                            n += 1;
+                        }
+                    });
+
+                    return { punteggio: n > 0 ? somma / n : 0, conteggi };
+                }
+
+                let migliorRho = configAlgoritmoCorrente.rho, migliorK = configAlgoritmoCorrente.kScala, migliorPunteggio = -1;
+
+                rhoCandidati.forEach(rho => {
+                    kCandidati.forEach(kScala => {
+                        const { punteggio } = punteggioSuInsieme(train, rho, kScala);
+                        if (punteggio > migliorPunteggio) {
+                            migliorPunteggio = punteggio;
+                            migliorRho = rho;
+                            migliorK = kScala;
+                        }
+                    });
+                });
+
+                const risultatoTest = punteggioSuInsieme(test, migliorRho, migliorK);
+                const nuoveAccuratezze = {};
+                MERCATI_LISTA.forEach(m => {
+                    const c = risultatoTest.conteggi[m.chiave];
+                    nuoveAccuratezze[m.chiave] = c.totali > 0 ? +((c.corretti / c.totali) * 100).toFixed(1) : null;
+                });
+
+                disegnaTabellaAccuratezze(archivio, nuoveAccuratezze);
+
+                ultimoBacktestNuoviParametri = { rho: migliorRho, kScala: migliorK };
+                document.getElementById("infoNuoviParametri").textContent =
+                    `Parametri proposti: ρ=${migliorRho.toFixed(2)}, k=${migliorK.toFixed(2)} (allenati su ${train.length} partite più vecchie, verificati su ${test.length} più recenti)`;
+                document.getElementById("btnConfermaAlgoritmo").classList.remove("hidden");
+
+            } catch (err) {
+                console.error(err);
+                alert("Errore durante il backtesting: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Ricalcola e Confronta";
+            }
+        }
+
+        async function confermaNuovoAlgoritmo() {
+            if (!ultimoBacktestNuoviParametri) return;
+            if (!confirm(`Confermi di sostituire l'algoritmo corrente con ρ=${ultimoBacktestNuoviParametri.rho.toFixed(2)}, k=${ultimoBacktestNuoviParametri.kScala.toFixed(2)}? Verrà usato dalla prossima estrazione partite.`)) return;
+
+            try {
+                const ora = new Date().toLocaleString("it-IT");
+                await db.collection("config").doc("algoritmo").set({
+                    rho: ultimoBacktestNuoviParametri.rho,
+                    kScala: ultimoBacktestNuoviParametri.kScala,
+                    versione: "v1",
+                    confermatoIl: ora
+                });
+                configAlgoritmoCorrente = { rho: ultimoBacktestNuoviParametri.rho, kScala: ultimoBacktestNuoviParametri.kScala, versione: "v1", confermatoIl: ora };
+                document.getElementById("infoAlgoritmoCorrente").textContent =
+                    `Algoritmo attuale: ρ=${configAlgoritmoCorrente.rho.toFixed(2)}, k=${configAlgoritmoCorrente.kScala.toFixed(2)} (confermato il ${ora})`;
+                document.getElementById("btnConfermaAlgoritmo").classList.add("hidden");
+                document.getElementById("infoNuoviParametri").textContent = "";
+                disegnaTabellaAccuratezze(archivioCorrenteML, null);
+                ultimoBacktestNuoviParametri = null;
+                alert("Nuovo algoritmo confermato! Verrà usato dalla prossima estrazione.");
+            } catch (err) {
+                console.error(err);
+                alert("Errore nel salvataggio: " + err.message);
             }
         }
     </script>
