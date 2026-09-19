@@ -262,14 +262,34 @@
             </div>
         </section>
 
+        <section id="sec-analisi" class="hidden space-y-6">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
+                    📊 ANALISI — ACCURATEZZA PER CAMPIONATO
+                </h2>
+                <p class="text-xs text-slate-400 mb-3">
+                    Accuratezza corrente di ciascuno dei 13 mercati, calcolata separatamente per ogni campionato sulle partite dell'Archivio Storico. Ogni cella mostra la percentuale e, tra parentesi, quante partite la sostengono (n) — con pochi dati, non dare peso a percentuali basate su n piccoli.
+                </p>
+                <div id="statoArchivioAnalisi" class="text-xs text-slate-400"></div>
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-full mx-auto p-4 sm:p-5 overflow-x-auto">
+                <table class="text-xs border-collapse">
+                    <thead id="tabellaAnalisiHead"></thead>
+                    <tbody id="tabellaAnalisiBody"></tbody>
+                </table>
+            </div>
+        </section>
+
     </main>
 
-    <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-lg w-[calc(100%-1.5rem)] z-50">
-        <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center">
-            <button id="tab-palinsesto" onclick="mostraSchermata('palinsesto')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[11px] sm:text-xs font-semibold truncate cursor-pointer">Palinsesto</button>
-            <button id="tab-validazione" onclick="mostraSchermata('validazione')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate cursor-pointer">Validazione</button>
-            <button id="tab-archivio" onclick="mostraSchermata('archivio')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate cursor-pointer">Archivio</button>
-            <button id="tab-mlengine" onclick="mostraSchermata('mlengine')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[11px] sm:text-xs font-semibold truncate cursor-pointer">ML Engine</button>
+    <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-2xl w-[calc(100%-1.5rem)] z-50">
+        <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center overflow-x-auto">
+            <button id="tab-palinsesto" onclick="mostraSchermata('palinsesto')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[10px] sm:text-xs font-semibold truncate cursor-pointer">Palinsesto</button>
+            <button id="tab-validazione" onclick="mostraSchermata('validazione')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[10px] sm:text-xs font-semibold truncate cursor-pointer">Validazione</button>
+            <button id="tab-archivio" onclick="mostraSchermata('archivio')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[10px] sm:text-xs font-semibold truncate cursor-pointer">Archivio</button>
+            <button id="tab-mlengine" onclick="mostraSchermata('mlengine')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[10px] sm:text-xs font-semibold truncate cursor-pointer">ML Engine</button>
+            <button id="tab-analisi" onclick="mostraSchermata('analisi')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[10px] sm:text-xs font-semibold truncate cursor-pointer">Analisi</button>
         </div>
     </footer>
 
@@ -310,7 +330,7 @@
         }
 
         function mostraSchermata(nome) {
-            const sezioni = { palinsesto: 'sec-palinsesto', validazione: 'sec-validazione', archivio: 'sec-archivio', mlengine: 'sec-mlengine' };
+            const sezioni = { palinsesto: 'sec-palinsesto', validazione: 'sec-validazione', archivio: 'sec-archivio', mlengine: 'sec-mlengine', analisi: 'sec-analisi' };
             Object.values(sezioni).forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden');
@@ -331,6 +351,7 @@
             if (nome === 'validazione') mostraPartiteDaValidare();
             if (nome === 'archivio') caricaArchivio();
             if (nome === 'mlengine') mostraMLEngine();
+            if (nome === 'analisi') mostraAnalisi();
         }
 
         window.onload = function() {
@@ -844,12 +865,6 @@
             }
         }
 
-        // --- NUOVO: appiattisce ricorsivamente qualsiasi oggetto in coppie
-        // chiave_piatta -> valore, così l'esportazione Excel resta sempre
-        // allineata al JSON (stessa fonte dati, nessuna lista di colonne
-        // da mantenere manualmente). Array di oggetti (es. "ultimeCasa")
-        // diventano una stringa JSON compatta in una sola cella; array di
-        // valori semplici vengono uniti con "; ".
         function appiattisciOggetto(obj, prefisso, risultato) {
             if (obj === null || obj === undefined) return;
             Object.keys(obj).forEach(key => {
@@ -1644,6 +1659,21 @@
             { chiave: "multigolCombo", nome: "MG Casa+Trasferta" }
         ];
 
+        const COMPETIZIONI_ANALISI = [
+            { cod: "SA", nome: "Serie A" },
+            { cod: "PL", nome: "Premier League" },
+            { cod: "PD", nome: "La Liga" },
+            { cod: "BL1", nome: "Bundesliga" },
+            { cod: "FL1", nome: "Ligue 1" },
+            { cod: "CL", nome: "Champions Lg" },
+            { cod: "EC", nome: "Euro Champ." },
+            { cod: "DED", nome: "Eredivisie" },
+            { cod: "PPL", nome: "Liga Portugal" },
+            { cod: "BSA", nome: "Brasileirão" },
+            { cod: "ELC", nome: "Championship" },
+            { cod: "WC", nome: "World Cup" }
+        ];
+
         let configAlgoritmoCorrente = { rho: -0.1, kScala: 1, versione: "v1", confermatoIl: null };
         let archivioCorrenteML = [];
         let ultimoBacktestNuoviParametri = null;
@@ -1869,6 +1899,82 @@
                 console.error(err);
                 alert("Errore nel salvataggio: " + err.message);
             }
+        }
+
+        // ============================================================
+        // ANALISI — tabella 13 mercati × 12 campionati
+        // ============================================================
+
+        function calcolaAccuratezzePerCampionato(archivio) {
+            const risultato = {};
+            MERCATI_LISTA.forEach(m => { risultato[m.chiave] = {}; });
+
+            COMPETIZIONI_ANALISI.forEach(c => {
+                const sottoinsieme = archivio.filter(p => p.campionatoCode === c.cod);
+                const conteggi = {};
+                MERCATI_LISTA.forEach(m => { conteggi[m.chiave] = { corretti: 0, totali: 0 }; });
+
+                sottoinsieme.forEach(p => {
+                    if (!p.pronostici || !p.risultatoReale) return;
+                    const parti = p.risultatoReale.split("-");
+                    if (parti.length !== 2) return;
+                    const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+                    if (isNaN(gc) || isNaN(go)) return;
+
+                    const compatti = estraiPronosticiCompatti(p.pronostici);
+                    if (!compatti) return;
+                    const esiti = verificaAzzeccati(compatti, gc, go);
+
+                    MERCATI_LISTA.forEach(m => {
+                        conteggi[m.chiave].totali += 1;
+                        if (esiti[m.chiave]) conteggi[m.chiave].corretti += 1;
+                    });
+                });
+
+                MERCATI_LISTA.forEach(m => {
+                    const c2 = conteggi[m.chiave];
+                    risultato[m.chiave][c.cod] = c2.totali > 0
+                        ? { pct: +((c2.corretti / c2.totali) * 100).toFixed(1), n: c2.totali }
+                        : null;
+                });
+            });
+
+            return risultato;
+        }
+
+        function disegnaTabellaAnalisiCampionati(archivio) {
+            const dati = calcolaAccuratezzePerCampionato(archivio);
+
+            const thead = document.getElementById("tabellaAnalisiHead");
+            thead.innerHTML = `<tr class="text-slate-400 uppercase text-[9px] border-b border-slate-800">
+                <th class="text-left py-2 pr-3 sticky left-0 bg-slate-900 z-10">Mercato</th>
+                ${COMPETIZIONI_ANALISI.map(c => `<th class="text-center py-2 px-2 whitespace-nowrap">${c.nome}</th>`).join("")}
+            </tr>`;
+
+            const tbody = document.getElementById("tabellaAnalisiBody");
+            tbody.innerHTML = MERCATI_LISTA.map(m => {
+                const celle = COMPETIZIONI_ANALISI.map(c => {
+                    const v = dati[m.chiave][c.cod];
+                    return `<td class="text-center py-1.5 px-2 whitespace-nowrap">${v ? `${v.pct}% <span class="text-slate-500">(n=${v.n})</span>` : '<span class="text-slate-600">—</span>'}</td>`;
+                }).join("");
+                return `<tr class="border-t border-slate-800/60">
+                    <td class="py-1.5 pr-3 text-slate-300 font-medium whitespace-nowrap sticky left-0 bg-slate-900">${m.nome}</td>
+                    ${celle}
+                </tr>`;
+            }).join("");
+        }
+
+        async function mostraAnalisi() {
+            let archivio = [];
+            try {
+                const snapshot = await db.collection("archivio_storico").get();
+                snapshot.forEach(doc => archivio.push(doc.data()));
+            } catch (err) {
+                console.error(err);
+            }
+
+            document.getElementById("statoArchivioAnalisi").textContent = `${archivio.length} partite in archivio (totale, tutti i campionati)`;
+            disegnaTabellaAnalisiCampionati(archivio);
         }
     </script>
 </body>
