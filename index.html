@@ -844,6 +844,35 @@
             }
         }
 
+        // --- NUOVO: appiattisce ricorsivamente qualsiasi oggetto in coppie
+        // chiave_piatta -> valore, così l'esportazione Excel resta sempre
+        // allineata al JSON (stessa fonte dati, nessuna lista di colonne
+        // da mantenere manualmente). Array di oggetti (es. "ultimeCasa")
+        // diventano una stringa JSON compatta in una sola cella; array di
+        // valori semplici vengono uniti con "; ".
+        function appiattisciOggetto(obj, prefisso, risultato) {
+            if (obj === null || obj === undefined) return;
+            Object.keys(obj).forEach(key => {
+                const valore = obj[key];
+                const chiavePiatta = prefisso ? `${prefisso}_${key}` : key;
+                if (valore === null || valore === undefined) {
+                    risultato[chiavePiatta] = "";
+                } else if (Array.isArray(valore)) {
+                    if (valore.length === 0) {
+                        risultato[chiavePiatta] = "";
+                    } else if (typeof valore[0] === "object") {
+                        risultato[chiavePiatta] = JSON.stringify(valore);
+                    } else {
+                        risultato[chiavePiatta] = valore.join("; ");
+                    }
+                } else if (typeof valore === "object") {
+                    appiattisciOggetto(valore, chiavePiatta, risultato);
+                } else {
+                    risultato[chiavePiatta] = valore;
+                }
+            });
+        }
+
         function esportaArchivioXLSX() {
             if (!archivioCorrenteVisualizzato || archivioCorrenteVisualizzato.length === 0) {
                 alert("Nessuna partita in Archivio da esportare.");
@@ -851,52 +880,9 @@
             }
 
             const righe = archivioCorrenteVisualizzato.map(p => {
-                const pr = p.pronostici || {};
-                const q = p.quote || {};
-                const m1x2 = q.mercato1x2 || {};
-                const ou25 = q.overUnder ? q.overUnder["2.5"] : null;
-                const sac = p.statAvanzateCasa || {};
-                const sao = p.statAvanzateOspite || {};
-
-                return {
-                    MatchID: p.matchId || p.id,
-                    Campionato: p.campionato,
-                    Giornata: p.giornata ?? "",
-                    Data: formattaData(p.dataOraUTC || p.utcDate),
-                    SquadraCasa: p.squadraCasa,
-                    SquadraOspite: p.squadraOspite,
-                    RisultatoReale: p.risultatoReale || "",
-                    Stato: p.stato,
-                    PuntiCasa: p.puntiCasa ?? "",
-                    PosizioneCasa: p.posizioneCasa ?? "",
-                    PuntiOspite: p.puntiOspite ?? "",
-                    PosizioneOspite: p.posizioneOspite ?? "",
-                    ForzaAttaccoCasa: sac.forzaAttacco ?? "",
-                    ForzaDifesaCasa: sac.forzaDifesa ?? "",
-                    ForzaAttaccoOspite: sao.forzaAttacco ?? "",
-                    ForzaDifesaOspite: sao.forzaDifesa ?? "",
-                    QuoteCasa: m1x2.casa ?? "",
-                    QuotePareggio: m1x2.pareggio ?? "",
-                    QuoteOspite: m1x2.ospite ?? "",
-                    QuoteOver25: ou25 ? (ou25.over ?? "") : "",
-                    QuoteUnder25: ou25 ? (ou25.under ?? "") : "",
-                    Pronostico1X2: pr.mercato1X2 ? pr.mercato1X2.pronostico : "",
-                    PronosticoRisultatoEsatto: pr.risultatoEsatto ? pr.risultatoEsatto.pronostico : "",
-                    PronosticoDoppiaChance: pr.doppiaChance ? pr.doppiaChance.pronostico : "",
-                    PronosticoOU05: pr.over05 ? pr.over05.pronostico : "",
-                    PronosticoOU15: pr.over15 ? pr.over15.pronostico : "",
-                    PronosticoOU25: pr.over25 ? pr.over25.pronostico : "",
-                    PronosticoOU35: pr.over35 ? pr.over35.pronostico : "",
-                    PronosticoOU45: pr.over45 ? pr.over45.pronostico : "",
-                    PronosticoGoalNoGoal: pr.goalNoGoal ? pr.goalNoGoal.pronostico : "",
-                    PronosticoComboDcOu25: pr.comboDcOver25 ? pr.comboDcOver25.pronostico : "",
-                    PronosticoMultigolCasa: pr.multigolCasa ? pr.multigolCasa.pronostico : "",
-                    PronosticoMultigolTrasferta: pr.multigolTrasferta ? pr.multigolTrasferta.pronostico : "",
-                    PronosticoMgCombo: pr.multigolCombo ? pr.multigolCombo.pronostico : "",
-                    ModelloRho: pr.rhoUsato ?? "",
-                    ModelloK: pr.kScalaUsato ?? "",
-                    ValidatoIl: p.validatoIl || ""
-                };
+                const riga = {};
+                appiattisciOggetto(p, "", riga);
+                return riga;
             });
 
             const worksheet = XLSX.utils.json_to_sheet(righe);
@@ -1521,10 +1507,6 @@
             return "4+";
         }
 
-        // Calcola SOLO il pronostico (non le probabilità dettagliate) per i 13
-        // mercati, in formato "compatto" — usato esclusivamente dal backtesting.
-        // Combo DC+O/U2.5 e MG Casa+Trasferta VINCOLATI ai mercati singoli
-        // (stessa correzione applicata nel Worker), per garantire coerenza.
         function pronosticiDaMatriceJS(matrice) {
             const p1 = sommaMatriceJS(matrice, (i, j) => i > j);
             const pX = sommaMatriceJS(matrice, (i, j) => i === j);
