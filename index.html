@@ -169,6 +169,10 @@
                             <p class="font-bold text-slate-100">🎯 Pronostici (motore Dixon-Coles)</p>
                             <p>Calcolati automaticamente ad ogni estrazione da un unico modello statistico: si stimano i gol attesi di ciascuna squadra dalle rispettive Forze Attacco/Difesa, si costruisce una matrice di probabilità di tutti i possibili risultati (0-0, 1-0, 2-1, ecc.), e da quella singola matrice si derivano matematicamente tutti e 13 i mercati. Il Risultato Esatto, il Combo DC+O/U2.5 e il Multigol Casa+Trasferta sono sempre coerenti con i mercati singoli che li compongono, mostrati nelle righe sopra. I parametri del modello (ρ e fattore di scala) sono quelli confermati nella schermata ML Engine, dopo il backtesting sull'Archivio Storico.</p>
                         </div>
+                        <div>
+                            <p class="font-bold text-slate-100">⭐ Value Bet</p>
+                            <p>Confronta la probabilità stimata dal nostro modello con quella implicita nelle quote del bookmaker (margine rimosso): solo quando il nostro modello è più ottimista del mercato c'è "valore" (EV positivo). Disponibile solo su 1X2 e Over/Under (unici mercati con sia pronostico sia quota). L'importo consigliato (Kelly frazionato, tetto 5% del bankroll) compare solo se quel mercato ha almeno 30 partite di storico nell'Archivio — indicativo, non un consiglio finanziario.</p>
+                        </div>
                         <div class="pt-2 border-t border-slate-800">
                             <p class="text-slate-500">Statistiche NON disponibili con le fonti gratuite in uso e quindi mai calcolate: calci d'angolo, Top Scorer/Assistman per singola partita, pressione societaria/allenatore, fattore rivalsa storica.</p>
                         </div>
@@ -281,6 +285,30 @@
             </div>
         </section>
 
+        <section id="sec-valuebets" class="hidden space-y-6">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
+                    💰 VALUE BETS — SCOMMESSE CON VANTAGGIO
+                </h2>
+                <p class="text-xs text-slate-400 mb-2">
+                    Solo le occasioni in cui il nostro modello stima una probabilità più alta di quella implicita nelle quote del bookmaker (margine rimosso), con vantaggio (EV) di almeno il 5%. Servono sia pronostici sia quote aggiornate sulla stessa partita.
+                </p>
+                <p class="text-[11px] text-amber-400 mb-1">⚠️ Indicativo, non un consiglio finanziario. Gli importi consigliati compaiono solo per i mercati con almeno 30 partite di storico nell'Archivio — sotto quella soglia il modello non è ancora abbastanza testato per fidarsi di una cifra.</p>
+                <div id="statoValueBets" class="text-xs text-slate-400 mt-2"></div>
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto p-4 sm:p-5">
+                <h3 class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-2">Singole</h3>
+                <div id="listaValueBetsSingole" class="space-y-2 text-xs"></div>
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto p-4 sm:p-5">
+                <h3 class="text-[11px] font-bold text-indigo-300 uppercase tracking-wider mb-2">Multiple (2-4 selezioni, partite diverse)</h3>
+                <p class="text-[10px] text-slate-500 mb-2">Le multiple hanno lo stesso valore atteso a lungo termine delle singole che le compongono, ma un'oscillazione dei risultati molto più ampia: vanno viste come scelta di stile di gioco, non come un modo per guadagnare di più a parità di rischio. Nessun importo consigliato oltre le 3 selezioni.</p>
+                <div id="listaValueBetsMultiple" class="space-y-2 text-xs"></div>
+            </div>
+        </section>
+
     </main>
 
     <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-2xl w-[calc(100%-1.5rem)] z-50">
@@ -290,6 +318,7 @@
             <button id="tab-archivio" onclick="mostraSchermata('archivio')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[10px] sm:text-xs font-semibold truncate cursor-pointer">Archivio</button>
             <button id="tab-mlengine" onclick="mostraSchermata('mlengine')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[10px] sm:text-xs font-semibold truncate cursor-pointer">ML Engine</button>
             <button id="tab-analisi" onclick="mostraSchermata('analisi')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[10px] sm:text-xs font-semibold truncate cursor-pointer">Analisi</button>
+            <button id="tab-valuebets" onclick="mostraSchermata('valuebets')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[10px] sm:text-xs font-semibold truncate cursor-pointer">Value Bets</button>
         </div>
     </footer>
 
@@ -308,6 +337,7 @@
         const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
         let cachePartiteFirestore = [];
         let archivioCorrenteVisualizzato = [];
+        let conteggiMercatiGlobale = {};
 
         function limita(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
@@ -330,7 +360,7 @@
         }
 
         function mostraSchermata(nome) {
-            const sezioni = { palinsesto: 'sec-palinsesto', validazione: 'sec-validazione', archivio: 'sec-archivio', mlengine: 'sec-mlengine', analisi: 'sec-analisi' };
+            const sezioni = { palinsesto: 'sec-palinsesto', validazione: 'sec-validazione', archivio: 'sec-archivio', mlengine: 'sec-mlengine', analisi: 'sec-analisi', valuebets: 'sec-valuebets' };
             Object.values(sezioni).forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden');
@@ -352,6 +382,7 @@
             if (nome === 'archivio') caricaArchivio();
             if (nome === 'mlengine') mostraMLEngine();
             if (nome === 'analisi') mostraAnalisi();
+            if (nome === 'valuebets') mostraValueBets();
         }
 
         window.onload = function() {
@@ -360,6 +391,7 @@
             ricalcolaDataFine();
 
             caricaConfigAlgoritmo();
+            caricaConteggiMercatiGlobale();
 
             db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
                 if (doc.exists) {
@@ -794,6 +826,7 @@
                 cachePartiteFirestore = nuovoPalinsesto;
                 aggiornaFiltriVisualizzazione();
                 mostraPartiteDaValidare();
+                await caricaConteggiMercatiGlobale();
 
                 mostraStatoValidazione(`Completato: ${spostate} partite archiviate, ${aggiornateStato} con stato realmente anomalo (rinviate/sospese/cancellate), ${ancoraInAttesa} ancora in corso o in attesa di conclusione.`, "success");
 
@@ -823,6 +856,7 @@
                 });
 
                 archivioCorrenteVisualizzato = partite;
+                conteggiMercatiGlobale = calcolaConteggiTotaliPerMercato(partite);
                 statoEl.textContent = `${partite.length} partite in archivio`;
 
                 if (partite.length === 0) {
@@ -1125,6 +1159,7 @@
                     ${formattaStatisticheAvanzate(p)}
                     ${formattaQuoteBookmaker(p)}
                     ${formattaPronostici(p)}
+                    ${formattaValueBetPartita(p)}
 
                     <div class="grid grid-cols-4 gap-1.5 my-3 text-center">
                         <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
@@ -1975,6 +2010,298 @@
 
             document.getElementById("statoArchivioAnalisi").textContent = `${archivio.length} partite in archivio (totale, tutti i campionati)`;
             disegnaTabellaAnalisiCampionati(archivio);
+        }
+
+        // ============================================================
+        // VALUE BETTING — confronto probabilità modello vs quote
+        // (rimozione margine bookmaker) e costruzione multiple
+        // ============================================================
+
+        const SOGLIA_EV_MINIMA = 0.05; // 5%
+
+        function calcolaConteggiTotaliPerMercato(archivio) {
+            const conteggi = {};
+            MERCATI_LISTA.forEach(m => { conteggi[m.chiave] = 0; });
+            archivio.forEach(p => {
+                if (!p.pronostici || !p.risultatoReale) return;
+                const parti = p.risultatoReale.split("-");
+                if (parti.length !== 2) return;
+                const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+                if (isNaN(gc) || isNaN(go)) return;
+                const compatti = estraiPronosticiCompatti(p.pronostici);
+                if (!compatti) return;
+                MERCATI_LISTA.forEach(m => { conteggi[m.chiave] += 1; });
+            });
+            return conteggi;
+        }
+
+        async function caricaConteggiMercatiGlobale() {
+            try {
+                const snapshot = await db.collection("archivio_storico").get();
+                const archivio = [];
+                snapshot.forEach(doc => archivio.push(doc.data()));
+                conteggiMercatiGlobale = calcolaConteggiTotaliPerMercato(archivio);
+            } catch (err) {
+                console.error("Errore caricamento conteggi mercati:", err);
+            }
+        }
+
+        // Rimuove il margine bookmaker: da un set di quote { esito: quota }
+        // restituisce le probabilità implicite normalizzate a somma 1.
+        function probabilitaImpliciteNormalizzate(quoteMap) {
+            const raw = {};
+            let somma = 0;
+            Object.keys(quoteMap).forEach(k => {
+                const q = quoteMap[k];
+                if (q && q > 0) {
+                    raw[k] = 1 / q;
+                    somma += raw[k];
+                }
+            });
+            if (somma === 0) return null;
+            const normalizzate = {};
+            Object.keys(raw).forEach(k => { normalizzate[k] = raw[k] / somma; });
+            return normalizzate;
+        }
+
+        function calcolaValoreScommessa(probabilitaModello, quota) {
+            if (!quota || quota <= 0 || probabilitaModello === undefined || probabilitaModello === null) return null;
+            return (probabilitaModello * quota) - 1;
+        }
+
+        function kellyFrazionato(probModello, quota, frazione) {
+            const b = quota - 1;
+            if (b <= 0) return 0;
+            const q = 1 - probModello;
+            const kellyPieno = (probModello * b - q) / b;
+            if (kellyPieno <= 0) return 0;
+            return kellyPieno * frazione;
+        }
+
+        // Trova tutte le opportunità (sopra e sotto soglia) per una singola
+        // partita, per i mercati dove abbiamo sia pronostico sia quota.
+        function trovaOpportunitaValorePartita(p) {
+            const opportunita = [];
+            if (!p.pronostici || !p.quote) return opportunita;
+
+            const pr = p.pronostici;
+            const q = p.quote;
+
+            if (pr.mercato1X2 && q.mercato1x2) {
+                const quoteMap = { "1": q.mercato1x2.casa, "X": q.mercato1x2.pareggio, "2": q.mercato1x2.ospite };
+                const implicite = probabilitaImpliciteNormalizzate(quoteMap);
+                if (implicite) {
+                    ["1", "X", "2"].forEach(esito => {
+                        const quota = quoteMap[esito];
+                        const probModello = pr.mercato1X2.probabilita[esito] / 100;
+                        if (quota) {
+                            const ev = calcolaValoreScommessa(probModello, quota);
+                            if (ev !== null) {
+                                opportunita.push({
+                                    chiaveMercato: "mercato1X2", nomeMercato: "1X2", esito,
+                                    quota, probabilitaModello: probModello, probabilitaImplicita: implicite[esito], ev
+                                });
+                            }
+                        }
+                    });
+                }
+            }
+
+            const lineeOU = [
+                { chiave: "over05", linea: "0.5", nome: "O/U 0.5" },
+                { chiave: "over15", linea: "1.5", nome: "O/U 1.5" },
+                { chiave: "over25", linea: "2.5", nome: "O/U 2.5" },
+                { chiave: "over35", linea: "3.5", nome: "O/U 3.5" },
+                { chiave: "over45", linea: "4.5", nome: "O/U 4.5" }
+            ];
+            lineeOU.forEach(({ chiave, linea, nome }) => {
+                const prMercato = pr[chiave];
+                const quoteOU = q.overUnder ? q.overUnder[linea] : null;
+                if (prMercato && quoteOU) {
+                    const quoteMap = { Over: quoteOU.over, Under: quoteOU.under };
+                    const implicite = probabilitaImpliciteNormalizzate(quoteMap);
+                    if (implicite) {
+                        ["Over", "Under"].forEach(esito => {
+                            const quota = quoteMap[esito];
+                            const probModello = prMercato.probabilita[esito.toLowerCase()] / 100;
+                            if (quota) {
+                                const ev = calcolaValoreScommessa(probModello, quota);
+                                if (ev !== null) {
+                                    opportunita.push({
+                                        chiaveMercato: chiave, nomeMercato: nome, esito,
+                                        quota, probabilitaModello: probModello, probabilitaImplicita: implicite[esito], ev
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+
+            return opportunita;
+        }
+
+        function importoConsigliato(op, conteggiMercati, frazioneKelly) {
+            const n = conteggiMercati ? (conteggiMercati[op.chiaveMercato] || 0) : 0;
+            if (n < 30) return null;
+            const frazione = kellyFrazionato(op.probabilitaModello, op.quota, frazioneKelly);
+            const percentuale = Math.min(frazione * 100, 5);
+            return percentuale > 0 ? +percentuale.toFixed(2) : 0;
+        }
+
+        function formattaValueBetPartita(p) {
+            const opportunita = trovaOpportunitaValorePartita(p);
+            if (opportunita.length === 0) {
+                return `<details class="mt-2 bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 text-[11px]">
+                            <summary class="cursor-pointer text-yellow-300 font-bold text-[10px] uppercase tracking-wider">⭐ Value Bet</summary>
+                            <div class="mt-2 text-slate-500">Non disponibile (servono sia pronostici sia quote per questa partita)</div>
+                        </details>`;
+            }
+
+            const righe = opportunita.map(op => {
+                const sopraSoglia = op.ev >= SOGLIA_EV_MINIMA;
+                const colore = sopraSoglia ? "text-emerald-400 font-bold" : "text-slate-500";
+                let importoTesto = "";
+                if (sopraSoglia) {
+                    const importo = importoConsigliato(op, conteggiMercatiGlobale, 0.25);
+                    importoTesto = importo !== null ? `${importo}% bankroll` : "N/D (campione piccolo)";
+                }
+                return `<div class="grid grid-cols-4 items-center gap-1 ${sopraSoglia ? 'bg-emerald-950/30 -mx-1 px-1 rounded' : ''}">
+                    <span class="text-slate-400 truncate">${op.nomeMercato} ${op.esito}</span>
+                    <span class="text-center">${op.quota.toFixed(2)}</span>
+                    <span class="text-center ${colore}">${(op.ev * 100).toFixed(1)}%</span>
+                    <span class="text-right text-[10px] ${colore}">${importoTesto}</span>
+                </div>`;
+            }).join("");
+
+            return `<details class="mt-2 bg-slate-950/50 border border-yellow-900/50 rounded-xl p-2.5 text-[11px]">
+                        <summary class="cursor-pointer text-yellow-300 font-bold text-[10px] uppercase tracking-wider">⭐ Value Bet</summary>
+                        <div class="mt-2 space-y-1 text-slate-300">
+                            <div class="grid grid-cols-4 text-[9px] text-slate-500 uppercase font-bold border-b border-slate-800/60 pb-1">
+                                <span>Mercato</span><span class="text-center">Quota</span><span class="text-center">EV</span><span class="text-right">Consigliato</span>
+                            </div>
+                            ${righe}
+                        </div>
+                    </details>`;
+        }
+
+        function trovaTutteLeOpportunitaValore(partite) {
+            const tutte = [];
+            (partite || []).forEach(p => {
+                const opportunita = trovaOpportunitaValorePartita(p);
+                opportunita.forEach(op => {
+                    if (op.ev >= SOGLIA_EV_MINIMA) {
+                        tutte.push({
+                            ...op,
+                            matchId: p.matchId || p.id,
+                            campionato: p.campionato,
+                            squadraCasa: p.squadraCasa,
+                            squadraOspite: p.squadraOspite,
+                            dataOraUTC: p.dataOraUTC || p.utcDate
+                        });
+                    }
+                });
+            });
+            tutte.sort((a, b) => b.ev - a.ev);
+            return tutte;
+        }
+
+        function migliorOpportunitaPerPartita(tutteOpportunita) {
+            const mappa = {};
+            tutteOpportunita.forEach(op => {
+                if (!mappa[op.matchId] || op.ev > mappa[op.matchId].ev) mappa[op.matchId] = op;
+            });
+            return Object.values(mappa).sort((a, b) => b.ev - a.ev);
+        }
+
+        function generaCombinazioni(arr, k) {
+            const risultati = [];
+            function ricorsione(inizio, corrente) {
+                if (corrente.length === k) { risultati.push([...corrente]); return; }
+                for (let i = inizio; i < arr.length; i++) {
+                    corrente.push(arr[i]);
+                    ricorsione(i + 1, corrente);
+                    corrente.pop();
+                }
+            }
+            ricorsione(0, []);
+            return risultati;
+        }
+
+        function costruisciMultiple(migliori) {
+            const base = migliori.slice(0, 12); // limite per evitare esplosione combinatoria
+            const multiple = [];
+            [2, 3, 4].forEach(k => {
+                if (base.length < k) return;
+                generaCombinazioni(base, k).forEach(combo => {
+                    const quotaTotale = combo.reduce((acc, op) => acc * op.quota, 1);
+                    const probTotale = combo.reduce((acc, op) => acc * op.probabilitaModello, 1);
+                    const ev = (probTotale * quotaTotale) - 1;
+                    multiple.push({ selezioni: combo, quotaTotale, probTotale, ev, numSelezioni: k });
+                });
+            });
+            multiple.sort((a, b) => b.ev - a.ev);
+            return multiple;
+        }
+
+        async function mostraValueBets() {
+            document.getElementById("statoValueBets").textContent = `${(cachePartiteFirestore || []).length} partite nel Palinsesto corrente analizzate`;
+
+            const tutte = trovaTutteLeOpportunitaValore(cachePartiteFirestore);
+
+            const containerSingole = document.getElementById("listaValueBetsSingole");
+            if (tutte.length === 0) {
+                containerSingole.innerHTML = `<div class="text-slate-500 text-center py-4">Nessuna occasione con vantaggio ≥5% trovata nel Palinsesto corrente (serve avere sia i pronostici sia le quote aggiornate).</div>`;
+            } else {
+                containerSingole.innerHTML = tutte.map(op => {
+                    const importo = importoConsigliato(op, conteggiMercatiGlobale, 0.25);
+                    const importoTesto = importo !== null ? `${importo}% bankroll` : "N/D (campione piccolo)";
+                    return `<div class="bg-slate-950/50 border border-emerald-900/50 rounded-xl p-3">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-slate-200 truncate">${op.squadraCasa} vs ${op.squadraOspite}</span>
+                            <span class="text-[10px] text-slate-500">${op.campionato}</span>
+                        </div>
+                        <div class="grid grid-cols-4 items-center gap-1 text-[11px]">
+                            <span class="text-slate-400">${op.nomeMercato} ${op.esito}</span>
+                            <span class="text-center">Quota ${op.quota.toFixed(2)}</span>
+                            <span class="text-center text-emerald-400 font-bold">EV ${(op.ev * 100).toFixed(1)}%</span>
+                            <span class="text-right text-emerald-400">${importoTesto}</span>
+                        </div>
+                    </div>`;
+                }).join("");
+            }
+
+            const migliori = migliorOpportunitaPerPartita(tutte);
+            const multiple = costruisciMultiple(migliori);
+
+            const containerMultiple = document.getElementById("listaValueBetsMultiple");
+            if (multiple.length === 0) {
+                containerMultiple.innerHTML = `<div class="text-slate-500 text-center py-4">Nessuna multipla disponibile: servono almeno 2 partite diverse con valore per costruirne una.</div>`;
+            } else {
+                containerMultiple.innerHTML = multiple.slice(0, 20).map(m => {
+                    const selezioniTesto = m.selezioni.map(s => `${s.squadraCasa} vs ${s.squadraOspite}: ${s.nomeMercato} ${s.esito} (@${s.quota.toFixed(2)})`).join(" + ");
+                    let importoTesto = "Solo informativo (oltre 3 selezioni)";
+                    if (m.numSelezioni <= 3) {
+                        const nMinimo = Math.min(...m.selezioni.map(s => conteggiMercatiGlobale[s.chiaveMercato] || 0));
+                        if (nMinimo < 30) {
+                            importoTesto = "N/D (campione piccolo su almeno una selezione)";
+                        } else {
+                            const frazione = kellyFrazionato(m.probTotale, m.quotaTotale, 0.10);
+                            const percentuale = Math.min(frazione * 100, 5);
+                            importoTesto = percentuale > 0 ? `${percentuale.toFixed(2)}% bankroll` : "N/D";
+                        }
+                    }
+                    return `<div class="bg-slate-950/50 border border-indigo-900/50 rounded-xl p-3">
+                        <div class="text-[10px] text-slate-400 uppercase font-semibold mb-1">${m.numSelezioni} selezioni</div>
+                        <div class="text-[11px] text-slate-300 mb-1">${selezioniTesto}</div>
+                        <div class="grid grid-cols-3 items-center gap-1 text-[11px]">
+                            <span>Quota tot. ${m.quotaTotale.toFixed(2)}</span>
+                            <span class="text-center text-indigo-400 font-bold">EV ${(m.ev * 100).toFixed(1)}%</span>
+                            <span class="text-right text-indigo-400">${importoTesto}</span>
+                        </div>
+                    </div>`;
+                }).join("");
+            }
         }
     </script>
 </body>
