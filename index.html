@@ -309,16 +309,56 @@
             </div>
         </section>
 
+        <section id="sec-bet" class="hidden space-y-6">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
+                    🎲 BET — SELEZIONE SCOMMESSE DAL PALINSESTO
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">
+                    Filtra il Palinsesto Attivo per uno o più campionati e per UN mercato alla volta. Ottieni una lista con pronostico e quota (se disponibile per quel mercato), che puoi ripulire riga per riga prima di salvarla. Una volta salvata, pronostico e quota restano congelati per sempre, come nell'Archivio Storico.
+                </p>
+
+                <div class="mb-4">
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">Mercato da estrarre</label>
+                    <select id="betMercatoSelect" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500"></select>
+                </div>
+
+                <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
+                    <div class="flex justify-between items-center mb-2.5">
+                        <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da includere</label>
+                        <button type="button" onclick="toggleTuttiCampionatiBet()" class="text-[10px] text-blue-400 hover:text-blue-300 font-semibold underline">
+                            Seleziona / Deseleziona Tutti
+                        </button>
+                    </div>
+                    <div id="betCampionatiCheckboxes" class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs"></div>
+                </div>
+
+                <button id="btnGeneraBet" type="button" onclick="generaListaBet()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer">
+                    Genera Lista
+                </button>
+
+                <div id="statoBet" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
+            </div>
+
+            <div id="listaBetGenerata" class="max-w-2xl mx-auto"></div>
+
+            <div class="max-w-2xl mx-auto">
+                <h3 class="text-xs font-bold tracking-widest text-indigo-400 uppercase mb-3 px-1">📋 Liste Salvate</h3>
+                <div id="listeSalvateContainer" class="space-y-3"></div>
+            </div>
+        </section>
+
     </main>
 
-    <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 p-2 max-w-2xl w-[calc(100%-1.5rem)] z-50">
-        <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1.5 shadow-2xl flex justify-between items-center text-center overflow-x-auto">
-            <button id="tab-palinsesto" onclick="mostraSchermata('palinsesto')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full bg-blue-600 text-white text-[10px] sm:text-xs font-semibold truncate cursor-pointer">Palinsesto</button>
-            <button id="tab-validazione" onclick="mostraSchermata('validazione')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[10px] sm:text-xs font-semibold truncate cursor-pointer">Validazione</button>
-            <button id="tab-archivio" onclick="mostraSchermata('archivio')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[10px] sm:text-xs font-semibold truncate cursor-pointer">Archivio</button>
-            <button id="tab-mlengine" onclick="mostraSchermata('mlengine')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[10px] sm:text-xs font-semibold truncate cursor-pointer">ML Engine</button>
-            <button id="tab-analisi" onclick="mostraSchermata('analisi')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[10px] sm:text-xs font-semibold truncate cursor-pointer">Analisi</button>
-            <button id="tab-valuebets" onclick="mostraSchermata('valuebets')" class="footer-tab flex-1 py-2 px-1 sm:px-2 rounded-full text-slate-400 text-[10px] sm:text-xs font-semibold truncate cursor-pointer">Value Bets</button>
+    <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 px-2 pb-2 max-w-2xl w-[calc(100%-1.5rem)] z-50">
+        <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1 shadow-2xl flex justify-between items-center text-center gap-0.5">
+            <button id="tab-palinsesto" onclick="mostraSchermata('palinsesto')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full bg-blue-600 text-white text-[9px] font-semibold whitespace-nowrap cursor-pointer">Palins.</button>
+            <button id="tab-validazione" onclick="mostraSchermata('validazione')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full text-slate-400 text-[9px] font-semibold whitespace-nowrap cursor-pointer">Valida</button>
+            <button id="tab-archivio" onclick="mostraSchermata('archivio')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full text-slate-400 text-[9px] font-semibold whitespace-nowrap cursor-pointer">Archivio</button>
+            <button id="tab-mlengine" onclick="mostraSchermata('mlengine')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full text-slate-400 text-[9px] font-semibold whitespace-nowrap cursor-pointer">ML Eng.</button>
+            <button id="tab-analisi" onclick="mostraSchermata('analisi')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full text-slate-400 text-[9px] font-semibold whitespace-nowrap cursor-pointer">Analisi</button>
+            <button id="tab-valuebets" onclick="mostraSchermata('valuebets')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full text-slate-400 text-[9px] font-semibold whitespace-nowrap cursor-pointer">EV</button>
+            <button id="tab-bet" onclick="mostraSchermata('bet')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full text-slate-400 text-[9px] font-semibold whitespace-nowrap cursor-pointer">Bet</button>
         </div>
     </footer>
 
@@ -360,7 +400,7 @@
         }
 
         function mostraSchermata(nome) {
-            const sezioni = { palinsesto: 'sec-palinsesto', validazione: 'sec-validazione', archivio: 'sec-archivio', mlengine: 'sec-mlengine', analisi: 'sec-analisi', valuebets: 'sec-valuebets' };
+            const sezioni = { palinsesto: 'sec-palinsesto', validazione: 'sec-validazione', archivio: 'sec-archivio', mlengine: 'sec-mlengine', analisi: 'sec-analisi', valuebets: 'sec-valuebets', bet: 'sec-bet' };
             Object.values(sezioni).forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden');
@@ -383,6 +423,7 @@
             if (nome === 'mlengine') mostraMLEngine();
             if (nome === 'analisi') mostraAnalisi();
             if (nome === 'valuebets') mostraValueBets();
+            if (nome === 'bet') mostraBet();
         }
 
         window.onload = function() {
@@ -2302,6 +2343,283 @@
                     </div>`;
                 }).join("");
             }
+        }
+
+        // ============================================================
+        // BET — filtro Palinsesto per campionato/i + un mercato,
+        // lista modificabile, salvataggio permanente (congelata)
+        // ============================================================
+
+        const CAMPIONATI_BET = [
+            { value: "SA", label: "Serie A" },
+            { value: "PL", label: "Premier League" },
+            { value: "PD", label: "La Liga" },
+            { value: "BL1", label: "Bundesliga" },
+            { value: "FL1", label: "Ligue 1" },
+            { value: "CL", label: "Champions League" },
+            { value: "EC", label: "Euro Championship" },
+            { value: "DED", label: "Eredivisie" },
+            { value: "PPL", label: "Liga Portugal" },
+            { value: "BSA", label: "Brasileirão" },
+            { value: "ELC", label: "Championship" },
+            { value: "WC", label: "World Cup" }
+        ];
+
+        let listaBetCorrente = [];
+
+        function popolaControlliBet() {
+            const select = document.getElementById("betMercatoSelect");
+            if (select && select.options.length === 0) {
+                select.innerHTML = MERCATI_LISTA.map(m => `<option value="${m.chiave}">${m.nome}</option>`).join("");
+            }
+
+            const container = document.getElementById("betCampionatiCheckboxes");
+            if (container && container.children.length === 0) {
+                container.innerHTML = CAMPIONATI_BET.map(c => `
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                        <input type="checkbox" class="bet-comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="${c.value}" checked>
+                        <span class="text-slate-200 truncate"> ${c.label}</span>
+                    </label>
+                `).join("");
+            }
+        }
+
+        function toggleTuttiCampionatiBet() {
+            const checkboxes = document.querySelectorAll('.bet-comp-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+        }
+
+        function mostraStatoBet(testo, tipo = 'info') {
+            const stato = document.getElementById("statoBet");
+            if (!stato) return;
+            if (!testo) { stato.classList.add("hidden"); return; }
+            stato.classList.remove('hidden', 'bg-rose-950/80', 'border-rose-800', 'text-rose-300', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+            if (tipo === 'error') stato.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
+            else if (tipo === 'success') stato.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+            else stato.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+            stato.innerText = testo;
+        }
+
+        // Restituisce la quota bookmaker corrispondente al pronostico di un
+        // dato mercato per una partita, oppure null se non disponibile
+        // (mercato non coperto dalle quote gratuite, o quote non abbinate).
+        function ottieniQuotaPerMercato(p, chiaveMercato) {
+            if (!p.pronostici || !p.quote) return null;
+            const pr = p.pronostici[chiaveMercato];
+            if (!pr) return null;
+
+            if (chiaveMercato === "mercato1X2") {
+                const m = p.quote.mercato1x2;
+                if (!m) return null;
+                if (pr.pronostico === "1") return m.casa;
+                if (pr.pronostico === "X") return m.pareggio;
+                if (pr.pronostico === "2") return m.ospite;
+                return null;
+            }
+
+            const mappaLinee = { over05: "0.5", over15: "1.5", over25: "2.5", over35: "3.5", over45: "4.5" };
+            if (mappaLinee[chiaveMercato]) {
+                const ou = p.quote.overUnder ? p.quote.overUnder[mappaLinee[chiaveMercato]] : null;
+                if (!ou) return null;
+                if (pr.pronostico === "Over") return ou.over;
+                if (pr.pronostico === "Under") return ou.under;
+                return null;
+            }
+
+            // Doppia Chance, Risultato Esatto, Goal/No Goal, Combo, Multigol:
+            // nessuna quota disponibile con le fonti gratuite in uso.
+            return null;
+        }
+
+        function generaListaBet() {
+            const chiaveMercato = document.getElementById("betMercatoSelect").value;
+            const mercatoInfo = MERCATI_LISTA.find(m => m.chiave === chiaveMercato);
+
+            const checkboxes = document.querySelectorAll('.bet-comp-checkbox:checked');
+            const codiciSelezionati = Array.from(checkboxes).map(cb => cb.value);
+
+            if (codiciSelezionati.length === 0) {
+                alert("Seleziona almeno un campionato!");
+                return;
+            }
+
+            const partiteFiltrate = (cachePartiteFirestore || []).filter(p => codiciSelezionati.includes(p.campionatoCode));
+
+            if (partiteFiltrate.length === 0) {
+                mostraStatoBet("Nessuna partita trovata nel Palinsesto Attivo per i campionati selezionati.", "error");
+                document.getElementById("listaBetGenerata").innerHTML = "";
+                listaBetCorrente = [];
+                return;
+            }
+
+            listaBetCorrente = partiteFiltrate.map(p => {
+                const pr = p.pronostici ? p.pronostici[chiaveMercato] : null;
+                const quota = ottieniQuotaPerMercato(p, chiaveMercato);
+                return {
+                    matchId: p.matchId || p.id,
+                    campionato: p.campionato,
+                    campionatoCode: p.campionatoCode,
+                    squadraCasa: p.squadraCasa,
+                    squadraOspite: p.squadraOspite,
+                    dataOraUTC: p.dataOraUTC || p.utcDate,
+                    chiaveMercato,
+                    nomeMercato: mercatoInfo ? mercatoInfo.nome : chiaveMercato,
+                    pronostico: pr ? pr.pronostico : null,
+                    quota: quota
+                };
+            });
+
+            mostraStatoBet(`Lista generata: ${listaBetCorrente.length} partite (${mercatoInfo ? mercatoInfo.nome : chiaveMercato}).`, "success");
+            disegnaListaBetGenerata();
+        }
+
+        function rimuoviRigaBet(matchId) {
+            listaBetCorrente = listaBetCorrente.filter(r => String(r.matchId) !== String(matchId));
+            disegnaListaBetGenerata();
+        }
+
+        function disegnaListaBetGenerata() {
+            const container = document.getElementById("listaBetGenerata");
+            if (!container) return;
+
+            if (listaBetCorrente.length === 0) {
+                container.innerHTML = "";
+                return;
+            }
+
+            const righeHtml = listaBetCorrente.map(r => `
+                <div class="grid grid-cols-12 items-center gap-2 py-2 px-1 border-b border-slate-800/60 text-xs">
+                    <div class="col-span-5 min-w-0">
+                        <div class="text-[9px] text-slate-500 uppercase truncate">${r.campionato}</div>
+                        <div class="font-semibold text-slate-200 truncate">${r.squadraCasa} vs ${r.squadraOspite}</div>
+                        <div class="text-[10px] text-slate-500">${formattaData(r.dataOraUTC)}</div>
+                    </div>
+                    <div class="col-span-3 text-center font-bold text-emerald-400">${r.pronostico ?? "N/D"}</div>
+                    <div class="col-span-3 text-center text-slate-300">${(r.quota !== null && r.quota !== undefined) ? r.quota : "N/D"}</div>
+                    <div class="col-span-1 text-right">
+                        <button type="button" onclick="rimuoviRigaBet('${r.matchId}')" class="text-rose-400 hover:text-rose-300 font-bold text-sm cursor-pointer" title="Rimuovi">✕</button>
+                    </div>
+                </div>
+            `).join("");
+
+            container.innerHTML = `
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl p-4 sm:p-5">
+                    <div class="grid grid-cols-12 gap-2 px-1 pb-2 text-[9px] text-slate-500 uppercase font-bold border-b border-slate-800">
+                        <div class="col-span-5">Partita</div>
+                        <div class="col-span-3 text-center">Pronostico</div>
+                        <div class="col-span-3 text-center">Quota</div>
+                        <div class="col-span-1"></div>
+                    </div>
+                    ${righeHtml}
+                    <div class="mt-4 flex flex-col sm:flex-row gap-2">
+                        <input type="text" id="betNomeLista" placeholder="Nome lista (opzionale)" class="flex-1 bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                        <button type="button" onclick="salvaListaBet()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-2.5 px-4 rounded-xl shadow-lg transition duration-200 text-xs cursor-pointer whitespace-nowrap">
+                            Salva Lista (congelata)
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function salvaListaBet() {
+            if (listaBetCorrente.length === 0) {
+                alert("La lista è vuota, non c'è nulla da salvare.");
+                return;
+            }
+
+            const nomeInput = document.getElementById("betNomeLista");
+            const nome = (nomeInput && nomeInput.value.trim()) ? nomeInput.value.trim() : `Lista del ${new Date().toLocaleString("it-IT")}`;
+
+            try {
+                await db.collection("liste_selezioni").add({
+                    nome,
+                    righe: listaBetCorrente,
+                    creataIl: new Date().toLocaleString("it-IT"),
+                    creataIlTimestamp: Date.now()
+                });
+                alert(`Lista "${nome}" salvata con ${listaBetCorrente.length} partite.`);
+                listaBetCorrente = [];
+                document.getElementById("listaBetGenerata").innerHTML = "";
+                mostraStatoBet("", "info");
+                caricaListeSalvate();
+            } catch (err) {
+                console.error(err);
+                alert("Errore durante il salvataggio: " + err.message);
+            }
+        }
+
+        async function caricaListeSalvate() {
+            const container = document.getElementById("listeSalvateContainer");
+            if (!container) return;
+            container.innerHTML = `<div class="text-center text-slate-400 text-sm py-4">Caricamento liste salvate...</div>`;
+
+            try {
+                const snapshot = await db.collection("liste_selezioni").get();
+                const liste = [];
+                snapshot.forEach(doc => liste.push({ id: doc.id, ...doc.data() }));
+
+                liste.sort((a, b) => (b.creataIlTimestamp || 0) - (a.creataIlTimestamp || 0));
+
+                if (liste.length === 0) {
+                    container.innerHTML = `<div class="text-center text-slate-400 text-sm py-6 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna lista salvata ancora.</div>`;
+                    return;
+                }
+
+                container.innerHTML = liste.map(l => {
+                    const righeHtml = (l.righe || []).map(r => `
+                        <div class="grid grid-cols-12 items-center gap-2 py-1.5 px-1 border-b border-slate-800/40 text-[11px]">
+                            <div class="col-span-6 min-w-0">
+                                <div class="text-[9px] text-slate-500 uppercase truncate">${r.campionato}</div>
+                                <div class="font-semibold text-slate-300 truncate">${r.squadraCasa} vs ${r.squadraOspite}</div>
+                            </div>
+                            <div class="col-span-3 text-center font-bold text-emerald-400">${r.pronostico ?? "N/D"}</div>
+                            <div class="col-span-3 text-center text-slate-400">${(r.quota !== null && r.quota !== undefined) ? r.quota : "N/D"}</div>
+                        </div>
+                    `).join("");
+
+                    return `
+                        <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl p-4 sm:p-5">
+                            <div class="flex justify-between items-center mb-2">
+                                <div>
+                                    <div class="font-bold text-slate-100 text-sm">${l.nome}</div>
+                                    <div class="text-[10px] text-slate-500">${l.creataIl} · ${(l.righe || []).length} partite · Mercato: ${(l.righe && l.righe[0]) ? l.righe[0].nomeMercato : "N/D"}</div>
+                                </div>
+                                <button type="button" onclick="eliminaListaSalvata('${l.id}')" class="bg-rose-700 hover:bg-rose-600 text-white text-[10px] font-semibold py-1.5 px-3 rounded-xl transition cursor-pointer whitespace-nowrap">
+                                    Elimina
+                                </button>
+                            </div>
+                            <div class="mt-2">
+                                <div class="grid grid-cols-12 gap-2 px-1 pb-1 text-[9px] text-slate-500 uppercase font-bold border-b border-slate-800">
+                                    <div class="col-span-6">Partita</div>
+                                    <div class="col-span-3 text-center">Pronostico</div>
+                                    <div class="col-span-3 text-center">Quota</div>
+                                </div>
+                                ${righeHtml}
+                            </div>
+                        </div>
+                    `;
+                }).join("");
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = `<div class="text-center text-rose-400 text-sm py-6">Errore nel caricamento delle liste: ${err.message}</div>`;
+            }
+        }
+
+        async function eliminaListaSalvata(id) {
+            if (!confirm("Confermi l'eliminazione permanente di questa lista? L'operazione non è reversibile.")) return;
+            try {
+                await db.collection("liste_selezioni").doc(id).delete();
+                caricaListeSalvate();
+            } catch (err) {
+                console.error(err);
+                alert("Errore durante l'eliminazione: " + err.message);
+            }
+        }
+
+        async function mostraBet() {
+            popolaControlliBet();
+            await caricaListeSalvate();
         }
     </script>
 </body>
