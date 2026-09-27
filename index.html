@@ -340,6 +340,93 @@
                 <div id="statoBet" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
             </div>
 
+            <div class="bg-slate-900/60 border border-violet-800/60 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-violet-400 uppercase mb-2">
+                    📝 CALCOLO MANUALE — PARTITA SINGOLA FUORI CAMPIONATI
+                </h2>
+                <p class="text-xs text-slate-400 mb-3">
+                    Calcola un pronostico isolato per una partita che non appartiene ai 12 campionati coperti dall'app, usando lo stesso algoritmo Dixon-Coles e gli stessi parametri (ρ, k) confermati in ML Engine. <strong class="text-violet-300">Il risultato non viene salvato da nessuna parte</strong>: non entra nel Palinsesto, nell'Archivio Storico, nell'ML Engine, in Analisi o nei Value Bets — è un calcolo "usa e getta" da leggere qui.
+                </p>
+                <div id="manAlgoritmoInfo" class="text-[11px] text-violet-300 mb-4"></div>
+
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Nome Squadra Casa</label>
+                        <input type="text" id="manNomeCasa" placeholder="es. Squadra A" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Nome Squadra Ospite</label>
+                        <input type="text" id="manNomeOspite" placeholder="es. Squadra B" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 mb-3">
+                    <div class="text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-2">1. Dati del Campionato (NON delle due squadre)</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Media gol segnati IN CASA a partita<br><span class="text-slate-500">(media di TUTTE le squadre di casa del campionato, stagione corrente)</span></label>
+                            <input type="number" step="0.01" id="manMediaGolCasa" placeholder="es. 1.45" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Media gol segnati IN TRASFERTA a partita<br><span class="text-slate-500">(media di TUTTE le squadre ospiti del campionato, stagione corrente)</span></label>
+                            <input type="number" step="0.01" id="manMediaGolTrasferta" placeholder="es. 1.15" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 mb-3">
+                    <div class="text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-2">2. Squadra CASA — solo le sue partite giocate IN CASA</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Gol fatti<br><span class="text-slate-500">in casa, stagione corrente</span></label>
+                            <input type="number" id="manGolFattiCasa" placeholder="es. 14" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Gol subiti<br><span class="text-slate-500">in casa, stagione corrente</span></label>
+                            <input type="number" id="manGolSubitiCasa" placeholder="es. 7" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Partite giocate<br><span class="text-slate-500">in casa, stagione corrente</span></label>
+                            <input type="number" id="manPartiteCasa" placeholder="es. 9" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 mb-4">
+                    <div class="text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-2">3. Squadra OSPITE — solo le sue partite giocate IN TRASFERTA</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Gol fatti<br><span class="text-slate-500">in trasferta, stagione corrente</span></label>
+                            <input type="number" id="manGolFattiTrasferta" placeholder="es. 10" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Gol subiti<br><span class="text-slate-500">in trasferta, stagione corrente</span></label>
+                            <input type="number" id="manGolSubitiTrasferta" placeholder="es. 12" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Partite giocate<br><span class="text-slate-500">in trasferta, stagione corrente</span></label>
+                            <input type="number" id="manPartiteTrasferta" placeholder="es. 9" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                    </div>
+                </div>
+
+                <details class="mb-4 bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5">
+                    <summary class="cursor-pointer text-slate-400 font-bold text-[10px] uppercase tracking-wider">❓ Dove trovo questi dati?</summary>
+                    <p class="mt-2 text-[11px] text-slate-400 leading-relaxed">Cerca un sito di statistiche calcistiche che mostri le tabelle "Casa / Trasferta" separate per il campionato che ti interessa (es. FBref, Soccerway, WhoScored, o il sito ufficiale del torneo). Ti servono le medie del campionato e le statistiche stagionali delle due squadre, filtrate solo per le partite giocate rispettivamente in casa (per la squadra di casa) e in trasferta (per la squadra ospite).</p>
+                </details>
+
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <button type="button" onclick="calcolaPronosticoManuale()" class="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-semibold py-3 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer">
+                        Calcola Pronostico
+                    </button>
+                    <button type="button" onclick="svuotaCalcoloManuale()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-3 px-4 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer whitespace-nowrap">
+                        Svuota Campi
+                    </button>
+                </div>
+
+                <div id="risultatoManuale"></div>
+            </div>
+
             <div id="listaBetGenerata" class="max-w-2xl mx-auto"></div>
 
             <div class="max-w-2xl mx-auto">
@@ -2617,8 +2704,209 @@
             }
         }
 
+        // ============================================================
+        // CALCOLO MANUALE — partita singola fuori dai 12 campionati.
+        // Isolato di proposito: gira solo nel browser, non scrive MAI
+        // su Firestore, non tocca Palinsesto/Archivio/ML Engine/Analisi/
+        // Value Bets. Riusa lo stesso motore Dixon-Coles e gli stessi
+        // ρ/k già confermati in ML Engine, solo per coerenza dei calcoli.
+        // ============================================================
+
+        function calcola1X2Client(matrice) {
+            const p1 = sommaMatriceJS(matrice, (i, j) => i > j);
+            const pX = sommaMatriceJS(matrice, (i, j) => i === j);
+            const p2 = sommaMatriceJS(matrice, (i, j) => i < j);
+            let pronostico = "1", prob = p1;
+            if (pX > prob) { pronostico = "X"; prob = pX; }
+            if (p2 > prob) { pronostico = "2"; prob = p2; }
+            return { pronostico, probabilita: { "1": +(p1 * 100).toFixed(1), "X": +(pX * 100).toFixed(1), "2": +(p2 * 100).toFixed(1) } };
+        }
+
+        function calcolaRisultatoEsattoClient(matrice, esito1X2, esitoOU25) {
+            let condEsito;
+            if (esito1X2 === "1") condEsito = (i, j) => i > j;
+            else if (esito1X2 === "X") condEsito = (i, j) => i === j;
+            else condEsito = (i, j) => i < j;
+            const condOU = esitoOU25 === "Over" ? (i, j) => (i + j) > 2.5 : (i, j) => (i + j) <= 2.5;
+            let mi = -1, mj = -1, mp = -1;
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
+                if (condEsito(i, j) && condOU(i, j) && matrice[i][j] > mp) { mp = matrice[i][j]; mi = i; mj = j; }
+            }
+            if (mi === -1) {
+                for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
+                    if (condEsito(i, j) && matrice[i][j] > mp) { mp = matrice[i][j]; mi = i; mj = j; }
+                }
+            }
+            return { pronostico: `${mi}-${mj}`, probabilita: +(mp * 100).toFixed(1) };
+        }
+
+        function calcolaDoppiaChanceClient(matrice) {
+            const p1 = sommaMatriceJS(matrice, (i, j) => i > j);
+            const pX = sommaMatriceJS(matrice, (i, j) => i === j);
+            const p2 = sommaMatriceJS(matrice, (i, j) => i < j);
+            const opzioni = { "1X": p1 + pX, "12": p1 + p2, "X2": pX + p2 };
+            let pronostico = "1X", prob = opzioni["1X"];
+            Object.keys(opzioni).forEach(k => { if (opzioni[k] > prob) { pronostico = k; prob = opzioni[k]; } });
+            return { pronostico, probabilita: { "1X": +(opzioni["1X"] * 100).toFixed(1), "12": +(opzioni["12"] * 100).toFixed(1), "X2": +(opzioni["X2"] * 100).toFixed(1) } };
+        }
+
+        function calcolaOverUnderClient(matrice, soglia) {
+            const pOver = sommaMatriceJS(matrice, (i, j) => (i + j) > soglia);
+            const pUnder = 1 - pOver;
+            const pronostico = pOver > pUnder ? "Over" : "Under";
+            return { pronostico, probabilita: { over: +(pOver * 100).toFixed(1), under: +(pUnder * 100).toFixed(1) } };
+        }
+
+        function calcolaGoalNoGoalClient(matrice) {
+            const pGoal = sommaMatriceJS(matrice, (i, j) => i > 0 && j > 0);
+            const pNoGoal = 1 - pGoal;
+            const pronostico = pGoal > pNoGoal ? "Goal" : "No Goal";
+            return { pronostico, probabilita: { goal: +(pGoal * 100).toFixed(1), noGoal: +(pNoGoal * 100).toFixed(1) } };
+        }
+
+        function calcolaComboDCOverUnder25Client(matrice, dcPronostico, ouPronostico) {
+            const condDc = dcPronostico === "1X" ? (i, j) => i >= j
+                          : dcPronostico === "X2" ? (i, j) => i <= j
+                          : (i, j) => i !== j;
+            const condOu = ouPronostico === "Over" ? (i, j) => (i + j) > 2.5 : (i, j) => (i + j) <= 2.5;
+            const prob = sommaMatriceJS(matrice, (i, j) => condDc(i, j) && condOu(i, j));
+            return { pronostico: `${dcPronostico}-${ouPronostico}`, probabilita: +(prob * 100).toFixed(1) };
+        }
+
+        function calcolaMultigolCasaClient(matrice) {
+            const fasce = { "0-1": 0, "2-3": 0, "4+": 0 };
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) { const f = fasciaGolJS(i); for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) fasce[f] += matrice[i][j]; }
+            let pronostico = "0-1", prob = fasce["0-1"];
+            Object.keys(fasce).forEach(k => { if (fasce[k] > prob) { pronostico = k; prob = fasce[k]; } });
+            const probabilita = {};
+            Object.keys(fasce).forEach(k => { probabilita[k] = +(fasce[k] * 100).toFixed(1); });
+            return { pronostico, probabilita };
+        }
+
+        function calcolaMultigolTrasfertaClient(matrice) {
+            const fasce = { "0-1": 0, "2-3": 0, "4+": 0 };
+            for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) { const f = fasciaGolJS(j); for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) fasce[f] += matrice[i][j]; }
+            let pronostico = "0-1", prob = fasce["0-1"];
+            Object.keys(fasce).forEach(k => { if (fasce[k] > prob) { pronostico = k; prob = fasce[k]; } });
+            const probabilita = {};
+            Object.keys(fasce).forEach(k => { probabilita[k] = +(fasce[k] * 100).toFixed(1); });
+            return { pronostico, probabilita };
+        }
+
+        function calcolaMultigolComboClient(matrice, fasciaCasaPronostico, fasciaTrasfertaPronostico) {
+            const prob = sommaMatriceJS(matrice, (i, j) => fasciaGolJS(i) === fasciaCasaPronostico && fasciaGolJS(j) === fasciaTrasfertaPronostico);
+            return { pronostico: `${fasciaCasaPronostico}|${fasciaTrasfertaPronostico}`, probabilita: +(prob * 100).toFixed(1) };
+        }
+
+        // Riproduce esattamente la stessa struttura di "pronostici" generata
+        // dal Worker per le partite normali, così può essere mostrata con
+        // la stessa funzione formattaPronostici() già usata ovunque nell'app.
+        function generaPronosticiCompletiClient(lambdaCasa, lambdaOspite, rho, kScala) {
+            if (lambdaCasa === null || lambdaOspite === null || !(lambdaCasa > 0) || !(lambdaOspite > 0)) return null;
+
+            const matrice = costruisciMatriceJS(lambdaCasa, lambdaOspite, rho);
+
+            const mercato1X2 = calcola1X2Client(matrice);
+            const over25 = calcolaOverUnderClient(matrice, 2.5);
+            const risultatoEsatto = calcolaRisultatoEsattoClient(matrice, mercato1X2.pronostico, over25.pronostico);
+            const doppiaChance = calcolaDoppiaChanceClient(matrice);
+            const multigolCasa = calcolaMultigolCasaClient(matrice);
+            const multigolTrasferta = calcolaMultigolTrasfertaClient(matrice);
+
+            return {
+                versioneModello: "dixon-coles-v1 (manuale)",
+                rhoUsato: rho,
+                kScalaUsato: kScala,
+                lambdaCasa: +lambdaCasa.toFixed(2),
+                lambdaOspite: +lambdaOspite.toFixed(2),
+                mercato1X2: mercato1X2,
+                risultatoEsatto: risultatoEsatto,
+                doppiaChance: doppiaChance,
+                over05: calcolaOverUnderClient(matrice, 0.5),
+                over15: calcolaOverUnderClient(matrice, 1.5),
+                over25: over25,
+                over35: calcolaOverUnderClient(matrice, 3.5),
+                over45: calcolaOverUnderClient(matrice, 4.5),
+                goalNoGoal: calcolaGoalNoGoalClient(matrice),
+                comboDcOver25: calcolaComboDCOverUnder25Client(matrice, doppiaChance.pronostico, over25.pronostico),
+                multigolCasa: multigolCasa,
+                multigolTrasferta: multigolTrasferta,
+                multigolCombo: calcolaMultigolComboClient(matrice, multigolCasa.pronostico, multigolTrasferta.pronostico)
+            };
+        }
+
+        function calcolaPronosticoManuale() {
+            const nomeCasa = (document.getElementById("manNomeCasa").value || "Squadra Casa").trim();
+            const nomeOspite = (document.getElementById("manNomeOspite").value || "Squadra Ospite").trim();
+
+            const mediaGolCasaCampionato = parseFloat(document.getElementById("manMediaGolCasa").value);
+            const mediaGolTrasfertaCampionato = parseFloat(document.getElementById("manMediaGolTrasferta").value);
+
+            const golFattiCasa = parseFloat(document.getElementById("manGolFattiCasa").value);
+            const partiteCasa = parseFloat(document.getElementById("manPartiteCasa").value);
+            const golSubitiCasa = parseFloat(document.getElementById("manGolSubitiCasa").value);
+
+            const golFattiTrasferta = parseFloat(document.getElementById("manGolFattiTrasferta").value);
+            const partiteTrasferta = parseFloat(document.getElementById("manPartiteTrasferta").value);
+            const golSubitiTrasferta = parseFloat(document.getElementById("manGolSubitiTrasferta").value);
+
+            const container = document.getElementById("risultatoManuale");
+
+            const campi = [mediaGolCasaCampionato, mediaGolTrasfertaCampionato, golFattiCasa, partiteCasa, golSubitiCasa, golFattiTrasferta, partiteTrasferta, golSubitiTrasferta];
+            if (campi.some(v => isNaN(v))) {
+                alert("Compila tutti gli 8 campi numerici prima di calcolare.");
+                return;
+            }
+            if (partiteCasa <= 0 || partiteTrasferta <= 0 || mediaGolCasaCampionato <= 0 || mediaGolTrasfertaCampionato <= 0) {
+                alert("Le partite giocate e le medie di campionato devono essere maggiori di zero.");
+                return;
+            }
+
+            const forzaAttaccoCasa = (golFattiCasa / partiteCasa) / mediaGolCasaCampionato;
+            const forzaDifesaCasa = (golSubitiCasa / partiteCasa) / mediaGolTrasfertaCampionato;
+            const forzaAttaccoTrasferta = (golFattiTrasferta / partiteTrasferta) / mediaGolTrasfertaCampionato;
+            const forzaDifesaTrasferta = (golSubitiTrasferta / partiteTrasferta) / mediaGolCasaCampionato;
+
+            const rho = configAlgoritmoCorrente.rho;
+            const kScala = configAlgoritmoCorrente.kScala;
+
+            const lambdaCasa = limita(mediaGolCasaCampionato * forzaAttaccoCasa * forzaDifesaTrasferta * kScala, 0.1, 6);
+            const lambdaOspite = limita(mediaGolTrasfertaCampionato * forzaAttaccoTrasferta * forzaDifesaCasa * kScala, 0.1, 6);
+
+            const pronostici = generaPronosticiCompletiClient(lambdaCasa, lambdaOspite, rho, kScala);
+
+            if (!pronostici) {
+                container.innerHTML = `<div class="text-rose-400 text-xs text-center py-4">Dati insufficienti per calcolare un pronostico valido.</div>`;
+                return;
+            }
+
+            const partitaFittizia = { squadraCasa: nomeCasa, squadraOspite: nomeOspite, pronostici: pronostici };
+
+            container.innerHTML = `
+                <div class="bg-slate-950/70 rounded-2xl p-3 border border-violet-800/60 mt-1">
+                    <div class="text-sm font-bold text-slate-100 mb-1 text-center">${nomeCasa} vs ${nomeOspite}</div>
+                    <div class="text-[10px] text-slate-500 text-center mb-2">Calcolo isolato — non salvato, non incluso in Archivio / ML Engine / Analisi / Value Bets</div>
+                    ${formattaPronostici(partitaFittizia)}
+                </div>
+            `;
+        }
+
+        function svuotaCalcoloManuale() {
+            ["manNomeCasa", "manNomeOspite", "manMediaGolCasa", "manMediaGolTrasferta", "manGolFattiCasa", "manPartiteCasa", "manGolSubitiCasa", "manGolFattiTrasferta", "manPartiteTrasferta", "manGolSubitiTrasferta"].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = "";
+            });
+            const container = document.getElementById("risultatoManuale");
+            if (container) container.innerHTML = "";
+        }
+
         async function mostraBet() {
             popolaControlliBet();
+            await caricaConfigAlgoritmo();
+            const infoEl = document.getElementById("manAlgoritmoInfo");
+            if (infoEl) {
+                infoEl.textContent = `Il calcolo userà l'algoritmo attualmente confermato in ML Engine: ρ=${configAlgoritmoCorrente.rho.toFixed(2)}, k=${configAlgoritmoCorrente.kScala.toFixed(2)}.`;
+            }
             await caricaListeSalvate();
         }
     </script>
