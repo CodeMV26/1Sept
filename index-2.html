@@ -1,0 +1,2993 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SoccerStats ML</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-28">
+
+    <header class="p-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
+                <h1 class="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">SoccerStats ML</h1>
+            </div>
+            <div id="syncBadge" class="px-3 py-1 bg-emerald-950/80 text-emerald-400 rounded-full text-xs font-semibold border border-emerald-800/60 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Live Sync
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 my-2">
+
+        <section id="sec-palinsesto" class="space-y-6">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2 flex items-center gap-2">
+                    ESTRAZIONE &amp; SINCRONIZZAZIONE PALINSESTO
+                </h2>
+                
+                <p class="text-xs text-slate-400 mb-4">
+                    Seleziona l'intervallo temporale ed i campionati da analizzare:
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Inizio</label>
+                        <input type="date" id="dateFrom" onchange="ricalcolaDataFine(); aggiornaFiltriVisualizzazione();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Giorni da Estrarre</label>
+                        <input type="number" id="daysOffset" value="14" min="1" max="30" onchange="ricalcolaDataFine(); aggiornaFiltriVisualizzazione();" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Data Fine</label>
+                        <input type="date" id="dateTo" onchange="aggiornaFiltriVisualizzazione()" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
+                    <div class="flex justify-between items-center mb-2.5">
+                        <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da Estrarre</label>
+                        <button type="button" onclick="toggleTuttiCampionati()" class="text-[10px] text-blue-400 hover:text-blue-300 font-semibold underline">
+                            Seleziona / Deseleziona Tutti
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="SA" checked>
+                            <span class="text-slate-200 truncate"> Serie A</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PL" checked>
+                            <span class="text-slate-200 truncate"> Premier League</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PD" checked>
+                            <span class="text-slate-200 truncate"> La Liga</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BL1" checked>
+                            <span class="text-slate-200 truncate"> Bundesliga</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="FL1" checked>
+                            <span class="text-slate-200 truncate"> Ligue 1</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="CL" checked>
+                            <span class="text-slate-200 truncate"> Champions League</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="EC">
+                            <span class="text-slate-200 truncate"> Euro Championship</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="DED">
+                            <span class="text-slate-200 truncate"> Eredivisie</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="PPL">
+                            <span class="text-slate-200 truncate"> Liga Portugal</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="BSA" checked>
+                            <span class="text-slate-200 truncate"> Brasileirão</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="ELC">
+                            <span class="text-slate-200 truncate"> Championship</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                            <input type="checkbox" onchange="aggiornaFiltriVisualizzazione()" class="comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="WC">
+                            <span class="text-slate-200 truncate"> World Cup</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <button id="btnEstrai" type="button" onclick="sincronizzaESalva(event)" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        Estrai Partite e Sincronizza Cloud
+                    </button>
+
+                    <button id="btnQuote" type="button" onclick="aggiornaQuote()" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        Aggiorna Quote Bookmaker
+                    </button>
+                </div>
+
+                <div id="stato" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
+            </div>
+
+            <div id="risultati" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-4xl mx-auto p-4 sm:p-5">
+                <details>
+                    <summary class="cursor-pointer text-blue-400 font-bold text-xs uppercase tracking-wider">📖 Legenda Statistiche</summary>
+                    <div class="mt-3 space-y-3 text-[11px] text-slate-300 leading-relaxed">
+                        <div>
+                            <p class="font-bold text-slate-100">Forza Attacco / Forza Difesa</p>
+                            <p>Confronta il rendimento offensivo/difensivo della squadra (in casa o in trasferta) con la media di tutte le squadre del campionato nello stesso contesto. 1.00 = nella media; sopra 1.00 = meglio della media; sotto 1.00 = peggio della media. Base del modello Dixon-Coles.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">Media Gol Ultime 5 / Striscia Attuale / Trend Punti</p>
+                            <p>Rendimento recente della squadra: media gol fatti/subiti solo sulle ultime 5 partite, sequenza di risultati consecutivi in corso (es. "3V" = tre vittorie di fila), e differenza tra punti/partita recenti e punti/partita sull'intera stagione (positivo = squadra in crescita, negativo = in calo).</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">Contesto Campionato</p>
+                            <p>Media gol e distribuzione degli esiti (vittorie casa/pareggi/vittorie trasferta) calcolate su tutte le partite concluse del campionato finora — serve da metro di paragone per interpretare i numeri delle singole squadre.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">Over 1.5 / 2.5 / 3.5 (ultime 10)</p>
+                            <p>Percentuale delle ultime 10 partite della squadra (fino a un massimo di 10, se ne ha giocate meno si usano tutte quelle disponibili) che hanno totalizzato più di 1.5, 2.5 o 3.5 gol complessivi (entrambe le squadre).</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">% Segna / % Clean Sheet (ultime 10)</p>
+                            <p>Percentuale delle ultime 10 partite in cui la squadra ha segnato almeno un gol, e percentuale in cui non ha subito nessun gol.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">Multigol (ultime 10, storico)</p>
+                            <p>Distribuzione di frequenza reale (non stimata) dei gol segnati dalla squadra nelle ultime 10 partite, in tre fasce che non si sovrappongono: 0-1 gol, 2-3 gol, 4+ gol. È uno storico osservato, diverso dal pronostico Multigol descritto più sotto.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">Split Gol 1° Tempo / 2° Tempo</p>
+                            <p>Percentuale dei gol fatti e subiti dalla squadra realizzati nel primo tempo rispetto al secondo, calcolata su tutte le partite della stagione con dato disponibile.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">IDO (Indice Distanza Obiettivo) / CU (Coefficiente Urgenza)</p>
+                            <p>Disponibili solo per i campionati a girone unico con retrocessione (non per coppe/tornei internazionali). IDO = punti mancanti rispetto a una soglia salvezza storica indicativa (⚠️ stima approssimativa scelta da noi, non un dato ufficiale). CU = punti mancanti / partite rimanenti: sopra 1.5 indica una squadra sotto forte pressione di risultato.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">Quote Bookmaker</p>
+                            <p>Quote 1X2 e Over/Under, prese da The Odds API (bookmaker preferito: Pinnacle, poi Bet365, altrimenti il primo disponibile — sempre indicato). Le partite vengono abbinate automaticamente per data (tolleranza ±2 ore) e somiglianza del nome della squadra di casa: se l'abbinamento non è affidabile, la scheda mostra "Quote non disponibili" invece di un dato incerto. Aggiornate solo quando premi "Aggiorna Quote Bookmaker". Goal/No Goal non disponibile sul piano gratuito in questa configurazione. Le linee Over/Under mostrate dipendono da cosa il bookmaker ha effettivamente pubblicato: spesso solo 2.5.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">🎯 Pronostici (motore Dixon-Coles)</p>
+                            <p>Calcolati automaticamente ad ogni estrazione da un unico modello statistico: si stimano i gol attesi di ciascuna squadra dalle rispettive Forze Attacco/Difesa, si costruisce una matrice di probabilità di tutti i possibili risultati (0-0, 1-0, 2-1, ecc.), e da quella singola matrice si derivano matematicamente tutti e 13 i mercati. Il Risultato Esatto, il Combo DC+O/U2.5 e il Multigol Casa+Trasferta sono sempre coerenti con i mercati singoli che li compongono, mostrati nelle righe sopra. I parametri del modello (ρ e fattore di scala) sono quelli confermati nella schermata ML Engine, dopo il backtesting sull'Archivio Storico.</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-100">⭐ Value Bet</p>
+                            <p>Confronta la probabilità stimata dal nostro modello con quella implicita nelle quote del bookmaker (margine rimosso): solo quando il nostro modello è più ottimista del mercato c'è "valore" (EV positivo). Disponibile solo su 1X2 e Over/Under (unici mercati con sia pronostico sia quota). L'importo consigliato (Kelly frazionato, tetto 5% del bankroll) compare solo se quel mercato ha almeno 30 partite di storico nell'Archivio — indicativo, non un consiglio finanziario.</p>
+                        </div>
+                        <div class="pt-2 border-t border-slate-800">
+                            <p class="text-slate-500">Statistiche NON disponibili con le fonti gratuite in uso e quindi mai calcolate: calci d'angolo, Top Scorer/Assistman per singola partita, pressione societaria/allenatore, fattore rivalsa storica.</p>
+                        </div>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <section id="sec-validazione" class="hidden space-y-6">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
+                    VALIDAZIONE &amp; AGGIORNAMENTO RISULTATI
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">
+                    Partite già iniziate (o con orario passato) in attesa di conferma del risultato reale. Le statistiche restano quelle congelate al momento dell'estrazione — solo il risultato viene aggiunto quando la partita risulta conclusa.
+                </p>
+
+                <button id="btnValida" type="button" onclick="validaPartite()" class="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                    Valida e Risolvi Palinsesto
+                </button>
+
+                <div id="statoValidazione" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
+            </div>
+
+            <div id="listaValidazione" class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-6"></div>
+        </section>
+
+        <section id="sec-archivio" class="hidden space-y-6">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
+                    ARCHIVIO STORICO
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">
+                    Partite validate e conservate per sempre, con tutte le informazioni congelate al momento dell'estrazione (statistiche, quote, indici ML, pronostici) più il risultato finale reale. Cresce ad ogni validazione, senza limiti di tempo né sovrascritture.
+                </p>
+                <div id="statoArchivio" class="text-xs text-slate-400 text-center mb-3"></div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button type="button" onclick="eliminaSelezionateArchivio()" class="bg-rose-700 hover:bg-rose-600 text-white text-xs font-semibold py-2.5 rounded-xl transition cursor-pointer">
+                        Elimina Selezionate
+                    </button>
+                    <button type="button" onclick="esportaArchivioXLSX()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold py-2.5 rounded-xl transition cursor-pointer">
+                        Esporta Excel (.xlsx)
+                    </button>
+                    <button type="button" onclick="esportaArchivioJSON()" class="bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-semibold py-2.5 rounded-xl transition cursor-pointer">
+                        Esporta JSON (per analisi)
+                    </button>
+                    <button type="button" onclick="esportaArchivioPDF()" class="bg-indigo-700 hover:bg-indigo-600 text-white text-xs font-semibold py-2.5 rounded-xl transition cursor-pointer">
+                        Esporta PDF (stampa)
+                    </button>
+                </div>
+            </div>
+
+            <div id="listaArchivio" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6"></div>
+        </section>
+
+        <section id="sec-mlengine" class="hidden space-y-6">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
+                    🤖 ML ENGINE — CALIBRAZIONE ALGORITMO
+                </h2>
+                <p class="text-xs text-slate-400 mb-3">
+                    Confronta l'accuratezza dell'algoritmo attuale con una versione ricalibrata sui dati dell'Archivio Storico (validazione temporale: allenamento sulle partite più vecchie, verifica sulle più recenti — mai sugli stessi dati).
+                </p>
+                <div id="infoAlgoritmoCorrente" class="text-xs text-slate-300 mb-1"></div>
+                <div id="statoArchivioML" class="text-xs text-slate-400 mb-1"></div>
+                <div id="avvisoCampioneML" class="text-xs text-amber-400 mb-3"></div>
+
+                <button id="btnRicalcola" type="button" onclick="eseguiBacktesting()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                    Ricalcola e Confronta
+                </button>
+
+                <div id="infoNuoviParametri" class="text-xs text-emerald-400 mt-3"></div>
+
+                <button id="btnConfermaAlgoritmo" type="button" onclick="confermaNuovoAlgoritmo()" class="hidden w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer">
+                    Conferma Nuovo Algoritmo
+                </button>
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto p-4 sm:p-5 overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="text-slate-400 uppercase text-[10px] border-b border-slate-800">
+                            <th class="text-left py-2 pr-2">Mercato</th>
+                            <th class="text-center py-2 px-2">Accuratezza Corrente</th>
+                            <th class="text-center py-2 pl-2">Accuratezza Nuovo Algoritmo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabellaAccuratezzeBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="sec-analisi" class="hidden space-y-6">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
+                    📊 ANALISI — ACCURATEZZA PER CAMPIONATO
+                </h2>
+                <p class="text-xs text-slate-400 mb-3">
+                    Accuratezza corrente di ciascuno dei 13 mercati, calcolata separatamente per ogni campionato sulle partite dell'Archivio Storico. Ogni cella mostra la percentuale e, tra parentesi, quante partite la sostengono (n) — con pochi dati, non dare peso a percentuali basate su n piccoli.
+                </p>
+                <div id="statoArchivioAnalisi" class="text-xs text-slate-400"></div>
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-full mx-auto p-4 sm:p-5 overflow-x-auto">
+                <table class="text-xs border-collapse">
+                    <thead id="tabellaAnalisiHead"></thead>
+                    <tbody id="tabellaAnalisiBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="sec-valuebets" class="hidden space-y-6">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
+                    💰 VALUE BETS — SCOMMESSE CON VANTAGGIO
+                </h2>
+                <p class="text-xs text-slate-400 mb-2">
+                    Solo le occasioni in cui il nostro modello stima una probabilità più alta di quella implicita nelle quote del bookmaker (margine rimosso), con vantaggio (EV) di almeno il 5%. Servono sia pronostici sia quote aggiornate sulla stessa partita.
+                </p>
+                <p class="text-[11px] text-amber-400 mb-1">⚠️ Indicativo, non un consiglio finanziario. Gli importi consigliati compaiono solo per i mercati con almeno 30 partite di storico nell'Archivio — sotto quella soglia il modello non è ancora abbastanza testato per fidarsi di una cifra.</p>
+                <div id="statoValueBets" class="text-xs text-slate-400 mt-2"></div>
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto p-4 sm:p-5">
+                <h3 class="text-[11px] font-bold text-emerald-300 uppercase tracking-wider mb-2">Singole</h3>
+                <div id="listaValueBetsSingole" class="space-y-2 text-xs"></div>
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto p-4 sm:p-5">
+                <h3 class="text-[11px] font-bold text-indigo-300 uppercase tracking-wider mb-2">Multiple (2-4 selezioni, partite diverse)</h3>
+                <p class="text-[10px] text-slate-500 mb-2">Le multiple hanno lo stesso valore atteso a lungo termine delle singole che le compongono, ma un'oscillazione dei risultati molto più ampia: vanno viste come scelta di stile di gioco, non come un modo per guadagnare di più a parità di rischio. Nessun importo consigliato oltre le 3 selezioni.</p>
+                <div id="listaValueBetsMultiple" class="space-y-2 text-xs"></div>
+            </div>
+        </section>
+
+        <section id="sec-bet" class="hidden space-y-6">
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
+                    🎲 BET — SELEZIONE SCOMMESSE DAL PALINSESTO
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">
+                    Filtra il Palinsesto Attivo per uno o più campionati e per UN mercato alla volta. Ottieni una lista con pronostico e quota (se disponibile per quel mercato), che puoi ripulire riga per riga prima di salvarla. Una volta salvata, pronostico e quota restano congelati per sempre, come nell'Archivio Storico.
+                </p>
+
+                <div class="mb-4">
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">Mercato da estrarre</label>
+                    <select id="betMercatoSelect" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500"></select>
+                </div>
+
+                <div class="mb-5 bg-slate-950/80 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
+                    <div class="flex justify-between items-center mb-2.5">
+                        <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Campionati da includere</label>
+                        <button type="button" onclick="toggleTuttiCampionatiBet()" class="text-[10px] text-blue-400 hover:text-blue-300 font-semibold underline">
+                            Seleziona / Deseleziona Tutti
+                        </button>
+                    </div>
+                    <div id="betCampionatiCheckboxes" class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs"></div>
+                </div>
+
+                <button id="btnGeneraBet" type="button" onclick="generaListaBet()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer">
+                    Genera Lista
+                </button>
+
+                <div id="statoBet" class="hidden mt-4 p-3 rounded-xl text-xs text-center border"></div>
+            </div>
+
+            <div class="bg-slate-900/60 border border-violet-800/60 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-violet-400 uppercase mb-2">
+                    📝 CALCOLO MANUALE — PARTITA SINGOLA FUORI CAMPIONATI
+                </h2>
+                <p class="text-xs text-slate-400 mb-3">
+                    Calcola un pronostico isolato per una partita che non appartiene ai 12 campionati coperti dall'app, usando lo stesso algoritmo Dixon-Coles e gli stessi parametri (ρ, k, w) confermati in ML Engine — incluso il peso dato alla forma recente delle due squadre. <strong class="text-violet-300">Il risultato non viene salvato da nessuna parte</strong>: non entra nel Palinsesto, nell'Archivio Storico, nell'ML Engine, in Analisi o nei Value Bets — è un calcolo "usa e getta" da leggere qui.
+                </p>
+                <div id="manAlgoritmoInfo" class="text-[11px] text-violet-300 mb-4"></div>
+
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Nome Squadra Casa</label>
+                        <input type="text" id="manNomeCasa" placeholder="es. Squadra A" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">Nome Squadra Ospite</label>
+                        <input type="text" id="manNomeOspite" placeholder="es. Squadra B" class="w-full bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 mb-3">
+                    <div class="text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-2">1. Dati del Campionato (NON delle due squadre)</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Media gol segnati IN CASA a partita<br><span class="text-slate-500">(media di TUTTE le squadre di casa del campionato, stagione corrente)</span></label>
+                            <input type="number" step="0.01" id="manMediaGolCasa" placeholder="es. 1.45" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Media gol segnati IN TRASFERTA a partita<br><span class="text-slate-500">(media di TUTTE le squadre ospiti del campionato, stagione corrente)</span></label>
+                            <input type="number" step="0.01" id="manMediaGolTrasferta" placeholder="es. 1.15" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 mb-3">
+                    <div class="text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-2">2. Squadra CASA — solo le sue partite giocate IN CASA</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Gol fatti<br><span class="text-slate-500">in casa, stagione corrente</span></label>
+                            <input type="number" id="manGolFattiCasa" placeholder="es. 14" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Gol subiti<br><span class="text-slate-500">in casa, stagione corrente</span></label>
+                            <input type="number" id="manGolSubitiCasa" placeholder="es. 7" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Partite giocate<br><span class="text-slate-500">in casa, stagione corrente</span></label>
+                            <input type="number" id="manPartiteCasa" placeholder="es. 9" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 mb-4">
+                    <div class="text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-2">3. Squadra OSPITE — solo le sue partite giocate IN TRASFERTA</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Gol fatti<br><span class="text-slate-500">in trasferta, stagione corrente</span></label>
+                            <input type="number" id="manGolFattiTrasferta" placeholder="es. 10" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Gol subiti<br><span class="text-slate-500">in trasferta, stagione corrente</span></label>
+                            <input type="number" id="manGolSubitiTrasferta" placeholder="es. 12" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Partite giocate<br><span class="text-slate-500">in trasferta, stagione corrente</span></label>
+                            <input type="number" id="manPartiteTrasferta" placeholder="es. 9" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 mb-4">
+                    <div class="text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-2">4. Forma Recente — ultime 5 partite di ciascuna squadra (miste casa/trasferta)</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Squadra CASA — Media gol fatti<br><span class="text-slate-500">ultime 5 partite giocate (qualsiasi sede), stagione corrente</span></label>
+                            <input type="number" step="0.01" id="manFormaFattiCasa" placeholder="es. 1.60" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Squadra CASA — Media gol subiti<br><span class="text-slate-500">ultime 5 partite giocate (qualsiasi sede), stagione corrente</span></label>
+                            <input type="number" step="0.01" id="manFormaSubitiCasa" placeholder="es. 0.80" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Squadra OSPITE — Media gol fatti<br><span class="text-slate-500">ultime 5 partite giocate (qualsiasi sede), stagione corrente</span></label>
+                            <input type="number" step="0.01" id="manFormaFattiOspite" placeholder="es. 1.00" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Squadra OSPITE — Media gol subiti<br><span class="text-slate-500">ultime 5 partite giocate (qualsiasi sede), stagione corrente</span></label>
+                            <input type="number" step="0.01" id="manFormaSubitiOspite" placeholder="es. 1.40" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-2">Media = (somma gol nelle ultime 5 partite) ÷ 5. Se la squadra ne ha giocate meno di 5 in stagione, dividi per quelle realmente giocate.</p>
+                </div>
+
+                <details class="mb-4 bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5">
+                    <summary class="cursor-pointer text-slate-400 font-bold text-[10px] uppercase tracking-wider">❓ Dove trovo questi dati?</summary>
+                    <p class="mt-2 text-[11px] text-slate-400 leading-relaxed">Cerca un sito di statistiche calcistiche che mostri le tabelle "Casa / Trasferta" separate per il campionato che ti interessa (es. FBref, Soccerway, WhoScored, o il sito ufficiale del torneo). Ti servono le medie del campionato e le statistiche stagionali delle due squadre, filtrate solo per le partite giocate rispettivamente in casa (per la squadra di casa) e in trasferta (per la squadra ospite). Per la Forma Recente (blocco 4), ti serve invece lo storico delle ultime 5 partite di ciascuna squadra, a prescindere da dove le ha giocate — di solito disponibile nella pagina della squadra sullo stesso sito.</p>
+                </details>
+
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <button type="button" onclick="calcolaPronosticoManuale()" class="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-semibold py-3 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer">
+                        Calcola Pronostico
+                    </button>
+                    <button type="button" onclick="svuotaCalcoloManuale()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-3 px-4 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer whitespace-nowrap">
+                        Svuota Campi
+                    </button>
+                </div>
+
+                <div id="risultatoManuale"></div>
+            </div>
+
+            <div id="listaBetGenerata" class="max-w-2xl mx-auto"></div>
+
+            <div class="max-w-2xl mx-auto">
+                <h3 class="text-xs font-bold tracking-widest text-indigo-400 uppercase mb-3 px-1">📋 Liste Salvate</h3>
+                <div id="listeSalvateContainer" class="space-y-3"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="fixed bottom-4 left-1/2 -translate-x-1/2 px-2 pb-2 max-w-2xl w-[calc(100%-1.5rem)] z-50">
+        <div class="bg-slate-900/90 border border-slate-800/90 backdrop-blur-2xl rounded-full p-1 shadow-2xl flex justify-between items-center text-center gap-0.5">
+            <button id="tab-palinsesto" onclick="mostraSchermata('palinsesto')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full bg-blue-600 text-white text-[9px] font-semibold whitespace-nowrap cursor-pointer">Palins.</button>
+            <button id="tab-validazione" onclick="mostraSchermata('validazione')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full text-slate-400 text-[9px] font-semibold whitespace-nowrap cursor-pointer">Valida</button>
+            <button id="tab-archivio" onclick="mostraSchermata('archivio')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full text-slate-400 text-[9px] font-semibold whitespace-nowrap cursor-pointer">Archivio</button>
+            <button id="tab-mlengine" onclick="mostraSchermata('mlengine')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full text-slate-400 text-[9px] font-semibold whitespace-nowrap cursor-pointer">ML Eng.</button>
+            <button id="tab-analisi" onclick="mostraSchermata('analisi')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full text-slate-400 text-[9px] font-semibold whitespace-nowrap cursor-pointer">Analisi</button>
+            <button id="tab-valuebets" onclick="mostraSchermata('valuebets')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full text-slate-400 text-[9px] font-semibold whitespace-nowrap cursor-pointer">EV</button>
+            <button id="tab-bet" onclick="mostraSchermata('bet')" class="footer-tab flex-1 min-w-0 py-2 px-0.5 rounded-full text-slate-400 text-[9px] font-semibold whitespace-nowrap cursor-pointer">Bet</button>
+        </div>
+    </footer>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDvZ6My0UlFyzAIMvKvWdNneQPajryjvsw",
+            authDomain: "betting-pro-db.firebaseapp.com",
+            projectId: "betting-pro-db",
+            storageBucket: "betting-pro-db.firebasestorage.app",
+            messagingSenderId: "157886609369",
+            appId: "1:157886609369:web:565f3a44ec8d1dba3c8bc8"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const WORKER_URL = "https://betting-pro-api.mvmymail.workers.dev/";
+        let cachePartiteFirestore = [];
+        let archivioCorrenteVisualizzato = [];
+        let conteggiMercatiGlobale = {};
+
+        function limita(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+        function formattaDataIso(d) {
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function ricalcolaDataFine() {
+            const valFrom = document.getElementById("dateFrom").value;
+            const daysOffset = parseInt(document.getElementById("daysOffset").value) || 14;
+            if (valFrom) {
+                const parts = valFrom.split("-");
+                const dInizio = new Date(parts[0], parts[1] - 1, parts[2]);
+                dInizio.setDate(dInizio.getDate() + daysOffset);
+                document.getElementById("dateTo").value = formattaDataIso(dInizio);
+            }
+        }
+
+        function mostraSchermata(nome) {
+            const sezioni = { palinsesto: 'sec-palinsesto', validazione: 'sec-validazione', archivio: 'sec-archivio', mlengine: 'sec-mlengine', analisi: 'sec-analisi', valuebets: 'sec-valuebets', bet: 'sec-bet' };
+            Object.values(sezioni).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+            const target = document.getElementById(sezioni[nome]);
+            if (target) target.classList.remove('hidden');
+
+            document.querySelectorAll('.footer-tab').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('text-slate-400');
+            });
+            const activeBtn = document.getElementById('tab-' + nome);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-400');
+                activeBtn.classList.add('bg-blue-600', 'text-white');
+            }
+
+            if (nome === 'validazione') mostraPartiteDaValidare();
+            if (nome === 'archivio') caricaArchivio();
+            if (nome === 'mlengine') mostraMLEngine();
+            if (nome === 'analisi') mostraAnalisi();
+            if (nome === 'valuebets') mostraValueBets();
+            if (nome === 'bet') mostraBet();
+        }
+
+        window.onload = function() {
+            const oggi = new Date();
+            document.getElementById("dateFrom").value = formattaDataIso(oggi);
+            ricalcolaDataFine();
+
+            caricaConfigAlgoritmo();
+            caricaConteggiMercatiGlobale();
+
+            db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.partite && Array.isArray(data.partite)) {
+                        cachePartiteFirestore = data.partite;
+                        aggiornaFiltriVisualizzazione();
+                        mostraPartiteDaValidare();
+                        mostraStato(`Sincronizzato Cloud: ${data.partite.length} partite in archivio - Ultimo aggiornamento: ${data.ultimoAggiornamento}`, "success");
+                    }
+                }
+            });
+        };
+
+        function toggleTuttiCampionati() {
+            const checkboxes = document.querySelectorAll('.comp-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+            aggiornaFiltriVisualizzazione();
+        }
+
+        function formattaData(isoString) {
+            if (!isoString) return "N.D.";
+            const d = new Date(isoString);
+            if (isNaN(d.getTime())) return "N.D.";
+            return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        }
+
+        function formattaDataBreve(isoString) {
+            if (!isoString) return "";
+            const d = new Date(isoString);
+            if (isNaN(d.getTime())) return "";
+            return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit" });
+        }
+
+        function calcolaIndiceForma(strForma) {
+            let esiti = [];
+            if (strForma && typeof strForma === "string" && strForma.trim() !== "") {
+                esiti = strForma.split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
+            }
+
+            if (esiti.length === 0) {
+                return {
+                    simboliHtml: `<span class="text-slate-500 font-medium text-[10px]">N/D</span>`,
+                    punteggio: "N/D"
+                };
+            }
+
+            let p = 0;
+            let simboliHtml = `<div class="flex items-center gap-1 justify-center sm:justify-start">`;
+            esiti.forEach(e => {
+                if (e === "W") {
+                    p += 1.0;
+                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-emerald-500 inline-block shadow-sm" title="Vittoria (+1.0)"></span>`;
+                } else if (e === "D") {
+                    p += 0.5;
+                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-amber-400 inline-block shadow-sm" title="Pareggio (+0.5)"></span>`;
+                } else if (e === "L") {
+                    p += 0.0;
+                    simboliHtml += `<span class="w-3.5 h-3.5 rounded-sm bg-rose-500 inline-block shadow-sm" title="Sconfitta (+0.0)"></span>`;
+                }
+            });
+            simboliHtml += `</div>`;
+
+            return { simboliHtml, punteggio: p.toFixed(1) + " / " + esiti.length + ".0" };
+        }
+
+        function formattaUltimePartite(lista) {
+            if (!lista || lista.length === 0) {
+                return `<span class="text-slate-500 text-[10px]">Nessuna partita conclusa disponibile</span>`;
+            }
+            return lista.map(p => {
+                let colore = "text-slate-300";
+                if (p.esito === "W") colore = "text-emerald-400";
+                else if (p.esito === "L") colore = "text-rose-400";
+                else if (p.esito === "D") colore = "text-amber-400";
+                const simbolo = p.casa ? "casa" : "trasf.";
+                return `<div class="flex justify-between gap-1 ${colore}">
+                            <span class="truncate">${formattaDataBreve(p.data)} vs ${p.avversario} (${simbolo})</span>
+                            <span class="font-bold shrink-0">${p.risultato}</span>
+                        </div>`;
+            }).join("");
+        }
+
+        function fv(v, suffisso) {
+            if (v === null || v === undefined) return "N/D";
+            return `${v}${suffisso || ''}`;
+        }
+
+        function formattaMultigol(mg) {
+            if (!mg) return "N/D";
+            return `0-1: ${fv(mg["0-1"],'%')} · 2-3: ${fv(mg["2-3"],'%')} · 4+: ${fv(mg["4+"],'%')}`;
+        }
+
+        function formattaSplitTempiFatti(st) {
+            if (!st) return "N/D";
+            return `${fv(st.percentualeGolFatti1T,'%')} / ${fv(st.percentualeGolFatti2T,'%')}`;
+        }
+
+        function formattaSplitTempiSubiti(st) {
+            if (!st) return "N/D";
+            return `${fv(st.percentualeGolSubiti1T,'%')} / ${fv(st.percentualeGolSubiti2T,'%')}`;
+        }
+
+        function formattaMotivazionale(m) {
+            if (!m) return "N/D";
+            return `IDO ${fv(m.indiceDistanzaObiettivo,' pt')} · CU ${fv(m.coefficienteUrgenza)}`;
+        }
+
+        function formattaStatisticheAvanzate(p) {
+            const sc = p.statCampionato || {};
+            const sac = p.statAvanzateCasa || {};
+            const sao = p.statAvanzateOspite || {};
+            const mot = p.motivazionale || {};
+
+            return `
+                <details class="mt-2 bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 text-[11px]">
+                    <summary class="cursor-pointer text-indigo-300 font-bold text-[10px] uppercase tracking-wider">📊 Statistiche Avanzate (ML)</summary>
+                    <div class="mt-2 space-y-1.5 text-slate-300">
+                        <div class="text-slate-400 pb-1 border-b border-slate-800/60">
+                            Contesto campionato: media gol ${fv(sc.mediaGolTotale)} (casa ${fv(sc.mediaGolCasa)} | trasf. ${fv(sc.mediaGolTrasferta)}) ·
+                            Over2.5 ${fv(sc.percentualeOver25,'%')} ·
+                            1X2 campionato ${fv(sc.percentualeVittorieCasa,'%')}/${fv(sc.percentualePareggi,'%')}/${fv(sc.percentualeVittorieTrasferta,'%')}
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-y-1 pt-1">
+                            <div class="text-slate-500">Forza Attacco/Difesa</div>
+                            <div class="text-center">${fv(sac.forzaAttacco)} / ${fv(sac.forzaDifesa)}</div>
+                            <div class="text-right">${fv(sao.forzaAttacco)} / ${fv(sao.forzaDifesa)}</div>
+
+                            <div class="text-slate-500">Media Gol Ultime 5 (F/S)</div>
+                            <div class="text-center">${fv(sac.mediaGolFattiUltime5)} / ${fv(sac.mediaGolSubitiUltime5)}</div>
+                            <div class="text-right">${fv(sao.mediaGolFattiUltime5)} / ${fv(sao.mediaGolSubitiUltime5)}</div>
+
+                            <div class="text-slate-500">Striscia / Trend Punti</div>
+                            <div class="text-center">${fv(sac.strisciaAttuale)} (${fv(sac.trendPunti)})</div>
+                            <div class="text-right">${fv(sao.strisciaAttuale)} (${fv(sao.trendPunti)})</div>
+
+                            <div class="text-slate-500">Over 1.5/2.5/3.5 (U10)</div>
+                            <div class="text-center">${fv(sac.over15Ultime10,'%')}/${fv(sac.over25Ultime10,'%')}/${fv(sac.over35Ultime10,'%')}</div>
+                            <div class="text-right">${fv(sao.over15Ultime10,'%')}/${fv(sao.over25Ultime10,'%')}/${fv(sao.over35Ultime10,'%')}</div>
+
+                            <div class="text-slate-500">%Segna / %Clean Sheet (U10)</div>
+                            <div class="text-center">${fv(sac.percentualeSegnaUltime10,'%')} / ${fv(sac.percentualeCleanSheetUltime10,'%')}</div>
+                            <div class="text-right">${fv(sao.percentualeSegnaUltime10,'%')} / ${fv(sao.percentualeCleanSheetUltime10,'%')}</div>
+
+                            <div class="text-slate-500">Multigol (U10, storico)</div>
+                            <div class="text-center">${formattaMultigol(sac.multigolUltime10)}</div>
+                            <div class="text-right">${formattaMultigol(sao.multigolUltime10)}</div>
+
+                            <div class="text-slate-500">Split Gol 1T/2T (Fatti)</div>
+                            <div class="text-center">${formattaSplitTempiFatti(sac.splitTempi)}</div>
+                            <div class="text-right">${formattaSplitTempiFatti(sao.splitTempi)}</div>
+
+                            <div class="text-slate-500">Split Gol 1T/2T (Subiti)</div>
+                            <div class="text-center">${formattaSplitTempiSubiti(sac.splitTempi)}</div>
+                            <div class="text-right">${formattaSplitTempiSubiti(sao.splitTempi)}</div>
+
+                            <div class="text-slate-500">Motivazionale (IDO/CU)</div>
+                            <div class="text-center">${formattaMotivazionale(mot.casa)}</div>
+                            <div class="text-right">${formattaMotivazionale(mot.ospite)}</div>
+                        </div>
+                    </div>
+                </details>
+            `;
+        }
+
+        function formattaQuoteBookmaker(p) {
+            const q = p.quote;
+            if (!q) {
+                return `<details class="mt-2 bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 text-[11px]">
+                            <summary class="cursor-pointer text-amber-300 font-bold text-[10px] uppercase tracking-wider">💰 Quote Bookmaker</summary>
+                            <div class="mt-2 text-slate-500">Quote non disponibili</div>
+                        </details>`;
+            }
+
+            let ouHtml = "";
+            ["1.5", "2.5", "3.5"].forEach(linea => {
+                const ou = q.overUnder ? q.overUnder[linea] : null;
+                if (ou) {
+                    ouHtml += `<div class="flex justify-between"><span class="text-slate-500">O/U ${linea}</span><span>${fv(ou.over)} / ${fv(ou.under)}</span></div>`;
+                }
+            });
+
+            const aggiornateData = q.aggiornateIl
+                ? new Date(q.aggiornateIl).toLocaleString("it-IT", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                : "";
+
+            const m1x2 = q.mercato1x2 || {};
+            const btts = q.btts || {};
+
+            return `
+                <details class="mt-2 bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 text-[11px]">
+                    <summary class="cursor-pointer text-amber-300 font-bold text-[10px] uppercase tracking-wider">💰 Quote Bookmaker (${q.bookmaker || 'N/D'})</summary>
+                    <div class="mt-2 space-y-1 text-slate-300">
+                        <div class="flex justify-between"><span class="text-slate-500">1X2</span><span>${fv(m1x2.casa)} / ${fv(m1x2.pareggio)} / ${fv(m1x2.ospite)}</span></div>
+                        ${ouHtml}
+                        <div class="flex justify-between"><span class="text-slate-500">Goal/No Goal</span><span>${fv(btts.si)} / ${fv(btts.no)}</span></div>
+                        <div class="text-slate-600 text-[9px] pt-1">Aggiornate il ${aggiornateData}</div>
+                    </div>
+                </details>
+            `;
+        }
+
+        function formattaPercentuali(obj) {
+            if (!obj) return "";
+            return Object.keys(obj).map(k => `${k} ${obj[k]}%`).join(" · ");
+        }
+
+        function formattaPronostici(p) {
+            const pr = p.pronostici;
+            if (!pr) {
+                return `<details class="mt-2 bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 text-[11px]">
+                            <summary class="cursor-pointer text-emerald-300 font-bold text-[10px] uppercase tracking-wider">🎯 Pronostici</summary>
+                            <div class="mt-2 text-slate-500">Pronostici non disponibili (dati storici insufficienti per una o entrambe le squadre)</div>
+                        </details>`;
+            }
+
+            return `
+                <details class="mt-2 bg-slate-950/50 border border-emerald-900/50 rounded-xl p-2.5 text-[11px]">
+                    <summary class="cursor-pointer text-emerald-300 font-bold text-[10px] uppercase tracking-wider">🎯 Pronostici (Gol attesi: ${fv(pr.lambdaCasa)} - ${fv(pr.lambdaOspite)})</summary>
+                    <div class="mt-2 space-y-1 text-slate-300">
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">1X2</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.mercato1X2.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.mercato1X2.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">Risultato Esatto</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.risultatoEsatto.pronostico}</span>
+                            <span class="text-right">${fv(pr.risultatoEsatto.probabilita,'%')}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">Doppia Chance</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.doppiaChance.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.doppiaChance.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">O/U 0.5</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.over05.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.over05.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">O/U 1.5</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.over15.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.over15.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">O/U 2.5</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.over25.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.over25.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">O/U 3.5</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.over35.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.over35.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">O/U 4.5</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.over45.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.over45.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">Goal/No Goal</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.goalNoGoal.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.goalNoGoal.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">Combo DC+O/U2.5</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.comboDcOver25.pronostico}</span>
+                            <span class="text-right">${fv(pr.comboDcOver25.probabilita,'%')}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">Multigol Casa</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.multigolCasa.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.multigolCasa.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">Multigol Trasferta</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.multigolTrasferta.pronostico}</span>
+                            <span class="text-right text-[10px]">${formattaPercentuali(pr.multigolTrasferta.probabilita)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 items-center">
+                            <span class="text-slate-500">MG Casa+Trasferta</span>
+                            <span class="font-bold text-emerald-400 text-center">${pr.multigolCombo.pronostico}</span>
+                            <span class="text-right">${fv(pr.multigolCombo.probabilita,'%')}</span>
+                        </div>
+                        <div class="text-slate-600 text-[9px] pt-1 border-t border-slate-800/60 mt-1">Modello: ${pr.versioneModello} · ρ=${fv(pr.rhoUsato)} · k=${fv(pr.kScalaUsato)} · w=${fv(pr.wFormaUsato)}</div>
+                    </div>
+                </details>
+            `;
+        }
+
+        function formattaStatoApi(statoApi) {
+            if (!statoApi) return `<span class="bg-slate-800 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">TIMED</span>`;
+            
+            const st = statoApi.toUpperCase();
+            if (st === "IN_PLAY" || st === "PAUSED" || st === "LIVE") {
+                return `<span class="bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-700 animate-pulse">${st}</span>`;
+            } else if (st === "FINISHED" || st === "AWARDED") {
+                return `<span class="bg-slate-800 text-slate-400 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-slate-700">${st}</span>`;
+            } else if (st === "POSTPONED" || st === "SUSPENDED" || st === "CANCELLED") {
+                return `<span class="bg-rose-950 text-rose-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-rose-800">${st}</span>`;
+            } else {
+                return `<span class="bg-blue-950 text-blue-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-blue-800">${st}</span>`;
+            }
+        }
+
+        function mostraStato(testo, tipo = 'info') {
+            const stato = document.getElementById("stato");
+            stato.classList.remove('hidden', 'bg-rose-950/80', 'border-rose-800', 'text-rose-300', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+            
+            if (tipo === 'error') stato.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
+            else if (tipo === 'success') stato.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+            else stato.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+
+            stato.innerText = testo;
+        }
+
+        function mostraStatoValidazione(testo, tipo = 'info') {
+            const stato = document.getElementById("statoValidazione");
+            if (!stato) return;
+            stato.classList.remove('hidden', 'bg-rose-950/80', 'border-rose-800', 'text-rose-300', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+            
+            if (tipo === 'error') stato.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
+            else if (tipo === 'success') stato.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+            else stato.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+
+            stato.innerText = testo;
+        }
+
+        function aggiornaFiltriVisualizzazione() {
+            if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) return;
+            mostraPartite(cachePartiteFirestore);
+        }
+
+        function partitaDaControllare(p) {
+            const statiInCorsoOAttesa = ["TIMED", "SCHEDULED", "IN_PLAY", "PAUSED"];
+            if (!statiInCorsoOAttesa.includes(p.stato)) return false;
+            if (p.stato === "IN_PLAY" || p.stato === "PAUSED") return true;
+            const d = new Date(p.dataOraUTC || p.utcDate);
+            return d < new Date();
+        }
+
+        function mostraPartiteDaValidare() {
+            const container = document.getElementById("listaValidazione");
+            if (!container) return;
+
+            const daValidare = (cachePartiteFirestore || []).filter(partitaDaControllare);
+
+            if (daValidare.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita in attesa di validazione al momento.</div>`;
+                return;
+            }
+
+            container.innerHTML = daValidare.map(p => `
+                <div class="bg-slate-900/70 border border-slate-800/90 rounded-2xl p-4 flex justify-between items-center gap-3">
+                    <div class="min-w-0">
+                        <div class="text-[10px] text-slate-400 uppercase font-semibold mb-1">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</div>
+                        <div class="text-sm font-bold text-slate-100 truncate">${p.squadraCasa} vs ${p.squadraOspite}</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">${formattaData(p.dataOraUTC || p.utcDate)}</div>
+                    </div>
+                    ${formattaStatoApi(p.stato)}
+                </div>
+            `).join("");
+        }
+
+        async function validaPartite() {
+            const daValidare = (cachePartiteFirestore || []).filter(partitaDaControllare);
+
+            if (daValidare.length === 0) {
+                alert("Nessuna partita da validare al momento.");
+                return;
+            }
+
+            const btn = document.getElementById("btnValida");
+            btn.disabled = true;
+            btn.textContent = "Validazione in corso...";
+            mostraStatoValidazione(`Verifica in corso per ${daValidare.length} partite... può richiedere alcuni minuti`, "info");
+
+            try {
+                const ids = daValidare.map(p => p.matchId).join(",");
+                const url = `${WORKER_URL}?azione=valida&matchIds=${encodeURIComponent(ids)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data.errore) {
+                    mostraStatoValidazione("Errore validazione: " + data.messaggio, "error");
+                    return;
+                }
+
+                const mappaRisultati = {};
+                (data.risultati || []).forEach(r => { mappaRisultati[r.matchId] = r; });
+
+                const STATI_ANCORA_IN_CORSO = ["TIMED", "SCHEDULED", "IN_PLAY", "PAUSED"];
+
+                let spostate = 0, aggiornateStato = 0, ancoraInAttesa = 0;
+                const nuovoPalinsesto = [];
+
+                for (const p of cachePartiteFirestore) {
+                    const eraDaValidare = partitaDaControllare(p);
+                    const r = eraDaValidare ? mappaRisultati[p.matchId] : null;
+
+                    if (!eraDaValidare || !r || r.errore || !r.stato) {
+                        nuovoPalinsesto.push(p);
+                        if (eraDaValidare) ancoraInAttesa++;
+                        continue;
+                    }
+
+                    if (r.stato === "FINISHED") {
+                        await db.collection("archivio_storico").doc(String(p.matchId)).set({
+                            ...p,
+                            stato: "FINISHED",
+                            risultatoReale: r.risultatoReale || p.risultatoReale || "",
+                            validatoIl: new Date().toLocaleString("it-IT")
+                        });
+                        spostate++;
+                    } else if (STATI_ANCORA_IN_CORSO.includes(r.stato)) {
+                        nuovoPalinsesto.push({ ...p, stato: r.stato });
+                        ancoraInAttesa++;
+                    } else {
+                        nuovoPalinsesto.push({ ...p, stato: r.stato });
+                        aggiornateStato++;
+                    }
+                }
+
+                await db.collection("palinsesto").doc("corrente").update({
+                    partite: nuovoPalinsesto,
+                    validazioneUltimoAggiornamento: new Date().toLocaleString("it-IT")
+                });
+
+                cachePartiteFirestore = nuovoPalinsesto;
+                aggiornaFiltriVisualizzazione();
+                mostraPartiteDaValidare();
+                await caricaConteggiMercatiGlobale();
+
+                mostraStatoValidazione(`Completato: ${spostate} partite archiviate, ${aggiornateStato} con stato realmente anomalo (rinviate/sospese/cancellate), ${ancoraInAttesa} ancora in corso o in attesa di conclusione.`, "success");
+
+            } catch (err) {
+                console.error(err);
+                mostraStatoValidazione("Errore durante la validazione: " + err.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Valida e Risolvi Palinsesto";
+            }
+        }
+
+        async function caricaArchivio() {
+            const container = document.getElementById("listaArchivio");
+            const statoEl = document.getElementById("statoArchivio");
+            container.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8">Caricamento archivio in corso...</div>`;
+
+            try {
+                const snapshot = await db.collection("archivio_storico").get();
+                const partite = [];
+                snapshot.forEach(doc => partite.push(doc.data()));
+
+                partite.sort((a, b) => {
+                    const da = new Date(a.dataOraUTC || a.utcDate || 0);
+                    const db_ = new Date(b.dataOraUTC || b.utcDate || 0);
+                    return db_ - da;
+                });
+
+                archivioCorrenteVisualizzato = partite;
+                conteggiMercatiGlobale = calcolaConteggiTotaliPerMercato(partite);
+                statoEl.textContent = `${partite.length} partite in archivio`;
+
+                if (partite.length === 0) {
+                    container.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Archivio vuoto: nessuna partita ancora validata.</div>`;
+                    return;
+                }
+
+                container.innerHTML = "";
+                partite.forEach(p => {
+                    const card = document.createElement("div");
+                    card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between w-full min-w-0";
+                    card.innerHTML = creaSchedaPartitaHtml(p, true);
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = `<div class="col-span-full text-center text-rose-400 text-sm py-8">Errore nel caricamento dell'archivio: ${err.message}</div>`;
+            }
+        }
+
+        async function eliminaSelezionateArchivio() {
+            const checkboxes = document.querySelectorAll('.archivio-checkbox:checked');
+            if (checkboxes.length === 0) {
+                alert("Nessuna partita selezionata.");
+                return;
+            }
+            if (!confirm(`Confermi l'eliminazione permanente di ${checkboxes.length} partite dall'Archivio? Non influenzeranno più il backtesting, e l'operazione non è reversibile.`)) return;
+
+            const ids = Array.from(checkboxes).map(cb => cb.dataset.matchid);
+
+            try {
+                for (const id of ids) {
+                    await db.collection("archivio_storico").doc(String(id)).delete();
+                }
+                alert(`${ids.length} partite eliminate dall'Archivio.`);
+                caricaArchivio();
+            } catch (err) {
+                console.error(err);
+                alert("Errore durante l'eliminazione: " + err.message);
+            }
+        }
+
+        function appiattisciOggetto(obj, prefisso, risultato) {
+            if (obj === null || obj === undefined) return;
+            Object.keys(obj).forEach(key => {
+                const valore = obj[key];
+                const chiavePiatta = prefisso ? `${prefisso}_${key}` : key;
+                if (valore === null || valore === undefined) {
+                    risultato[chiavePiatta] = "";
+                } else if (Array.isArray(valore)) {
+                    if (valore.length === 0) {
+                        risultato[chiavePiatta] = "";
+                    } else if (typeof valore[0] === "object") {
+                        risultato[chiavePiatta] = JSON.stringify(valore);
+                    } else {
+                        risultato[chiavePiatta] = valore.join("; ");
+                    }
+                } else if (typeof valore === "object") {
+                    appiattisciOggetto(valore, chiavePiatta, risultato);
+                } else {
+                    risultato[chiavePiatta] = valore;
+                }
+            });
+        }
+
+        function esportaArchivioXLSX() {
+            if (!archivioCorrenteVisualizzato || archivioCorrenteVisualizzato.length === 0) {
+                alert("Nessuna partita in Archivio da esportare.");
+                return;
+            }
+
+            const righe = archivioCorrenteVisualizzato.map(p => {
+                const riga = {};
+                appiattisciOggetto(p, "", riga);
+                return riga;
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(righe);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Archivio Storico");
+            XLSX.writeFile(workbook, `archivio_storico_${formattaDataIso(new Date())}.xlsx`);
+        }
+
+        function esportaArchivioJSON() {
+            if (!archivioCorrenteVisualizzato || archivioCorrenteVisualizzato.length === 0) {
+                alert("Nessuna partita in Archivio da esportare.");
+                return;
+            }
+
+            const jsonContent = JSON.stringify(archivioCorrenteVisualizzato, null, 2);
+            const blob = new Blob([jsonContent], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `archivio_storico_${formattaDataIso(new Date())}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function esportaArchivioPDF() {
+            if (!archivioCorrenteVisualizzato || archivioCorrenteVisualizzato.length === 0) {
+                alert("Nessuna partita in Archivio da esportare.");
+                return;
+            }
+
+            const colonne = ["Campionato","Giornata","Data","Casa","Ospite","Risultato","1X2 Pron.","Ris.Esatto Pron.","O/U2.5 Pron.","Goal/NoGoal Pron."];
+
+            const righeHtml = archivioCorrenteVisualizzato.map(p => {
+                const pr = p.pronostici || {};
+                return `<tr>
+                    <td>${p.campionato || ""}</td>
+                    <td>${p.giornata || ""}</td>
+                    <td>${formattaData(p.dataOraUTC || p.utcDate)}</td>
+                    <td>${p.squadraCasa || ""}</td>
+                    <td>${p.squadraOspite || ""}</td>
+                    <td>${p.risultatoReale || ""}</td>
+                    <td>${pr.mercato1X2 ? pr.mercato1X2.pronostico : "N/D"}</td>
+                    <td>${pr.risultatoEsatto ? pr.risultatoEsatto.pronostico : "N/D"}</td>
+                    <td>${pr.over25 ? pr.over25.pronostico : "N/D"}</td>
+                    <td>${pr.goalNoGoal ? pr.goalNoGoal.pronostico : "N/D"}</td>
+                </tr>`;
+            }).join("");
+
+            const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>Archivio Storico</title>
+            <style>
+                body { font-family: Arial, sans-serif; font-size: 11px; color: #111; padding: 20px; }
+                h1 { font-size: 16px; margin-bottom: 4px; }
+                p.sub { color: #555; margin-top: 0; margin-bottom: 16px; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
+                th { background: #f0f0f0; }
+                tr:nth-child(even) { background: #fafafa; }
+            </style>
+            </head><body>
+                <h1>SoccerStats ML — Archivio Storico</h1>
+                <p class="sub">Esportato il ${new Date().toLocaleString("it-IT")} — ${archivioCorrenteVisualizzato.length} partite. Panoramica sintetica per lettura/stampa rapida — per il set completo dei dati usa l'esportazione Excel (.xlsx) o JSON.</p>
+                <table>
+                    <thead><tr>${colonne.map(c => `<th>${c}</th>`).join("")}</tr></thead>
+                    <tbody>${righeHtml}</tbody>
+                </table>
+            </body></html>`;
+
+            const finestra = window.open("", "_blank");
+            if (!finestra) {
+                alert("Il browser ha bloccato l'apertura della finestra di stampa. Consenti i popup per questo sito e riprova.");
+                return;
+            }
+            finestra.document.write(html);
+            finestra.document.close();
+            finestra.onload = () => { finestra.print(); };
+        }
+
+        function creaSchedaPartitaHtml(p, mostraCheckbox) {
+            const giocateCasa = p.giocateCasa ?? 0;
+            const vinteCasa = p.vinteCasa ?? 0;
+            const pareggiateCasa = p.pareggiateCasa ?? 0;
+            const persoCasaVal = (p.persoCasa !== undefined && p.persoCasa !== null && p.persoCasa > 0) 
+              ? p.persoCasa 
+              : Math.max(0, giocateCasa - vinteCasa - pareggiateCasa);
+
+            const giocateOspite = p.giocateOspite ?? 0;
+            const vinteOspite = p.vinteOspite ?? 0;
+            const pareggiateOspite = p.pareggiateOspite ?? 0;
+            const persoOspiteVal = (p.persoOspite !== undefined && p.persoOspite !== null && p.persoOspite > 0) 
+              ? p.persoOspite 
+              : Math.max(0, giocateOspite - vinteOspite - pareggiateOspite);
+
+            const mediaPuntiCasa = giocateCasa > 0 ? ((p.puntiCasa || 0) / giocateCasa).toFixed(2) : "0.00";
+            const mediaPuntiOspite = giocateOspite > 0 ? ((p.puntiOspite || 0) / giocateOspite).toFixed(2) : "0.00";
+
+            const mediaGolFattiCasa = giocateCasa > 0 ? ((p.golFattiCasa || 0) / giocateCasa).toFixed(2) : "0.00";
+            const mediaGolFattiOspite = giocateOspite > 0 ? ((p.golFattiOspite || 0) / giocateOspite).toFixed(2) : "0.00";
+
+            const mediaGolSubitiCasa = giocateCasa > 0 ? ((p.golSubitiCasa || 0) / giocateCasa).toFixed(2) : "0.00";
+            const mediaGolSubitiOspite = giocateOspite > 0 ? ((p.golSubitiOspite || 0) / giocateOspite).toFixed(2) : "0.00";
+
+            const indiceGolAttesi = (parseFloat(mediaGolFattiCasa) + parseFloat(mediaGolFattiOspite)).toFixed(2);
+
+            const formaCasaObj = calcolaIndiceForma(p.formaCasa);
+            const formaOspiteObj = calcolaIndiceForma(p.formaOspite);
+            
+            const dataDisplay = p.dataOraUTC || p.utcDate || p.dataOra;
+            const matchIdDisplay = p.matchId || p.id;
+            const risultatoRealeAutomatico = p.risultatoReale || "";
+
+            const diffCasa = (p.diffRetiCasa > 0 ? `+${p.diffRetiCasa}` : p.diffRetiCasa ?? 0);
+            const diffOspite = (p.diffRetiOspite > 0 ? `+${p.diffRetiOspite}` : p.diffRetiOspite ?? 0);
+
+            const puntiCasaInCasaDisplay = (p.giocateCasaInCasa ?? 0) > 0 ? p.puntiCasaInCasa : "N/D";
+            const puntiOspiteInTrasfertaDisplay = (p.giocateOspiteInTrasferta ?? 0) > 0 ? p.puntiOspiteInTrasferta : "N/D";
+
+            const checkboxHtml = mostraCheckbox
+                ? `<input type="checkbox" class="archivio-checkbox w-4 h-4 rounded border-slate-600 text-rose-600 focus:ring-0 bg-slate-950 mr-2 align-middle" data-matchid="${matchIdDisplay}" title="Seleziona per eliminare">`
+                : "";
+
+            return `
+                <div class="min-w-0">
+                    <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
+                        <span class="flex items-center">
+                            ${checkboxHtml}
+                            <span class="font-bold text-slate-200 uppercase tracking-wider truncate max-w-[45%] sm:max-w-[55%] bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono text-slate-300 text-[10px] sm:text-[11px] shrink-0"> ${formattaData(dataDisplay)}</span>
+                            ${formattaStatoApi(p.stato)}
+                        </div>
+                    </div>
+
+                    <div class="my-3 text-base sm:text-lg font-bold text-slate-100 flex items-center justify-between gap-2">
+                        <span class="truncate text-left flex-1">${p.squadraCasa}</span>
+                        
+                        <div class="flex flex-col items-center justify-center shrink-0 px-3 py-1 bg-slate-950 border border-emerald-500/50 rounded-xl min-w-[75px]">
+                            ${risultatoRealeAutomatico ? 
+                                `<span class="text-emerald-400 font-extrabold text-lg tracking-widest">${risultatoRealeAutomatico}</span>` : 
+                                `<span class="text-xs text-slate-500 font-normal">vs</span>`
+                            }
+                        </div>
+
+                        <span class="truncate text-right flex-1">${p.squadraOspite}</span>
+                    </div>
+
+                    <div class="bg-slate-950/70 rounded-2xl p-3 border border-slate-800/80 text-xs space-y-2 my-3">
+                        <div class="grid grid-cols-3 text-[10px] font-bold text-slate-400 uppercase border-b border-slate-800/80 pb-1.5">
+                            <div>Dato</div>
+                            <div class="text-center truncate">${p.squadraCasa}</div>
+                            <div class="text-right truncate">${p.squadraOspite}</div>
+                        </div>
+
+                        <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center">
+                            <div class="text-slate-400 font-medium">Punti / Posizione</div>
+                            <div class="text-center font-bold text-slate-100">${p.puntiCasa ?? 0} <span class="text-slate-400 font-normal">(${p.posizioneCasa ?? '-'}°)</span></div>
+                            <div class="text-right font-bold text-slate-100">${p.puntiOspite ?? 0} <span class="text-slate-400 font-normal">(${p.posizioneOspite ?? '-'}°)</span></div>
+                        </div>
+
+                        <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                            <div class="text-slate-400 font-medium">Partite Giocate</div>
+                            <div class="text-center font-semibold">${p.giocateCasa ?? 0}</div>
+                            <div class="text-right font-semibold">${p.giocateOspite ?? 0}</div>
+                        </div>
+
+                        <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                            <div class="text-slate-400 font-medium">V / P / S Generali</div>
+                            <div class="text-center font-semibold">${p.vinteCasa ?? 0}/${p.pareggiateCasa ?? 0}/${persoCasaVal}</div>
+                            <div class="text-right font-semibold">${p.vinteOspite ?? 0}/${p.pareggiateOspite ?? 0}/${persoOspiteVal}</div>
+                        </div>
+
+                        <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                            <div class="text-slate-400 font-medium">Gol Fatti / Subiti</div>
+                            <div class="text-center font-semibold">${p.golFattiCasa ?? 0} / ${p.golSubitiCasa ?? 0}</div>
+                            <div class="text-right font-semibold">${p.golFattiOspite ?? 0} / ${p.golSubitiOspite ?? 0}</div>
+                        </div>
+
+                        <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40">
+                            <div class="text-slate-400 font-medium">Diff. Reti</div>
+                            <div class="text-center font-semibold text-slate-300">${diffCasa}</div>
+                            <div class="text-right font-semibold text-slate-300">${diffOspite}</div>
+                        </div>
+
+                        <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
+                            <div class="text-blue-300 font-semibold">Punti Specifici</div>
+                            <div class="text-center font-bold text-blue-400">${puntiCasaInCasaDisplay} <span class="text-[9px] text-slate-400 font-normal">(Casa)</span></div>
+                            <div class="text-right font-bold text-blue-400">${puntiOspiteInTrasfertaDisplay} <span class="text-[9px] text-slate-400 font-normal">(Trasf.)</span></div>
+                        </div>
+
+                        <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
+                            <div class="text-blue-300 font-semibold">V/P/S Specifici</div>
+                            <div class="text-center font-semibold">${p.vinteCasaInCasa ?? 0}/${p.pareggiateCasaInCasa ?? 0}/${p.persoCasaInCasa ?? 0}</div>
+                            <div class="text-right font-semibold">${p.vinteOspiteInTrasferta ?? 0}/${p.pareggiateOspiteInTrasferta ?? 0}/${p.persoOspiteInTrasferta ?? 0}</div>
+                        </div>
+
+                        <div class="grid grid-cols-3 text-slate-200 py-0.5 items-center border-t border-slate-800/40 bg-slate-900/30 -mx-1 px-1 rounded">
+                            <div class="text-blue-300 font-semibold">Gol Spec. Fatti/Sub.</div>
+                            <div class="text-center font-semibold">${p.golFattiCasaInCasa ?? 0} / ${p.golSubitiCasaInCasa ?? 0}</div>
+                            <div class="text-right font-semibold">${p.golFattiOspiteInTrasferta ?? 0} / ${p.golSubitiOspiteInTrasferta ?? 0}</div>
+                        </div>
+
+                        <div class="grid grid-cols-3 text-slate-200 py-1.5 items-center border-t border-slate-800/80 bg-slate-900/50 -mx-3 px-3 rounded-b-xl">
+                            <div class="text-indigo-300 font-bold">Indice Forma &amp; Trend</div>
+                            <div class="text-center flex flex-col items-center justify-center gap-0.5">
+                                <span class="font-bold text-emerald-400">${formaCasaObj.punteggio}</span>
+                                ${formaCasaObj.simboliHtml}
+                            </div>
+                            <div class="text-right flex flex-col items-end justify-center gap-0.5">
+                                <span class="font-bold text-emerald-400">${formaOspiteObj.punteggio}</span>
+                                ${formaOspiteObj.simboliHtml}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 my-2 text-xs">
+                        <div class="text-[9px] text-slate-400 uppercase font-semibold mb-1.5">Ultime Partite Concluse (base Indice Forma)</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="space-y-1">${formattaUltimePartite(p.ultimeCasa)}</div>
+                            <div class="space-y-1">${formattaUltimePartite(p.ultimeOspite)}</div>
+                        </div>
+                    </div>
+
+                    ${formattaStatisticheAvanzate(p)}
+                    ${formattaQuoteBookmaker(p)}
+                    ${formattaPronostici(p)}
+                    ${formattaValueBetPartita(p)}
+
+                    <div class="grid grid-cols-4 gap-1.5 my-3 text-center">
+                        <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
+                            <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Punti</div>
+                            <div class="text-[11px] font-bold text-emerald-400 mt-0.5">${mediaPuntiCasa} | ${mediaPuntiOspite}</div>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
+                            <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Gol Fatti</div>
+                            <div class="text-[11px] font-bold text-blue-400 mt-0.5">${mediaGolFattiCasa} | ${mediaGolFattiOspite}</div>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
+                            <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Media Gol Subiti</div>
+                            <div class="text-[11px] font-bold text-rose-400 mt-0.5">${mediaGolSubitiCasa} | ${mediaGolSubitiOspite}</div>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
+                            <div class="text-[8px] text-slate-400 uppercase font-semibold truncate">Gol Attesi</div>
+                            <div class="text-[11px] font-bold text-indigo-300 mt-0.5">${indiceGolAttesi}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-2 sm:p-2.5 flex justify-between items-center mt-2">
+                    <span class="text-[10px] uppercase font-bold text-slate-400">ID MATCH: #${matchIdDisplay}</span>
+                    <span class="text-[10px] text-slate-500">${p.validatoIl ? `Validata il ${p.validatoIl}` : 'Validazione Automatica'}</span>
+                </div>
+            `;
+        }
+
+        function mostraPartite(partite) {
+            const risultati = document.getElementById("risultati");
+            risultati.innerHTML = "";
+
+            const valFrom = document.getElementById("dateFrom").value;
+            const valTo = document.getElementById("dateTo").value;
+
+            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
+            const selectedCodes = Array.from(selectedCheckboxes).map(cb => cb.value.trim().toUpperCase());
+
+            const compMapping = {
+                "SA": ["SERIE A", "SA"],
+                "BSA": ["BRASILEIRÃO", "BRASILEIRAO", "SERIE A BRAZIL", "BSA"],
+                "PL": ["PREMIER LEAGUE", "PL"],
+                "PD": ["LA LIGA", "PRIMERA DIVISION", "PD"],
+                "BL1": ["BUNDESLIGA", "BL1"],
+                "FL1": ["LIGUE 1", "FL1"],
+                "DED": ["EREDIVISIE", "DED"],
+                "PPL": ["LIGA PORTUGAL", "PPL", "PRIMEIRA LIGA"],
+                "ELC": ["CHAMPIONSHIP", "ELC"],
+                "CL": ["CHAMPIONS LEAGUE", "UEFA CHAMPIONS LEAGUE", "CL"],
+                "EC": ["EURO CHAMPIONSHIP", "EUROPEAN CHAMPIONSHIP", "EC"],
+                "WC": ["WORLD CUP", "WC"]
+            };
+
+            let allowedKeywords = [];
+            selectedCodes.forEach(code => {
+                if (compMapping[code]) {
+                    allowedKeywords.push(...compMapping[code]);
+                } else {
+                    allowedKeywords.push(code);
+                }
+            });
+
+            const partiteFiltrate = (partite || []).filter(p => {
+                const rawDate = p.dataOraUTC || p.utcDate || p.dataOra || "";
+                let dataPartitaIso = "";
+                if (rawDate) {
+                    dataPartitaIso = rawDate.split("T")[0];
+                }
+
+                let dentroIntervalloDate = true;
+                if (valFrom && dataPartitaIso) {
+                    dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso >= valFrom);
+                }
+                if (valTo && dataPartitaIso) {
+                    dentroIntervalloDate = dentroIntervalloDate && (dataPartitaIso <= valTo);
+                }
+
+                const nomeCamp = (p.campionato || "").toUpperCase();
+                const codeCamp = (p.campionatoCode || "").toUpperCase();
+
+                let campionatoMatch = false;
+                if (selectedCodes.length === 0) {
+                    campionatoMatch = false;
+                } else {
+                    campionatoMatch = allowedKeywords.some(kw => nomeCamp.includes(kw) || codeCamp.includes(kw) || kw.includes(nomeCamp));
+                }
+
+                return dentroIntervalloDate && campionatoMatch;
+            });
+
+            if (!partiteFiltrate || partiteFiltrate.length === 0) {
+                risultati.innerHTML = `<div class="col-span-full text-center text-slate-400 text-sm py-8 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna partita trovata per i filtri temporali e campionati selezionati.</div>`;
+                return;
+            }
+
+            partiteFiltrate.forEach(p => {
+                const card = document.createElement("div");
+                card.className = "bg-slate-900/70 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between hover:border-blue-500/50 transition w-full min-w-0";
+                card.innerHTML = creaSchedaPartitaHtml(p, false);
+                risultati.appendChild(card);
+            });
+        }
+
+        async function sincronizzaESalva(e) {
+            if (e) e.preventDefault();
+
+            const btn = document.getElementById("btnEstrai");
+            const dateFrom = document.getElementById("dateFrom").value;
+            const dateTo = document.getElementById("dateTo").value;
+
+            if (!dateFrom || !dateTo) {
+                alert("Seleziona entrambe le date!");
+                return;
+            }
+
+            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
+            const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim());
+
+            if (selectedComps.length === 0) {
+                alert("Seleziona almeno un campionato da estrarre!");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = "Estrazione in corso...";
+            mostraStato(`Estrazione in corso per ${selectedComps.length} campionati selezionati... può richiedere alcuni minuti`, "info");
+
+            try {
+                await caricaConfigAlgoritmo();
+
+                const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}&rho=${configAlgoritmoCorrente.rho}&kScala=${configAlgoritmoCorrente.kScala}&wForma=${configAlgoritmoCorrente.wForma}`;
+                const res = await fetch(fullUrl);
+                const data = await res.json();
+
+                if (data.errore) {
+                    mostraStato("Errore Worker: " + data.messaggio, "error");
+                } else if (data.partite && data.partite.length > 0) {
+                    const ora = new Date().toLocaleString("it-IT");
+
+                    console.log("Diagnostica estrazione:", data.diagnostica);
+                    
+                    await db.collection("palinsesto").doc("corrente").set({
+                        partite: data.partite,
+                        intervallo: `${dateFrom} / ${dateTo}`,
+                        campionatiSelezionati: selectedComps,
+                        ultimoAggiornamento: ora,
+                        totale: data.partite.length
+                    });
+
+                    cachePartiteFirestore = data.partite;
+                    aggiornaFiltriVisualizzazione();
+                    mostraPartiteDaValidare();
+
+                    mostraStato(`Completato! Trovate e sincronizzate ${data.partite.length} partite per i campionati selezionati.`, "success");
+                } else {
+                    mostraStato("Nessuna partita trovata per i campionati e le date selezionate.", "error");
+                }
+            } catch (err) {
+                console.error(err);
+                mostraStato("Errore di connessione: " + err.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Estrai Partite e Sincronizza Cloud";
+            }
+        }
+
+        function normalizzaNomeSquadra(nome) {
+            return (nome || "")
+                .toLowerCase()
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/\b(fc|cf|afc|ac|sc|ssc|us|ss|sv|vfb|vfl|tsg|fsv|bv|rb|as|cd|ud|rcd|calcio|club|real|deportivo|atletico|athletic|de|do|fk)\b/g, "")
+                .replace(/[0-9]/g, "")
+                .replace(/[^a-z\s]/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        function distanzaLevenshtein(a, b) {
+            const m = a.length, n = b.length;
+            const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+            for (let i = 0; i <= m; i++) dp[i][0] = i;
+            for (let j = 0; j <= n; j++) dp[0][j] = j;
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1];
+                    else dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+                }
+            }
+            return dp[m][n];
+        }
+
+        function similaritaNomi(a, b) {
+            const na = normalizzaNomeSquadra(a), nb = normalizzaNomeSquadra(b);
+            if (!na || !nb) return 0;
+            const dist = distanzaLevenshtein(na, nb);
+            const maxLen = Math.max(na.length, nb.length);
+            return maxLen === 0 ? 1 : (1 - dist / maxLen);
+        }
+
+        function scegliBookmaker(bookmakers) {
+            if (!bookmakers || bookmakers.length === 0) return null;
+            const pinnacle = bookmakers.find(b => b.key === 'pinnacle');
+            if (pinnacle) return pinnacle;
+            const bet365 = bookmakers.find(b => b.key === 'bet365');
+            if (bet365) return bet365;
+            return bookmakers[0];
+        }
+
+        function estraiQuote(evento, bk) {
+            const risultato = { bookmaker: bk.title, mercato1x2: null, overUnder: {}, btts: null };
+
+            const h2h = bk.markets.find(m => m.key === 'h2h');
+            if (h2h && h2h.outcomes) {
+                const casaOutcome = h2h.outcomes.find(o => o.name === evento.home_team);
+                const ospiteOutcome = h2h.outcomes.find(o => o.name === evento.away_team);
+                const pareggioOutcome = h2h.outcomes.find(o => o.name === 'Draw');
+                risultato.mercato1x2 = {
+                    casa: casaOutcome ? casaOutcome.price : null,
+                    pareggio: pareggioOutcome ? pareggioOutcome.price : null,
+                    ospite: ospiteOutcome ? ospiteOutcome.price : null
+                };
+            }
+
+            const totals = bk.markets.find(m => m.key === 'totals');
+            if (totals && totals.outcomes) {
+                [1.5, 2.5, 3.5].forEach(linea => {
+                    const over = totals.outcomes.find(o => o.name === 'Over' && Math.abs(o.point - linea) < 0.01);
+                    const under = totals.outcomes.find(o => o.name === 'Under' && Math.abs(o.point - linea) < 0.01);
+                    if (over || under) {
+                        risultato.overUnder[linea] = { over: over ? over.price : null, under: under ? under.price : null };
+                    }
+                });
+            }
+
+            const bttsMkt = bk.markets.find(m => m.key === 'btts');
+            if (bttsMkt && bttsMkt.outcomes) {
+                const si = bttsMkt.outcomes.find(o => o.name === 'Yes');
+                const no = bttsMkt.outcomes.find(o => o.name === 'No');
+                risultato.btts = { si: si ? si.price : null, no: no ? no.price : null };
+            }
+
+            return risultato;
+        }
+
+        async function aggiornaQuote() {
+            if (!cachePartiteFirestore || cachePartiteFirestore.length === 0) {
+                alert("Estrai prima le partite col pulsante 'Estrai Partite e Sincronizza Cloud'.");
+                return;
+            }
+
+            const selectedCheckboxes = document.querySelectorAll('.comp-checkbox:checked');
+            const selectedComps = Array.from(selectedCheckboxes).map(cb => cb.value.trim());
+            if (selectedComps.length === 0) {
+                alert("Seleziona almeno un campionato!");
+                return;
+            }
+
+            const btn = document.getElementById("btnQuote");
+            btn.disabled = true;
+            btn.textContent = "Aggiornamento quote...";
+            mostraStato("Recupero quote bookmaker in corso...", "info");
+
+            try {
+                const url = `${WORKER_URL}?azione=quote&competitions=${encodeURIComponent(selectedComps.join(","))}`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                console.log("Risposta quote (diagnostica):", data);
+
+                if (data.errore) {
+                    mostraStato("Errore quote: " + data.messaggio, "error");
+                    return;
+                }
+
+                let abbinate = 0, nonAbbinate = 0;
+
+                const nuovePartite = cachePartiteFirestore.map(p => {
+                    const bloccoCamp = (data.campionati || []).find(c => c.campionato === p.campionatoCode);
+                    if (!bloccoCamp || !bloccoCamp.eventi || bloccoCamp.eventi.length === 0) {
+                        nonAbbinate++;
+                        return p;
+                    }
+
+                    const dataPartita = new Date(p.dataOraUTC || p.utcDate);
+                    let migliorMatch = null;
+                    let migliorPunteggio = 0;
+
+                    bloccoCamp.eventi.forEach(ev => {
+                        const dataEvento = new Date(ev.commence_time);
+                        const diffOre = Math.abs(dataPartita - dataEvento) / 3600000;
+                        if (diffOre > 2) return;
+
+                        const punteggio = similaritaNomi(ev.home_team, p.squadraCasa);
+                        if (punteggio > migliorPunteggio) {
+                            migliorPunteggio = punteggio;
+                            migliorMatch = ev;
+                        }
+                    });
+
+                    if (!migliorMatch || migliorPunteggio < 0.45) {
+                        nonAbbinate++;
+                        return p;
+                    }
+
+                    const bookmakerScelto = scegliBookmaker(migliorMatch.bookmakers);
+                    if (!bookmakerScelto) {
+                        nonAbbinate++;
+                        return p;
+                    }
+
+                    const quoteEstratte = estraiQuote(migliorMatch, bookmakerScelto);
+                    abbinate++;
+
+                    return {
+                        ...p,
+                        quote: { ...quoteEstratte, aggiornateIl: new Date().toISOString() }
+                    };
+                });
+
+                await db.collection("palinsesto").doc("corrente").update({
+                    partite: nuovePartite,
+                    quoteUltimoAggiornamento: new Date().toLocaleString("it-IT")
+                });
+
+                cachePartiteFirestore = nuovePartite;
+                aggiornaFiltriVisualizzazione();
+
+                const infoResidue = (data.richiesteResidue !== null && data.richiesteResidue !== undefined)
+                    ? ` Chiamate residue The Odds API: ${data.richiesteResidue}.`
+                    : "";
+                mostraStato(`Quote aggiornate: ${abbinate} partite abbinate, ${nonAbbinate} senza quote disponibili.${infoResidue}`, "success");
+
+            } catch (err) {
+                console.error(err);
+                mostraStato("Errore durante l'aggiornamento quote: " + err.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Aggiorna Quote Bookmaker";
+            }
+        }
+
+        // ============================================================
+        // ML ENGINE — replica JS del motore Dixon-Coles (solo per il
+        // backtesting locale, non serve al Worker) + tabella accuratezze
+        // ============================================================
+
+        const MAX_GOL_MATRICE_JS = 8;
+
+        function fattorialeJS(n) {
+            let r = 1;
+            for (let i = 2; i <= n; i++) r *= i;
+            return r;
+        }
+        function poissonJS(k, lambda) {
+            if (lambda <= 0) return k === 0 ? 1 : 0;
+            return Math.exp(-lambda) * Math.pow(lambda, k) / fattorialeJS(k);
+        }
+        function tauDixonColesJS(i, j, lambdaCasa, lambdaOspite, rho) {
+            if (i === 0 && j === 0) return 1 - (lambdaCasa * lambdaOspite * rho);
+            if (i === 0 && j === 1) return 1 + (lambdaCasa * rho);
+            if (i === 1 && j === 0) return 1 + (lambdaOspite * rho);
+            if (i === 1 && j === 1) return 1 - rho;
+            return 1;
+        }
+        function costruisciMatriceJS(lambdaCasa, lambdaOspite, rho) {
+            const matrice = [];
+            let somma = 0;
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) {
+                matrice[i] = [];
+                for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
+                    const base = poissonJS(i, lambdaCasa) * poissonJS(j, lambdaOspite);
+                    const tau = tauDixonColesJS(i, j, lambdaCasa, lambdaOspite, rho);
+                    const val = Math.max(0, base * tau);
+                    matrice[i][j] = val;
+                    somma += val;
+                }
+            }
+            if (somma > 0) {
+                for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++)
+                    for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++)
+                        matrice[i][j] = matrice[i][j] / somma;
+            }
+            return matrice;
+        }
+        function sommaMatriceJS(matrice, cond) {
+            let s = 0;
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++)
+                for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++)
+                    if (cond(i, j)) s += matrice[i][j];
+            return s;
+        }
+        function fasciaGolJS(g) {
+            if (g <= 1) return "0-1";
+            if (g <= 3) return "2-3";
+            return "4+";
+        }
+
+        function pronosticiDaMatriceJS(matrice) {
+            const p1 = sommaMatriceJS(matrice, (i, j) => i > j);
+            const pX = sommaMatriceJS(matrice, (i, j) => i === j);
+            const p2 = sommaMatriceJS(matrice, (i, j) => i < j);
+            let mercato1X2 = "1", m = p1;
+            if (pX > m) { mercato1X2 = "X"; m = pX; }
+            if (p2 > m) { mercato1X2 = "2"; m = p2; }
+
+            const opzioniDC = { "1X": p1 + pX, "12": p1 + p2, "X2": pX + p2 };
+            let doppiaChance = "1X", mdc = opzioniDC["1X"];
+            Object.keys(opzioniDC).forEach(k => { if (opzioniDC[k] > mdc) { doppiaChance = k; mdc = opzioniDC[k]; } });
+
+            function overUnder(soglia) {
+                return sommaMatriceJS(matrice, (i, j) => (i + j) > soglia) > 0.5 ? "Over" : "Under";
+            }
+            const over05 = overUnder(0.5), over15 = overUnder(1.5), over25 = overUnder(2.5), over35 = overUnder(3.5), over45 = overUnder(4.5);
+
+            const pGoal = sommaMatriceJS(matrice, (i, j) => i > 0 && j > 0);
+            const goalNoGoal = pGoal > 0.5 ? "Goal" : "No Goal";
+
+            const comboDcOver25 = `${doppiaChance}-${over25}`;
+
+            const fasceCasa = { "0-1": 0, "2-3": 0, "4+": 0 };
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) { const f = fasciaGolJS(i); for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) fasceCasa[f] += matrice[i][j]; }
+            let multigolCasa = "0-1", mfc = fasceCasa["0-1"];
+            Object.keys(fasceCasa).forEach(k => { if (fasceCasa[k] > mfc) { multigolCasa = k; mfc = fasceCasa[k]; } });
+
+            const fasceTrasferta = { "0-1": 0, "2-3": 0, "4+": 0 };
+            for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) { const f = fasciaGolJS(j); for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) fasceTrasferta[f] += matrice[i][j]; }
+            let multigolTrasferta = "0-1", mft = fasceTrasferta["0-1"];
+            Object.keys(fasceTrasferta).forEach(k => { if (fasceTrasferta[k] > mft) { multigolTrasferta = k; mft = fasceTrasferta[k]; } });
+
+            const multigolCombo = `${multigolCasa}|${multigolTrasferta}`;
+
+            let condEsito;
+            if (mercato1X2 === "1") condEsito = (i, j) => i > j;
+            else if (mercato1X2 === "X") condEsito = (i, j) => i === j;
+            else condEsito = (i, j) => i < j;
+            const condOU25 = over25 === "Over" ? (i, j) => (i + j) > 2.5 : (i, j) => (i + j) <= 2.5;
+            let mi = -1, mj = -1, mp = -1;
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
+                if (condEsito(i, j) && condOU25(i, j) && matrice[i][j] > mp) { mp = matrice[i][j]; mi = i; mj = j; }
+            }
+            if (mi === -1) {
+                for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
+                    if (condEsito(i, j) && matrice[i][j] > mp) { mp = matrice[i][j]; mi = i; mj = j; }
+                }
+            }
+            const risultatoEsatto = `${mi}-${mj}`;
+
+            return { mercato1X2, risultatoEsatto, doppiaChance, over05, over15, over25, over35, over45, goalNoGoal, comboDcOver25, multigolCasa, multigolTrasferta, multigolCombo };
+        }
+
+        function estraiPronosticiCompatti(pr) {
+            if (!pr) return null;
+            return {
+                mercato1X2: pr.mercato1X2.pronostico,
+                risultatoEsatto: pr.risultatoEsatto.pronostico,
+                doppiaChance: pr.doppiaChance.pronostico,
+                over05: pr.over05.pronostico,
+                over15: pr.over15.pronostico,
+                over25: pr.over25.pronostico,
+                over35: pr.over35.pronostico,
+                over45: pr.over45.pronostico,
+                goalNoGoal: pr.goalNoGoal.pronostico,
+                comboDcOver25: pr.comboDcOver25.pronostico,
+                multigolCasa: pr.multigolCasa.pronostico,
+                multigolTrasferta: pr.multigolTrasferta.pronostico,
+                multigolCombo: pr.multigolCombo.pronostico
+            };
+        }
+
+        function veritaMercati(gc, go) {
+            const mercato1X2 = gc > go ? "1" : (gc === go ? "X" : "2");
+            const risultatoEsatto = `${gc}-${go}`;
+            const totale = gc + go;
+            function ou(soglia) { return totale > soglia ? "Over" : "Under"; }
+            const goalNoGoal = (gc > 0 && go > 0) ? "Goal" : "No Goal";
+            return {
+                mercato1X2, risultatoEsatto,
+                over05: ou(0.5), over15: ou(1.5), over25: ou(2.5), over35: ou(3.5), over45: ou(4.5),
+                goalNoGoal, fasciaCasa: fasciaGolJS(gc), fasciaTrasferta: fasciaGolJS(go)
+            };
+        }
+
+        function verificaAzzeccati(compatti, gc, go) {
+            const v = veritaMercati(gc, go);
+            const esiti = {};
+
+            esiti.mercato1X2 = compatti.mercato1X2 === v.mercato1X2;
+            esiti.risultatoEsatto = compatti.risultatoEsatto === v.risultatoEsatto;
+
+            const dc = compatti.doppiaChance;
+            esiti.doppiaChance = (dc === "1X" && (v.mercato1X2 === "1" || v.mercato1X2 === "X"))
+                || (dc === "12" && (v.mercato1X2 === "1" || v.mercato1X2 === "2"))
+                || (dc === "X2" && (v.mercato1X2 === "X" || v.mercato1X2 === "2"));
+
+            esiti.over05 = compatti.over05 === v.over05;
+            esiti.over15 = compatti.over15 === v.over15;
+            esiti.over25 = compatti.over25 === v.over25;
+            esiti.over35 = compatti.over35 === v.over35;
+            esiti.over45 = compatti.over45 === v.over45;
+
+            esiti.goalNoGoal = compatti.goalNoGoal === v.goalNoGoal;
+
+            const partiCombo = (compatti.comboDcOver25 || "").split("-");
+            const dcCombo = partiCombo[0], ouCombo = partiCombo[1];
+            const dcOk = (dcCombo === "1X" && (v.mercato1X2 === "1" || v.mercato1X2 === "X"))
+                || (dcCombo === "12" && (v.mercato1X2 === "1" || v.mercato1X2 === "2"))
+                || (dcCombo === "X2" && (v.mercato1X2 === "X" || v.mercato1X2 === "2"));
+            esiti.comboDcOver25 = dcOk && (ouCombo === v.over25);
+
+            esiti.multigolCasa = compatti.multigolCasa === v.fasciaCasa;
+            esiti.multigolTrasferta = compatti.multigolTrasferta === v.fasciaTrasferta;
+
+            const partiMg = (compatti.multigolCombo || "").split("|");
+            esiti.multigolCombo = partiMg[0] === v.fasciaCasa && partiMg[1] === v.fasciaTrasferta;
+
+            return esiti;
+        }
+
+        const MERCATI_LISTA = [
+            { chiave: "mercato1X2", nome: "1X2" },
+            { chiave: "risultatoEsatto", nome: "Risultato Esatto" },
+            { chiave: "doppiaChance", nome: "Doppia Chance" },
+            { chiave: "over05", nome: "Over/Under 0.5" },
+            { chiave: "over15", nome: "Over/Under 1.5" },
+            { chiave: "over25", nome: "Over/Under 2.5" },
+            { chiave: "over35", nome: "Over/Under 3.5" },
+            { chiave: "over45", nome: "Over/Under 4.5" },
+            { chiave: "goalNoGoal", nome: "Goal/No Goal" },
+            { chiave: "comboDcOver25", nome: "Combo DC+O/U2.5" },
+            { chiave: "multigolCasa", nome: "Multigol Casa" },
+            { chiave: "multigolTrasferta", nome: "Multigol Trasferta" },
+            { chiave: "multigolCombo", nome: "MG Casa+Trasferta" }
+        ];
+
+        const COMPETIZIONI_ANALISI = [
+            { cod: "SA", nome: "Serie A" },
+            { cod: "PL", nome: "Premier League" },
+            { cod: "PD", nome: "La Liga" },
+            { cod: "BL1", nome: "Bundesliga" },
+            { cod: "FL1", nome: "Ligue 1" },
+            { cod: "CL", nome: "Champions Lg" },
+            { cod: "EC", nome: "Euro Champ." },
+            { cod: "DED", nome: "Eredivisie" },
+            { cod: "PPL", nome: "Liga Portugal" },
+            { cod: "BSA", nome: "Brasileirão" },
+            { cod: "ELC", nome: "Championship" },
+            { cod: "WC", nome: "World Cup" }
+        ];
+
+        let configAlgoritmoCorrente = { rho: -0.1, kScala: 1, wForma: 0, versione: "v1", confermatoIl: null };
+        let archivioCorrenteML = [];
+        let ultimoBacktestNuoviParametri = null;
+        let ultimoBacktestTrainCount = 0;
+        let ultimoBacktestTestCount = 0;
+
+        async function caricaConfigAlgoritmo() {
+            try {
+                const doc = await db.collection("config").doc("algoritmo").get();
+                if (doc.exists) {
+                    const d = doc.data();
+                    configAlgoritmoCorrente = {
+                        rho: (typeof d.rho === "number") ? d.rho : -0.1,
+                        kScala: (typeof d.kScala === "number") ? d.kScala : 1,
+                        wForma: (typeof d.wForma === "number") ? d.wForma : 0,
+                        versione: d.versione || "v1",
+                        confermatoIl: d.confermatoIl || null
+                    };
+                }
+            } catch (err) {
+                console.error("Errore caricamento config algoritmo:", err);
+            }
+        }
+
+        function calcolaAccuratezzePerArchivio(archivio) {
+            const conteggi = {};
+            MERCATI_LISTA.forEach(m => { conteggi[m.chiave] = { corretti: 0, totali: 0 }; });
+
+            archivio.forEach(p => {
+                if (!p.pronostici || !p.risultatoReale) return;
+                const parti = p.risultatoReale.split("-");
+                if (parti.length !== 2) return;
+                const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+                if (isNaN(gc) || isNaN(go)) return;
+
+                const compatti = estraiPronosticiCompatti(p.pronostici);
+                if (!compatti) return;
+                const esiti = verificaAzzeccati(compatti, gc, go);
+
+                MERCATI_LISTA.forEach(m => {
+                    conteggi[m.chiave].totali += 1;
+                    if (esiti[m.chiave]) conteggi[m.chiave].corretti += 1;
+                });
+            });
+
+            const risultato = {};
+            MERCATI_LISTA.forEach(m => {
+                const c = conteggi[m.chiave];
+                risultato[m.chiave] = c.totali > 0 ? +((c.corretti / c.totali) * 100).toFixed(1) : null;
+            });
+            return risultato;
+        }
+
+        function disegnaTabellaAccuratezze(archivio, nuoveAccuratezze) {
+            const accCorrente = calcolaAccuratezzePerArchivio(archivio);
+            const tbody = document.getElementById("tabellaAccuratezzeBody");
+            tbody.innerHTML = MERCATI_LISTA.map(m => {
+                const corrente = accCorrente[m.chiave];
+                const nuova = nuoveAccuratezze ? nuoveAccuratezze[m.chiave] : null;
+                return `<tr class="border-t border-slate-800/60">
+                    <td class="py-1.5 text-slate-300">${m.nome}</td>
+                    <td class="py-1.5 text-center font-semibold text-slate-200">${corrente !== null ? corrente + '%' : 'N/D'}</td>
+                    <td class="py-1.5 text-center font-semibold ${nuova !== null ? 'text-emerald-400' : 'text-slate-600'}">${nuova !== null ? nuova + '%' : '—'}</td>
+                </tr>`;
+            }).join("");
+        }
+
+        async function mostraMLEngine() {
+            await caricaConfigAlgoritmo();
+
+            const infoEl = document.getElementById("infoAlgoritmoCorrente");
+            infoEl.textContent = `Algoritmo attuale: ρ=${configAlgoritmoCorrente.rho.toFixed(2)}, k=${configAlgoritmoCorrente.kScala.toFixed(2)}, w=${configAlgoritmoCorrente.wForma.toFixed(2)}` +
+                (configAlgoritmoCorrente.confermatoIl ? ` (confermato il ${configAlgoritmoCorrente.confermatoIl})` : " (valori di partenza, mai ricalibrati — w=0 significa nessun peso alla forma recente)");
+
+            let archivio = [];
+            try {
+                const snapshot = await db.collection("archivio_storico").get();
+                snapshot.forEach(doc => archivio.push(doc.data()));
+            } catch (err) {
+                console.error(err);
+            }
+            archivioCorrenteML = archivio;
+
+            document.getElementById("statoArchivioML").textContent = `${archivio.length} partite in archivio`;
+
+            let avviso = "";
+            if (archivio.length < 30) avviso = "⚠️ Campione troppo piccolo, risultati poco affidabili.";
+            else if (archivio.length < 150) avviso = "Campione ancora ridotto: numeri indicativi, non definitivi.";
+            document.getElementById("avvisoCampioneML").textContent = avviso;
+
+            disegnaTabellaAccuratezze(archivio, null);
+            document.getElementById("infoNuoviParametri").textContent = "";
+            document.getElementById("btnConfermaAlgoritmo").classList.add("hidden");
+            ultimoBacktestNuoviParametri = null;
+        }
+
+        // Ricalcola lambdaCasa/lambdaOspite di una partita d'Archivio da
+        // zero, usando i dati grezzi già salvati nel documento (forza
+        // stagionale + forma recente), per un dato candidato w e k. Serve
+        // al backtesting per testare w, che a differenza di rho/k modifica
+        // COME si calcola lambda, non solo come si scala dopo.
+        function ricalcolaLambdaConForma(p, wForma, kScala) {
+            const sc = p.statCampionato || {};
+            const sac = p.statAvanzateCasa || {};
+            const sao = p.statAvanzateOspite || {};
+            if (sac.forzaAttacco == null || sac.forzaDifesa == null || sao.forzaAttacco == null || sao.forzaDifesa == null) return null;
+            if (!(sc.mediaGolCasa > 0) || !(sc.mediaGolTrasferta > 0)) return null;
+
+            const mediaGolSquadra = (sc.mediaGolCasa + sc.mediaGolTrasferta) / 2;
+
+            function forzaConForma(forzaStagionale, mediaRecente) {
+                if (forzaStagionale === null || forzaStagionale === undefined) return null;
+                if (mediaRecente === null || mediaRecente === undefined || !(mediaGolSquadra > 0)) return forzaStagionale;
+                const forzaRecente = mediaRecente / mediaGolSquadra;
+                return forzaStagionale * (1 - wForma) + forzaRecente * wForma;
+            }
+
+            const forzaAttaccoCasaFinale = forzaConForma(sac.forzaAttacco, sac.mediaGolFattiUltime5);
+            const forzaDifesaCasaFinale = forzaConForma(sac.forzaDifesa, sac.mediaGolSubitiUltime5);
+            const forzaAttaccoOspiteFinale = forzaConForma(sao.forzaAttacco, sao.mediaGolFattiUltime5);
+            const forzaDifesaOspiteFinale = forzaConForma(sao.forzaDifesa, sao.mediaGolSubitiUltime5);
+
+            if (forzaAttaccoCasaFinale === null || forzaDifesaOspiteFinale === null || forzaAttaccoOspiteFinale === null || forzaDifesaCasaFinale === null) return null;
+
+            const lambdaCasa = limita(sc.mediaGolCasa * forzaAttaccoCasaFinale * forzaDifesaOspiteFinale * kScala, 0.1, 6);
+            const lambdaOspite = limita(sc.mediaGolTrasferta * forzaAttaccoOspiteFinale * forzaDifesaCasaFinale * kScala, 0.1, 6);
+            return { lambdaCasa, lambdaOspite };
+        }
+
+        async function eseguiBacktesting() {
+            const btn = document.getElementById("btnRicalcola");
+            btn.disabled = true;
+            btn.textContent = "Backtesting in corso...";
+
+            try {
+                let archivio = [];
+                const snapshot = await db.collection("archivio_storico").get();
+                snapshot.forEach(doc => archivio.push(doc.data()));
+                archivioCorrenteML = archivio;
+
+                const validi = archivio.filter(p => p.pronostici && p.pronostici.lambdaCasa && p.pronostici.lambdaOspite && p.risultatoReale);
+
+                if (validi.length < 5) {
+                    alert("Servono almeno 5 partite valide in Archivio (con pronostici e risultato) per un backtesting minimo.");
+                    return;
+                }
+
+                validi.sort((a, b) => new Date(a.dataOraUTC || a.utcDate) - new Date(b.dataOraUTC || b.utcDate));
+
+                const sogliaSplit = Math.max(1, Math.floor(validi.length * 0.7));
+                const train = validi.slice(0, sogliaSplit);
+                let test = validi.slice(sogliaSplit);
+                if (test.length === 0) test = train;
+
+                const rhoCandidati = [];
+                for (let r = -0.20; r <= 0.001; r += 0.02) rhoCandidati.push(+r.toFixed(2));
+                const kCandidati = [];
+                for (let k = 0.85; k <= 1.151; k += 0.05) kCandidati.push(+k.toFixed(2));
+                const wCandidati = [];
+                for (let w = 0; w <= 0.601; w += 0.1) wCandidati.push(+w.toFixed(2));
+
+                function punteggioSuInsieme(insieme, rho, kScala, wForma) {
+                    const conteggi = {};
+                    MERCATI_LISTA.forEach(m => { conteggi[m.chiave] = { corretti: 0, totali: 0 }; });
+
+                    insieme.forEach(p => {
+                        const parti = p.risultatoReale.split("-");
+                        const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+                        if (isNaN(gc) || isNaN(go)) return;
+
+                        const lambdas = ricalcolaLambdaConForma(p, wForma, kScala);
+                        if (!lambdas) return;
+
+                        const matrice = costruisciMatriceJS(lambdas.lambdaCasa, lambdas.lambdaOspite, rho);
+                        const compatti = pronosticiDaMatriceJS(matrice);
+                        const esiti = verificaAzzeccati(compatti, gc, go);
+
+                        MERCATI_LISTA.forEach(m => {
+                            conteggi[m.chiave].totali += 1;
+                            if (esiti[m.chiave]) conteggi[m.chiave].corretti += 1;
+                        });
+                    });
+
+                    let somma = 0, n = 0;
+                    MERCATI_LISTA.forEach(m => {
+                        if (conteggi[m.chiave].totali > 0) {
+                            somma += conteggi[m.chiave].corretti / conteggi[m.chiave].totali;
+                            n += 1;
+                        }
+                    });
+
+                    return { punteggio: n > 0 ? somma / n : 0, conteggi };
+                }
+
+                let migliorRho = configAlgoritmoCorrente.rho, migliorK = configAlgoritmoCorrente.kScala, migliorW = configAlgoritmoCorrente.wForma, migliorPunteggio = -1;
+
+                rhoCandidati.forEach(rho => {
+                    kCandidati.forEach(kScala => {
+                        wCandidati.forEach(wForma => {
+                            const { punteggio } = punteggioSuInsieme(train, rho, kScala, wForma);
+                            if (punteggio > migliorPunteggio) {
+                                migliorPunteggio = punteggio;
+                                migliorRho = rho;
+                                migliorK = kScala;
+                                migliorW = wForma;
+                            }
+                        });
+                    });
+                });
+
+                const risultatoTest = punteggioSuInsieme(test, migliorRho, migliorK, migliorW);
+                const nuoveAccuratezze = {};
+                MERCATI_LISTA.forEach(m => {
+                    const c = risultatoTest.conteggi[m.chiave];
+                    nuoveAccuratezze[m.chiave] = c.totali > 0 ? +((c.corretti / c.totali) * 100).toFixed(1) : null;
+                });
+
+                disegnaTabellaAccuratezze(archivio, nuoveAccuratezze);
+
+                ultimoBacktestNuoviParametri = { rho: migliorRho, kScala: migliorK, wForma: migliorW };
+                ultimoBacktestTrainCount = train.length;
+                ultimoBacktestTestCount = test.length;
+                document.getElementById("infoNuoviParametri").textContent =
+                    `Parametri proposti: ρ=${migliorRho.toFixed(2)}, k=${migliorK.toFixed(2)}, w=${migliorW.toFixed(2)} (allenati su ${train.length} partite più vecchie, verificati su ${test.length} più recenti)`;
+                document.getElementById("btnConfermaAlgoritmo").classList.remove("hidden");
+
+            } catch (err) {
+                console.error(err);
+                alert("Errore durante il backtesting: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Ricalcola e Confronta";
+            }
+        }
+
+        async function confermaNuovoAlgoritmo() {
+            if (!ultimoBacktestNuoviParametri) return;
+
+            let avviso = "";
+            if (ultimoBacktestTrainCount < 15 || ultimoBacktestTestCount < 15) {
+                avviso = `\n\n⚠️ ATTENZIONE: campione molto piccolo (${ultimoBacktestTrainCount} partite di allenamento, ${ultimoBacktestTestCount} di verifica). I parametri proposti potrebbero non essere affidabili — valuta se aspettare che l'Archivio cresca ancora prima di confermare.`;
+            }
+
+            if (!confirm(`Confermi di sostituire l'algoritmo corrente con ρ=${ultimoBacktestNuoviParametri.rho.toFixed(2)}, k=${ultimoBacktestNuoviParametri.kScala.toFixed(2)}, w=${ultimoBacktestNuoviParametri.wForma.toFixed(2)}? Verrà usato dalla prossima estrazione partite.${avviso}`)) return;
+
+            try {
+                const ora = new Date().toLocaleString("it-IT");
+                await db.collection("config").doc("algoritmo").set({
+                    rho: ultimoBacktestNuoviParametri.rho,
+                    kScala: ultimoBacktestNuoviParametri.kScala,
+                    wForma: ultimoBacktestNuoviParametri.wForma,
+                    versione: "v1",
+                    confermatoIl: ora
+                });
+                configAlgoritmoCorrente = { rho: ultimoBacktestNuoviParametri.rho, kScala: ultimoBacktestNuoviParametri.kScala, wForma: ultimoBacktestNuoviParametri.wForma, versione: "v1", confermatoIl: ora };
+                document.getElementById("infoAlgoritmoCorrente").textContent =
+                    `Algoritmo attuale: ρ=${configAlgoritmoCorrente.rho.toFixed(2)}, k=${configAlgoritmoCorrente.kScala.toFixed(2)}, w=${configAlgoritmoCorrente.wForma.toFixed(2)} (confermato il ${ora})`;
+                document.getElementById("btnConfermaAlgoritmo").classList.add("hidden");
+                document.getElementById("infoNuoviParametri").textContent = "";
+                disegnaTabellaAccuratezze(archivioCorrenteML, null);
+                ultimoBacktestNuoviParametri = null;
+                alert("Nuovo algoritmo confermato! Verrà usato dalla prossima estrazione.");
+            } catch (err) {
+                console.error(err);
+                alert("Errore nel salvataggio: " + err.message);
+            }
+        }
+
+        // ============================================================
+        // ANALISI — tabella 13 mercati × 12 campionati
+        // ============================================================
+
+        function calcolaAccuratezzePerCampionato(archivio) {
+            const risultato = {};
+            MERCATI_LISTA.forEach(m => { risultato[m.chiave] = {}; });
+
+            COMPETIZIONI_ANALISI.forEach(c => {
+                const sottoinsieme = archivio.filter(p => p.campionatoCode === c.cod);
+                const conteggi = {};
+                MERCATI_LISTA.forEach(m => { conteggi[m.chiave] = { corretti: 0, totali: 0 }; });
+
+                sottoinsieme.forEach(p => {
+                    if (!p.pronostici || !p.risultatoReale) return;
+                    const parti = p.risultatoReale.split("-");
+                    if (parti.length !== 2) return;
+                    const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+                    if (isNaN(gc) || isNaN(go)) return;
+
+                    const compatti = estraiPronosticiCompatti(p.pronostici);
+                    if (!compatti) return;
+                    const esiti = verificaAzzeccati(compatti, gc, go);
+
+                    MERCATI_LISTA.forEach(m => {
+                        conteggi[m.chiave].totali += 1;
+                        if (esiti[m.chiave]) conteggi[m.chiave].corretti += 1;
+                    });
+                });
+
+                MERCATI_LISTA.forEach(m => {
+                    const c2 = conteggi[m.chiave];
+                    risultato[m.chiave][c.cod] = c2.totali > 0
+                        ? { pct: +((c2.corretti / c2.totali) * 100).toFixed(1), n: c2.totali }
+                        : null;
+                });
+            });
+
+            return risultato;
+        }
+
+        function disegnaTabellaAnalisiCampionati(archivio) {
+            const dati = calcolaAccuratezzePerCampionato(archivio);
+
+            const thead = document.getElementById("tabellaAnalisiHead");
+            thead.innerHTML = `<tr class="text-slate-400 uppercase text-[9px] border-b border-slate-800">
+                <th class="text-left py-2 pr-3 sticky left-0 bg-slate-900 z-10">Mercato</th>
+                ${COMPETIZIONI_ANALISI.map(c => `<th class="text-center py-2 px-2 whitespace-nowrap">${c.nome}</th>`).join("")}
+            </tr>`;
+
+            const tbody = document.getElementById("tabellaAnalisiBody");
+            tbody.innerHTML = MERCATI_LISTA.map(m => {
+                const celle = COMPETIZIONI_ANALISI.map(c => {
+                    const v = dati[m.chiave][c.cod];
+                    return `<td class="text-center py-1.5 px-2 whitespace-nowrap">${v ? `${v.pct}% <span class="text-slate-500">(n=${v.n})</span>` : '<span class="text-slate-600">—</span>'}</td>`;
+                }).join("");
+                return `<tr class="border-t border-slate-800/60">
+                    <td class="py-1.5 pr-3 text-slate-300 font-medium whitespace-nowrap sticky left-0 bg-slate-900">${m.nome}</td>
+                    ${celle}
+                </tr>`;
+            }).join("");
+        }
+
+        async function mostraAnalisi() {
+            let archivio = [];
+            try {
+                const snapshot = await db.collection("archivio_storico").get();
+                snapshot.forEach(doc => archivio.push(doc.data()));
+            } catch (err) {
+                console.error(err);
+            }
+
+            document.getElementById("statoArchivioAnalisi").textContent = `${archivio.length} partite in archivio (totale, tutti i campionati)`;
+            disegnaTabellaAnalisiCampionati(archivio);
+        }
+
+        // ============================================================
+        // VALUE BETTING — confronto probabilità modello vs quote
+        // (rimozione margine bookmaker) e costruzione multiple
+        // ============================================================
+
+        const SOGLIA_EV_MINIMA = 0.05; // 5%
+
+        function calcolaConteggiTotaliPerMercato(archivio) {
+            const conteggi = {};
+            MERCATI_LISTA.forEach(m => { conteggi[m.chiave] = 0; });
+            archivio.forEach(p => {
+                if (!p.pronostici || !p.risultatoReale) return;
+                const parti = p.risultatoReale.split("-");
+                if (parti.length !== 2) return;
+                const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+                if (isNaN(gc) || isNaN(go)) return;
+                const compatti = estraiPronosticiCompatti(p.pronostici);
+                if (!compatti) return;
+                MERCATI_LISTA.forEach(m => { conteggi[m.chiave] += 1; });
+            });
+            return conteggi;
+        }
+
+        async function caricaConteggiMercatiGlobale() {
+            try {
+                const snapshot = await db.collection("archivio_storico").get();
+                const archivio = [];
+                snapshot.forEach(doc => archivio.push(doc.data()));
+                conteggiMercatiGlobale = calcolaConteggiTotaliPerMercato(archivio);
+            } catch (err) {
+                console.error("Errore caricamento conteggi mercati:", err);
+            }
+        }
+
+        // Rimuove il margine bookmaker: da un set di quote { esito: quota }
+        // restituisce le probabilità implicite normalizzate a somma 1.
+        function probabilitaImpliciteNormalizzate(quoteMap) {
+            const raw = {};
+            let somma = 0;
+            Object.keys(quoteMap).forEach(k => {
+                const q = quoteMap[k];
+                if (q && q > 0) {
+                    raw[k] = 1 / q;
+                    somma += raw[k];
+                }
+            });
+            if (somma === 0) return null;
+            const normalizzate = {};
+            Object.keys(raw).forEach(k => { normalizzate[k] = raw[k] / somma; });
+            return normalizzate;
+        }
+
+        function calcolaValoreScommessa(probabilitaModello, quota) {
+            if (!quota || quota <= 0 || probabilitaModello === undefined || probabilitaModello === null) return null;
+            return (probabilitaModello * quota) - 1;
+        }
+
+        function kellyFrazionato(probModello, quota, frazione) {
+            const b = quota - 1;
+            if (b <= 0) return 0;
+            const q = 1 - probModello;
+            const kellyPieno = (probModello * b - q) / b;
+            if (kellyPieno <= 0) return 0;
+            return kellyPieno * frazione;
+        }
+
+        // Trova tutte le opportunità (sopra e sotto soglia) per una singola
+        // partita, per i mercati dove abbiamo sia pronostico sia quota.
+        function trovaOpportunitaValorePartita(p) {
+            const opportunita = [];
+            if (!p.pronostici || !p.quote) return opportunita;
+
+            const pr = p.pronostici;
+            const q = p.quote;
+
+            if (pr.mercato1X2 && q.mercato1x2) {
+                const quoteMap = { "1": q.mercato1x2.casa, "X": q.mercato1x2.pareggio, "2": q.mercato1x2.ospite };
+                const implicite = probabilitaImpliciteNormalizzate(quoteMap);
+                if (implicite) {
+                    ["1", "X", "2"].forEach(esito => {
+                        const quota = quoteMap[esito];
+                        const probModello = pr.mercato1X2.probabilita[esito] / 100;
+                        if (quota) {
+                            const ev = calcolaValoreScommessa(probModello, quota);
+                            if (ev !== null) {
+                                opportunita.push({
+                                    chiaveMercato: "mercato1X2", nomeMercato: "1X2", esito,
+                                    quota, probabilitaModello: probModello, probabilitaImplicita: implicite[esito], ev
+                                });
+                            }
+                        }
+                    });
+                }
+            }
+
+            const lineeOU = [
+                { chiave: "over05", linea: "0.5", nome: "O/U 0.5" },
+                { chiave: "over15", linea: "1.5", nome: "O/U 1.5" },
+                { chiave: "over25", linea: "2.5", nome: "O/U 2.5" },
+                { chiave: "over35", linea: "3.5", nome: "O/U 3.5" },
+                { chiave: "over45", linea: "4.5", nome: "O/U 4.5" }
+            ];
+            lineeOU.forEach(({ chiave, linea, nome }) => {
+                const prMercato = pr[chiave];
+                const quoteOU = q.overUnder ? q.overUnder[linea] : null;
+                if (prMercato && quoteOU) {
+                    const quoteMap = { Over: quoteOU.over, Under: quoteOU.under };
+                    const implicite = probabilitaImpliciteNormalizzate(quoteMap);
+                    if (implicite) {
+                        ["Over", "Under"].forEach(esito => {
+                            const quota = quoteMap[esito];
+                            const probModello = prMercato.probabilita[esito.toLowerCase()] / 100;
+                            if (quota) {
+                                const ev = calcolaValoreScommessa(probModello, quota);
+                                if (ev !== null) {
+                                    opportunita.push({
+                                        chiaveMercato: chiave, nomeMercato: nome, esito,
+                                        quota, probabilitaModello: probModello, probabilitaImplicita: implicite[esito], ev
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+
+            return opportunita;
+        }
+
+        function importoConsigliato(op, conteggiMercati, frazioneKelly) {
+            const n = conteggiMercati ? (conteggiMercati[op.chiaveMercato] || 0) : 0;
+            if (n < 30) return null;
+            const frazione = kellyFrazionato(op.probabilitaModello, op.quota, frazioneKelly);
+            const percentuale = Math.min(frazione * 100, 5);
+            return percentuale > 0 ? +percentuale.toFixed(2) : 0;
+        }
+
+        function formattaValueBetPartita(p) {
+            const opportunita = trovaOpportunitaValorePartita(p);
+            if (opportunita.length === 0) {
+                return `<details class="mt-2 bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 text-[11px]">
+                            <summary class="cursor-pointer text-yellow-300 font-bold text-[10px] uppercase tracking-wider">⭐ Value Bet</summary>
+                            <div class="mt-2 text-slate-500">Non disponibile (servono sia pronostici sia quote per questa partita)</div>
+                        </details>`;
+            }
+
+            const righe = opportunita.map(op => {
+                const sopraSoglia = op.ev >= SOGLIA_EV_MINIMA;
+                const colore = sopraSoglia ? "text-emerald-400 font-bold" : "text-slate-500";
+                let importoTesto = "";
+                if (sopraSoglia) {
+                    const importo = importoConsigliato(op, conteggiMercatiGlobale, 0.25);
+                    importoTesto = importo !== null ? `${importo}% bankroll` : "N/D (campione piccolo)";
+                }
+                return `<div class="grid grid-cols-4 items-center gap-1 ${sopraSoglia ? 'bg-emerald-950/30 -mx-1 px-1 rounded' : ''}">
+                    <span class="text-slate-400 truncate">${op.nomeMercato} ${op.esito}</span>
+                    <span class="text-center">${op.quota.toFixed(2)}</span>
+                    <span class="text-center ${colore}">${(op.ev * 100).toFixed(1)}%</span>
+                    <span class="text-right text-[10px] ${colore}">${importoTesto}</span>
+                </div>`;
+            }).join("");
+
+            return `<details class="mt-2 bg-slate-950/50 border border-yellow-900/50 rounded-xl p-2.5 text-[11px]">
+                        <summary class="cursor-pointer text-yellow-300 font-bold text-[10px] uppercase tracking-wider">⭐ Value Bet</summary>
+                        <div class="mt-2 space-y-1 text-slate-300">
+                            <div class="grid grid-cols-4 text-[9px] text-slate-500 uppercase font-bold border-b border-slate-800/60 pb-1">
+                                <span>Mercato</span><span class="text-center">Quota</span><span class="text-center">EV</span><span class="text-right">Consigliato</span>
+                            </div>
+                            ${righe}
+                        </div>
+                    </details>`;
+        }
+
+        function trovaTutteLeOpportunitaValore(partite) {
+            const tutte = [];
+            (partite || []).forEach(p => {
+                const opportunita = trovaOpportunitaValorePartita(p);
+                opportunita.forEach(op => {
+                    if (op.ev >= SOGLIA_EV_MINIMA) {
+                        tutte.push({
+                            ...op,
+                            matchId: p.matchId || p.id,
+                            campionato: p.campionato,
+                            squadraCasa: p.squadraCasa,
+                            squadraOspite: p.squadraOspite,
+                            dataOraUTC: p.dataOraUTC || p.utcDate
+                        });
+                    }
+                });
+            });
+            tutte.sort((a, b) => b.ev - a.ev);
+            return tutte;
+        }
+
+        function migliorOpportunitaPerPartita(tutteOpportunita) {
+            const mappa = {};
+            tutteOpportunita.forEach(op => {
+                if (!mappa[op.matchId] || op.ev > mappa[op.matchId].ev) mappa[op.matchId] = op;
+            });
+            return Object.values(mappa).sort((a, b) => b.ev - a.ev);
+        }
+
+        function generaCombinazioni(arr, k) {
+            const risultati = [];
+            function ricorsione(inizio, corrente) {
+                if (corrente.length === k) { risultati.push([...corrente]); return; }
+                for (let i = inizio; i < arr.length; i++) {
+                    corrente.push(arr[i]);
+                    ricorsione(i + 1, corrente);
+                    corrente.pop();
+                }
+            }
+            ricorsione(0, []);
+            return risultati;
+        }
+
+        function costruisciMultiple(migliori) {
+            const base = migliori.slice(0, 12); // limite per evitare esplosione combinatoria
+            const multiple = [];
+            [2, 3, 4].forEach(k => {
+                if (base.length < k) return;
+                generaCombinazioni(base, k).forEach(combo => {
+                    const quotaTotale = combo.reduce((acc, op) => acc * op.quota, 1);
+                    const probTotale = combo.reduce((acc, op) => acc * op.probabilitaModello, 1);
+                    const ev = (probTotale * quotaTotale) - 1;
+                    multiple.push({ selezioni: combo, quotaTotale, probTotale, ev, numSelezioni: k });
+                });
+            });
+            multiple.sort((a, b) => b.ev - a.ev);
+            return multiple;
+        }
+
+        async function mostraValueBets() {
+            document.getElementById("statoValueBets").textContent = `${(cachePartiteFirestore || []).length} partite nel Palinsesto corrente analizzate`;
+
+            const tutte = trovaTutteLeOpportunitaValore(cachePartiteFirestore);
+
+            const containerSingole = document.getElementById("listaValueBetsSingole");
+            if (tutte.length === 0) {
+                containerSingole.innerHTML = `<div class="text-slate-500 text-center py-4">Nessuna occasione con vantaggio ≥5% trovata nel Palinsesto corrente (serve avere sia i pronostici sia le quote aggiornate).</div>`;
+            } else {
+                containerSingole.innerHTML = tutte.map(op => {
+                    const importo = importoConsigliato(op, conteggiMercatiGlobale, 0.25);
+                    const importoTesto = importo !== null ? `${importo}% bankroll` : "N/D (campione piccolo)";
+                    return `<div class="bg-slate-950/50 border border-emerald-900/50 rounded-xl p-3">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-slate-200 truncate">${op.squadraCasa} vs ${op.squadraOspite}</span>
+                            <span class="text-[10px] text-slate-500">${op.campionato}</span>
+                        </div>
+                        <div class="grid grid-cols-4 items-center gap-1 text-[11px]">
+                            <span class="text-slate-400">${op.nomeMercato} ${op.esito}</span>
+                            <span class="text-center">Quota ${op.quota.toFixed(2)}</span>
+                            <span class="text-center text-emerald-400 font-bold">EV ${(op.ev * 100).toFixed(1)}%</span>
+                            <span class="text-right text-emerald-400">${importoTesto}</span>
+                        </div>
+                    </div>`;
+                }).join("");
+            }
+
+            const migliori = migliorOpportunitaPerPartita(tutte);
+            const multiple = costruisciMultiple(migliori);
+
+            const containerMultiple = document.getElementById("listaValueBetsMultiple");
+            if (multiple.length === 0) {
+                containerMultiple.innerHTML = `<div class="text-slate-500 text-center py-4">Nessuna multipla disponibile: servono almeno 2 partite diverse con valore per costruirne una.</div>`;
+            } else {
+                containerMultiple.innerHTML = multiple.slice(0, 20).map(m => {
+                    const selezioniTesto = m.selezioni.map(s => `${s.squadraCasa} vs ${s.squadraOspite}: ${s.nomeMercato} ${s.esito} (@${s.quota.toFixed(2)})`).join(" + ");
+                    let importoTesto = "Solo informativo (oltre 3 selezioni)";
+                    if (m.numSelezioni <= 3) {
+                        const nMinimo = Math.min(...m.selezioni.map(s => conteggiMercatiGlobale[s.chiaveMercato] || 0));
+                        if (nMinimo < 30) {
+                            importoTesto = "N/D (campione piccolo su almeno una selezione)";
+                        } else {
+                            const frazione = kellyFrazionato(m.probTotale, m.quotaTotale, 0.10);
+                            const percentuale = Math.min(frazione * 100, 5);
+                            importoTesto = percentuale > 0 ? `${percentuale.toFixed(2)}% bankroll` : "N/D";
+                        }
+                    }
+                    return `<div class="bg-slate-950/50 border border-indigo-900/50 rounded-xl p-3">
+                        <div class="text-[10px] text-slate-400 uppercase font-semibold mb-1">${m.numSelezioni} selezioni</div>
+                        <div class="text-[11px] text-slate-300 mb-1">${selezioniTesto}</div>
+                        <div class="grid grid-cols-3 items-center gap-1 text-[11px]">
+                            <span>Quota tot. ${m.quotaTotale.toFixed(2)}</span>
+                            <span class="text-center text-indigo-400 font-bold">EV ${(m.ev * 100).toFixed(1)}%</span>
+                            <span class="text-right text-indigo-400">${importoTesto}</span>
+                        </div>
+                    </div>`;
+                }).join("");
+            }
+        }
+
+        // ============================================================
+        // BET — filtro Palinsesto per campionato/i + un mercato,
+        // lista modificabile, salvataggio permanente (congelata)
+        // ============================================================
+
+        const CAMPIONATI_BET = [
+            { value: "SA", label: "Serie A" },
+            { value: "PL", label: "Premier League" },
+            { value: "PD", label: "La Liga" },
+            { value: "BL1", label: "Bundesliga" },
+            { value: "FL1", label: "Ligue 1" },
+            { value: "CL", label: "Champions League" },
+            { value: "EC", label: "Euro Championship" },
+            { value: "DED", label: "Eredivisie" },
+            { value: "PPL", label: "Liga Portugal" },
+            { value: "BSA", label: "Brasileirão" },
+            { value: "ELC", label: "Championship" },
+            { value: "WC", label: "World Cup" }
+        ];
+
+        let listaBetCorrente = [];
+
+        function popolaControlliBet() {
+            const select = document.getElementById("betMercatoSelect");
+            if (select && select.options.length === 0) {
+                select.innerHTML = MERCATI_LISTA.map(m => `<option value="${m.chiave}">${m.nome}</option>`).join("");
+            }
+
+            const container = document.getElementById("betCampionatiCheckboxes");
+            if (container && container.children.length === 0) {
+                container.innerHTML = CAMPIONATI_BET.map(c => `
+                    <label class="flex items-center space-x-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                        <input type="checkbox" class="bet-comp-checkbox rounded border-slate-700 text-blue-600 focus:ring-0 bg-slate-950" value="${c.value}" checked>
+                        <span class="text-slate-200 truncate"> ${c.label}</span>
+                    </label>
+                `).join("");
+            }
+        }
+
+        function toggleTuttiCampionatiBet() {
+            const checkboxes = document.querySelectorAll('.bet-comp-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+        }
+
+        function mostraStatoBet(testo, tipo = 'info') {
+            const stato = document.getElementById("statoBet");
+            if (!stato) return;
+            if (!testo) { stato.classList.add("hidden"); return; }
+            stato.classList.remove('hidden', 'bg-rose-950/80', 'border-rose-800', 'text-rose-300', 'bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300', 'bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+            if (tipo === 'error') stato.classList.add('bg-rose-950/80', 'border-rose-800', 'text-rose-300');
+            else if (tipo === 'success') stato.classList.add('bg-emerald-950/80', 'border-emerald-800', 'text-emerald-300');
+            else stato.classList.add('bg-blue-950/80', 'border-blue-800', 'text-blue-300');
+            stato.innerText = testo;
+        }
+
+        // Restituisce la quota bookmaker corrispondente al pronostico di un
+        // dato mercato per una partita, oppure null se non disponibile
+        // (mercato non coperto dalle quote gratuite, o quote non abbinate).
+        function ottieniQuotaPerMercato(p, chiaveMercato) {
+            if (!p.pronostici || !p.quote) return null;
+            const pr = p.pronostici[chiaveMercato];
+            if (!pr) return null;
+
+            if (chiaveMercato === "mercato1X2") {
+                const m = p.quote.mercato1x2;
+                if (!m) return null;
+                if (pr.pronostico === "1") return m.casa;
+                if (pr.pronostico === "X") return m.pareggio;
+                if (pr.pronostico === "2") return m.ospite;
+                return null;
+            }
+
+            const mappaLinee = { over05: "0.5", over15: "1.5", over25: "2.5", over35: "3.5", over45: "4.5" };
+            if (mappaLinee[chiaveMercato]) {
+                const ou = p.quote.overUnder ? p.quote.overUnder[mappaLinee[chiaveMercato]] : null;
+                if (!ou) return null;
+                if (pr.pronostico === "Over") return ou.over;
+                if (pr.pronostico === "Under") return ou.under;
+                return null;
+            }
+
+            // Doppia Chance, Risultato Esatto, Goal/No Goal, Combo, Multigol:
+            // nessuna quota disponibile con le fonti gratuite in uso.
+            return null;
+        }
+
+        function generaListaBet() {
+            const chiaveMercato = document.getElementById("betMercatoSelect").value;
+            const mercatoInfo = MERCATI_LISTA.find(m => m.chiave === chiaveMercato);
+
+            const checkboxes = document.querySelectorAll('.bet-comp-checkbox:checked');
+            const codiciSelezionati = Array.from(checkboxes).map(cb => cb.value);
+
+            if (codiciSelezionati.length === 0) {
+                alert("Seleziona almeno un campionato!");
+                return;
+            }
+
+            const partiteFiltrate = (cachePartiteFirestore || []).filter(p => codiciSelezionati.includes(p.campionatoCode));
+
+            if (partiteFiltrate.length === 0) {
+                mostraStatoBet("Nessuna partita trovata nel Palinsesto Attivo per i campionati selezionati.", "error");
+                document.getElementById("listaBetGenerata").innerHTML = "";
+                listaBetCorrente = [];
+                return;
+            }
+
+            listaBetCorrente = partiteFiltrate.map(p => {
+                const pr = p.pronostici ? p.pronostici[chiaveMercato] : null;
+                const quota = ottieniQuotaPerMercato(p, chiaveMercato);
+                return {
+                    matchId: p.matchId || p.id,
+                    campionato: p.campionato,
+                    campionatoCode: p.campionatoCode,
+                    squadraCasa: p.squadraCasa,
+                    squadraOspite: p.squadraOspite,
+                    dataOraUTC: p.dataOraUTC || p.utcDate,
+                    chiaveMercato,
+                    nomeMercato: mercatoInfo ? mercatoInfo.nome : chiaveMercato,
+                    pronostico: pr ? pr.pronostico : null,
+                    quota: quota
+                };
+            });
+
+            mostraStatoBet(`Lista generata: ${listaBetCorrente.length} partite (${mercatoInfo ? mercatoInfo.nome : chiaveMercato}).`, "success");
+            disegnaListaBetGenerata();
+        }
+
+        function rimuoviRigaBet(matchId) {
+            listaBetCorrente = listaBetCorrente.filter(r => String(r.matchId) !== String(matchId));
+            disegnaListaBetGenerata();
+        }
+
+        function disegnaListaBetGenerata() {
+            const container = document.getElementById("listaBetGenerata");
+            if (!container) return;
+
+            if (listaBetCorrente.length === 0) {
+                container.innerHTML = "";
+                return;
+            }
+
+            const righeHtml = listaBetCorrente.map(r => `
+                <div class="grid grid-cols-12 items-center gap-2 py-2 px-1 border-b border-slate-800/60 text-xs">
+                    <div class="col-span-5 min-w-0">
+                        <div class="text-[9px] text-slate-500 uppercase truncate">${r.campionato}</div>
+                        <div class="font-semibold text-slate-200 truncate">${r.squadraCasa} vs ${r.squadraOspite}</div>
+                        <div class="text-[10px] text-slate-500">${formattaData(r.dataOraUTC)}</div>
+                    </div>
+                    <div class="col-span-3 text-center font-bold text-emerald-400">${r.pronostico ?? "N/D"}</div>
+                    <div class="col-span-3 text-center text-slate-300">${(r.quota !== null && r.quota !== undefined) ? r.quota : "N/D"}</div>
+                    <div class="col-span-1 text-right">
+                        <button type="button" onclick="rimuoviRigaBet('${r.matchId}')" class="text-rose-400 hover:text-rose-300 font-bold text-sm cursor-pointer" title="Rimuovi">✕</button>
+                    </div>
+                </div>
+            `).join("");
+
+            container.innerHTML = `
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl p-4 sm:p-5">
+                    <div class="grid grid-cols-12 gap-2 px-1 pb-2 text-[9px] text-slate-500 uppercase font-bold border-b border-slate-800">
+                        <div class="col-span-5">Partita</div>
+                        <div class="col-span-3 text-center">Pronostico</div>
+                        <div class="col-span-3 text-center">Quota</div>
+                        <div class="col-span-1"></div>
+                    </div>
+                    ${righeHtml}
+                    <div class="mt-4 flex flex-col sm:flex-row gap-2">
+                        <input type="text" id="betNomeLista" placeholder="Nome lista (opzionale)" class="flex-1 bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-blue-500">
+                        <button type="button" onclick="salvaListaBet()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-2.5 px-4 rounded-xl shadow-lg transition duration-200 text-xs cursor-pointer whitespace-nowrap">
+                            Salva Lista (congelata)
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function salvaListaBet() {
+            if (listaBetCorrente.length === 0) {
+                alert("La lista è vuota, non c'è nulla da salvare.");
+                return;
+            }
+
+            const nomeInput = document.getElementById("betNomeLista");
+            const nome = (nomeInput && nomeInput.value.trim()) ? nomeInput.value.trim() : `Lista del ${new Date().toLocaleString("it-IT")}`;
+
+            try {
+                await db.collection("liste_selezioni").add({
+                    nome,
+                    righe: listaBetCorrente,
+                    creataIl: new Date().toLocaleString("it-IT"),
+                    creataIlTimestamp: Date.now()
+                });
+                alert(`Lista "${nome}" salvata con ${listaBetCorrente.length} partite.`);
+                listaBetCorrente = [];
+                document.getElementById("listaBetGenerata").innerHTML = "";
+                mostraStatoBet("", "info");
+                caricaListeSalvate();
+            } catch (err) {
+                console.error(err);
+                alert("Errore durante il salvataggio: " + err.message);
+            }
+        }
+
+        async function caricaListeSalvate() {
+            const container = document.getElementById("listeSalvateContainer");
+            if (!container) return;
+            container.innerHTML = `<div class="text-center text-slate-400 text-sm py-4">Caricamento liste salvate...</div>`;
+
+            try {
+                const snapshot = await db.collection("liste_selezioni").get();
+                const liste = [];
+                snapshot.forEach(doc => liste.push({ id: doc.id, ...doc.data() }));
+
+                liste.sort((a, b) => (b.creataIlTimestamp || 0) - (a.creataIlTimestamp || 0));
+
+                if (liste.length === 0) {
+                    container.innerHTML = `<div class="text-center text-slate-400 text-sm py-6 bg-slate-900/40 rounded-2xl border border-slate-800">Nessuna lista salvata ancora.</div>`;
+                    return;
+                }
+
+                container.innerHTML = liste.map(l => {
+                    const righeHtml = (l.righe || []).map(r => `
+                        <div class="grid grid-cols-12 items-center gap-2 py-1.5 px-1 border-b border-slate-800/40 text-[11px]">
+                            <div class="col-span-6 min-w-0">
+                                <div class="text-[9px] text-slate-500 uppercase truncate">${r.campionato}</div>
+                                <div class="font-semibold text-slate-300 truncate">${r.squadraCasa} vs ${r.squadraOspite}</div>
+                            </div>
+                            <div class="col-span-3 text-center font-bold text-emerald-400">${r.pronostico ?? "N/D"}</div>
+                            <div class="col-span-3 text-center text-slate-400">${(r.quota !== null && r.quota !== undefined) ? r.quota : "N/D"}</div>
+                        </div>
+                    `).join("");
+
+                    return `
+                        <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl p-4 sm:p-5">
+                            <div class="flex justify-between items-center mb-2">
+                                <div>
+                                    <div class="font-bold text-slate-100 text-sm">${l.nome}</div>
+                                    <div class="text-[10px] text-slate-500">${l.creataIl} · ${(l.righe || []).length} partite · Mercato: ${(l.righe && l.righe[0]) ? l.righe[0].nomeMercato : "N/D"}</div>
+                                </div>
+                                <button type="button" onclick="eliminaListaSalvata('${l.id}')" class="bg-rose-700 hover:bg-rose-600 text-white text-[10px] font-semibold py-1.5 px-3 rounded-xl transition cursor-pointer whitespace-nowrap">
+                                    Elimina
+                                </button>
+                            </div>
+                            <div class="mt-2">
+                                <div class="grid grid-cols-12 gap-2 px-1 pb-1 text-[9px] text-slate-500 uppercase font-bold border-b border-slate-800">
+                                    <div class="col-span-6">Partita</div>
+                                    <div class="col-span-3 text-center">Pronostico</div>
+                                    <div class="col-span-3 text-center">Quota</div>
+                                </div>
+                                ${righeHtml}
+                            </div>
+                        </div>
+                    `;
+                }).join("");
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = `<div class="text-center text-rose-400 text-sm py-6">Errore nel caricamento delle liste: ${err.message}</div>`;
+            }
+        }
+
+        async function eliminaListaSalvata(id) {
+            if (!confirm("Confermi l'eliminazione permanente di questa lista? L'operazione non è reversibile.")) return;
+            try {
+                await db.collection("liste_selezioni").doc(id).delete();
+                caricaListeSalvate();
+            } catch (err) {
+                console.error(err);
+                alert("Errore durante l'eliminazione: " + err.message);
+            }
+        }
+
+        // ============================================================
+        // CALCOLO MANUALE — partita singola fuori dai 12 campionati.
+        // Isolato di proposito: gira solo nel browser, non scrive MAI
+        // su Firestore, non tocca Palinsesto/Archivio/ML Engine/Analisi/
+        // Value Bets. Riusa lo stesso motore Dixon-Coles e gli stessi
+        // ρ/k già confermati in ML Engine, solo per coerenza dei calcoli.
+        // ============================================================
+
+        function calcola1X2Client(matrice) {
+            const p1 = sommaMatriceJS(matrice, (i, j) => i > j);
+            const pX = sommaMatriceJS(matrice, (i, j) => i === j);
+            const p2 = sommaMatriceJS(matrice, (i, j) => i < j);
+            let pronostico = "1", prob = p1;
+            if (pX > prob) { pronostico = "X"; prob = pX; }
+            if (p2 > prob) { pronostico = "2"; prob = p2; }
+            return { pronostico, probabilita: { "1": +(p1 * 100).toFixed(1), "X": +(pX * 100).toFixed(1), "2": +(p2 * 100).toFixed(1) } };
+        }
+
+        function calcolaRisultatoEsattoClient(matrice, esito1X2, esitoOU25) {
+            let condEsito;
+            if (esito1X2 === "1") condEsito = (i, j) => i > j;
+            else if (esito1X2 === "X") condEsito = (i, j) => i === j;
+            else condEsito = (i, j) => i < j;
+            const condOU = esitoOU25 === "Over" ? (i, j) => (i + j) > 2.5 : (i, j) => (i + j) <= 2.5;
+            let mi = -1, mj = -1, mp = -1;
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
+                if (condEsito(i, j) && condOU(i, j) && matrice[i][j] > mp) { mp = matrice[i][j]; mi = i; mj = j; }
+            }
+            if (mi === -1) {
+                for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
+                    if (condEsito(i, j) && matrice[i][j] > mp) { mp = matrice[i][j]; mi = i; mj = j; }
+                }
+            }
+            return { pronostico: `${mi}-${mj}`, probabilita: +(mp * 100).toFixed(1) };
+        }
+
+        function calcolaDoppiaChanceClient(matrice) {
+            const p1 = sommaMatriceJS(matrice, (i, j) => i > j);
+            const pX = sommaMatriceJS(matrice, (i, j) => i === j);
+            const p2 = sommaMatriceJS(matrice, (i, j) => i < j);
+            const opzioni = { "1X": p1 + pX, "12": p1 + p2, "X2": pX + p2 };
+            let pronostico = "1X", prob = opzioni["1X"];
+            Object.keys(opzioni).forEach(k => { if (opzioni[k] > prob) { pronostico = k; prob = opzioni[k]; } });
+            return { pronostico, probabilita: { "1X": +(opzioni["1X"] * 100).toFixed(1), "12": +(opzioni["12"] * 100).toFixed(1), "X2": +(opzioni["X2"] * 100).toFixed(1) } };
+        }
+
+        function calcolaOverUnderClient(matrice, soglia) {
+            const pOver = sommaMatriceJS(matrice, (i, j) => (i + j) > soglia);
+            const pUnder = 1 - pOver;
+            const pronostico = pOver > pUnder ? "Over" : "Under";
+            return { pronostico, probabilita: { over: +(pOver * 100).toFixed(1), under: +(pUnder * 100).toFixed(1) } };
+        }
+
+        function calcolaGoalNoGoalClient(matrice) {
+            const pGoal = sommaMatriceJS(matrice, (i, j) => i > 0 && j > 0);
+            const pNoGoal = 1 - pGoal;
+            const pronostico = pGoal > pNoGoal ? "Goal" : "No Goal";
+            return { pronostico, probabilita: { goal: +(pGoal * 100).toFixed(1), noGoal: +(pNoGoal * 100).toFixed(1) } };
+        }
+
+        function calcolaComboDCOverUnder25Client(matrice, dcPronostico, ouPronostico) {
+            const condDc = dcPronostico === "1X" ? (i, j) => i >= j
+                          : dcPronostico === "X2" ? (i, j) => i <= j
+                          : (i, j) => i !== j;
+            const condOu = ouPronostico === "Over" ? (i, j) => (i + j) > 2.5 : (i, j) => (i + j) <= 2.5;
+            const prob = sommaMatriceJS(matrice, (i, j) => condDc(i, j) && condOu(i, j));
+            return { pronostico: `${dcPronostico}-${ouPronostico}`, probabilita: +(prob * 100).toFixed(1) };
+        }
+
+        function calcolaMultigolCasaClient(matrice) {
+            const fasce = { "0-1": 0, "2-3": 0, "4+": 0 };
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) { const f = fasciaGolJS(i); for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) fasce[f] += matrice[i][j]; }
+            let pronostico = "0-1", prob = fasce["0-1"];
+            Object.keys(fasce).forEach(k => { if (fasce[k] > prob) { pronostico = k; prob = fasce[k]; } });
+            const probabilita = {};
+            Object.keys(fasce).forEach(k => { probabilita[k] = +(fasce[k] * 100).toFixed(1); });
+            return { pronostico, probabilita };
+        }
+
+        function calcolaMultigolTrasfertaClient(matrice) {
+            const fasce = { "0-1": 0, "2-3": 0, "4+": 0 };
+            for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) { const f = fasciaGolJS(j); for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) fasce[f] += matrice[i][j]; }
+            let pronostico = "0-1", prob = fasce["0-1"];
+            Object.keys(fasce).forEach(k => { if (fasce[k] > prob) { pronostico = k; prob = fasce[k]; } });
+            const probabilita = {};
+            Object.keys(fasce).forEach(k => { probabilita[k] = +(fasce[k] * 100).toFixed(1); });
+            return { pronostico, probabilita };
+        }
+
+        function calcolaMultigolComboClient(matrice, fasciaCasaPronostico, fasciaTrasfertaPronostico) {
+            const prob = sommaMatriceJS(matrice, (i, j) => fasciaGolJS(i) === fasciaCasaPronostico && fasciaGolJS(j) === fasciaTrasfertaPronostico);
+            return { pronostico: `${fasciaCasaPronostico}|${fasciaTrasfertaPronostico}`, probabilita: +(prob * 100).toFixed(1) };
+        }
+
+        // Riproduce esattamente la stessa struttura di "pronostici" generata
+        // dal Worker per le partite normali, così può essere mostrata con
+        // la stessa funzione formattaPronostici() già usata ovunque nell'app.
+        function generaPronosticiCompletiClient(lambdaCasa, lambdaOspite, rho, kScala, wForma) {
+            if (lambdaCasa === null || lambdaOspite === null || !(lambdaCasa > 0) || !(lambdaOspite > 0)) return null;
+
+            const matrice = costruisciMatriceJS(lambdaCasa, lambdaOspite, rho);
+
+            const mercato1X2 = calcola1X2Client(matrice);
+            const over25 = calcolaOverUnderClient(matrice, 2.5);
+            const risultatoEsatto = calcolaRisultatoEsattoClient(matrice, mercato1X2.pronostico, over25.pronostico);
+            const doppiaChance = calcolaDoppiaChanceClient(matrice);
+            const multigolCasa = calcolaMultigolCasaClient(matrice);
+            const multigolTrasferta = calcolaMultigolTrasfertaClient(matrice);
+
+            return {
+                versioneModello: "dixon-coles-v2-forma (manuale)",
+                rhoUsato: rho,
+                kScalaUsato: kScala,
+                wFormaUsato: wForma,
+                lambdaCasa: +lambdaCasa.toFixed(2),
+                lambdaOspite: +lambdaOspite.toFixed(2),
+                mercato1X2: mercato1X2,
+                risultatoEsatto: risultatoEsatto,
+                doppiaChance: doppiaChance,
+                over05: calcolaOverUnderClient(matrice, 0.5),
+                over15: calcolaOverUnderClient(matrice, 1.5),
+                over25: over25,
+                over35: calcolaOverUnderClient(matrice, 3.5),
+                over45: calcolaOverUnderClient(matrice, 4.5),
+                goalNoGoal: calcolaGoalNoGoalClient(matrice),
+                comboDcOver25: calcolaComboDCOverUnder25Client(matrice, doppiaChance.pronostico, over25.pronostico),
+                multigolCasa: multigolCasa,
+                multigolTrasferta: multigolTrasferta,
+                multigolCombo: calcolaMultigolComboClient(matrice, multigolCasa.pronostico, multigolTrasferta.pronostico)
+            };
+        }
+
+        function calcolaPronosticoManuale() {
+            const nomeCasa = (document.getElementById("manNomeCasa").value || "Squadra Casa").trim();
+            const nomeOspite = (document.getElementById("manNomeOspite").value || "Squadra Ospite").trim();
+
+            const mediaGolCasaCampionato = parseFloat(document.getElementById("manMediaGolCasa").value);
+            const mediaGolTrasfertaCampionato = parseFloat(document.getElementById("manMediaGolTrasferta").value);
+
+            const golFattiCasa = parseFloat(document.getElementById("manGolFattiCasa").value);
+            const partiteCasa = parseFloat(document.getElementById("manPartiteCasa").value);
+            const golSubitiCasa = parseFloat(document.getElementById("manGolSubitiCasa").value);
+
+            const golFattiTrasferta = parseFloat(document.getElementById("manGolFattiTrasferta").value);
+            const partiteTrasferta = parseFloat(document.getElementById("manPartiteTrasferta").value);
+            const golSubitiTrasferta = parseFloat(document.getElementById("manGolSubitiTrasferta").value);
+
+            const formaFattiCasa = parseFloat(document.getElementById("manFormaFattiCasa").value);
+            const formaSubitiCasa = parseFloat(document.getElementById("manFormaSubitiCasa").value);
+            const formaFattiOspite = parseFloat(document.getElementById("manFormaFattiOspite").value);
+            const formaSubitiOspite = parseFloat(document.getElementById("manFormaSubitiOspite").value);
+
+            const container = document.getElementById("risultatoManuale");
+
+            const campi = [mediaGolCasaCampionato, mediaGolTrasfertaCampionato, golFattiCasa, partiteCasa, golSubitiCasa, golFattiTrasferta, partiteTrasferta, golSubitiTrasferta, formaFattiCasa, formaSubitiCasa, formaFattiOspite, formaSubitiOspite];
+            if (campi.some(v => isNaN(v))) {
+                alert("Compila tutti e 12 i campi numerici prima di calcolare.");
+                return;
+            }
+            if (partiteCasa <= 0 || partiteTrasferta <= 0 || mediaGolCasaCampionato <= 0 || mediaGolTrasfertaCampionato <= 0) {
+                alert("Le partite giocate e le medie di campionato devono essere maggiori di zero.");
+                return;
+            }
+
+            const forzaAttaccoCasaStag = (golFattiCasa / partiteCasa) / mediaGolCasaCampionato;
+            const forzaDifesaCasaStag = (golSubitiCasa / partiteCasa) / mediaGolTrasfertaCampionato;
+            const forzaAttaccoTrasfertaStag = (golFattiTrasferta / partiteTrasferta) / mediaGolTrasfertaCampionato;
+            const forzaDifesaTrasfertaStag = (golSubitiTrasferta / partiteTrasferta) / mediaGolCasaCampionato;
+
+            const rho = configAlgoritmoCorrente.rho;
+            const kScala = configAlgoritmoCorrente.kScala;
+            const wForma = configAlgoritmoCorrente.wForma;
+
+            // Stessa media pesata stagionale/forma-recente usata dal Worker.
+            // Con w=0 equivale esattamente a usare solo la forza stagionale.
+            const mediaGolSquadraCampionato = (mediaGolCasaCampionato + mediaGolTrasfertaCampionato) / 2;
+            const forzaAttaccoCasaFinale = forzaAttaccoCasaStag * (1 - wForma) + (formaFattiCasa / mediaGolSquadraCampionato) * wForma;
+            const forzaDifesaCasaFinale = forzaDifesaCasaStag * (1 - wForma) + (formaSubitiCasa / mediaGolSquadraCampionato) * wForma;
+            const forzaAttaccoTrasfertaFinale = forzaAttaccoTrasfertaStag * (1 - wForma) + (formaFattiOspite / mediaGolSquadraCampionato) * wForma;
+            const forzaDifesaTrasfertaFinale = forzaDifesaTrasfertaStag * (1 - wForma) + (formaSubitiOspite / mediaGolSquadraCampionato) * wForma;
+
+            const lambdaCasa = limita(mediaGolCasaCampionato * forzaAttaccoCasaFinale * forzaDifesaTrasfertaFinale * kScala, 0.1, 6);
+            const lambdaOspite = limita(mediaGolTrasfertaCampionato * forzaAttaccoTrasfertaFinale * forzaDifesaCasaFinale * kScala, 0.1, 6);
+
+            const pronostici = generaPronosticiCompletiClient(lambdaCasa, lambdaOspite, rho, kScala, wForma);
+
+            if (!pronostici) {
+                container.innerHTML = `<div class="text-rose-400 text-xs text-center py-4">Dati insufficienti per calcolare un pronostico valido.</div>`;
+                return;
+            }
+
+            const partitaFittizia = { squadraCasa: nomeCasa, squadraOspite: nomeOspite, pronostici: pronostici };
+
+            container.innerHTML = `
+                <div class="bg-slate-950/70 rounded-2xl p-3 border border-violet-800/60 mt-1">
+                    <div class="text-sm font-bold text-slate-100 mb-1 text-center">${nomeCasa} vs ${nomeOspite}</div>
+                    <div class="text-[10px] text-slate-500 text-center mb-2">Calcolo isolato — non salvato, non incluso in Archivio / ML Engine / Analisi / Value Bets</div>
+                    ${formattaPronostici(partitaFittizia)}
+                </div>
+            `;
+        }
+
+        function svuotaCalcoloManuale() {
+            ["manNomeCasa", "manNomeOspite", "manMediaGolCasa", "manMediaGolTrasferta", "manGolFattiCasa", "manPartiteCasa", "manGolSubitiCasa", "manGolFattiTrasferta", "manPartiteTrasferta", "manGolSubitiTrasferta", "manFormaFattiCasa", "manFormaSubitiCasa", "manFormaFattiOspite", "manFormaSubitiOspite"].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = "";
+            });
+            const container = document.getElementById("risultatoManuale");
+            if (container) container.innerHTML = "";
+        }
+
+        async function mostraBet() {
+            popolaControlliBet();
+            await caricaConfigAlgoritmo();
+            const infoEl = document.getElementById("manAlgoritmoInfo");
+            if (infoEl) {
+                infoEl.textContent = `Il calcolo userà l'algoritmo attualmente confermato in ML Engine: ρ=${configAlgoritmoCorrente.rho.toFixed(2)}, k=${configAlgoritmoCorrente.kScala.toFixed(2)}, w=${configAlgoritmoCorrente.wForma.toFixed(2)}.`;
+            }
+            await caricaListeSalvate();
+        }
+    </script>
+</body>
+</html>
