@@ -345,7 +345,7 @@
                     📝 CALCOLO MANUALE — PARTITA SINGOLA FUORI CAMPIONATI
                 </h2>
                 <p class="text-xs text-slate-400 mb-3">
-                    Calcola un pronostico isolato per una partita che non appartiene ai 12 campionati coperti dall'app, usando lo stesso algoritmo Dixon-Coles e gli stessi parametri (ρ, k) confermati in ML Engine. <strong class="text-violet-300">Il risultato non viene salvato da nessuna parte</strong>: non entra nel Palinsesto, nell'Archivio Storico, nell'ML Engine, in Analisi o nei Value Bets — è un calcolo "usa e getta" da leggere qui.
+                    Calcola un pronostico isolato per una partita che non appartiene ai 12 campionati coperti dall'app, usando lo stesso algoritmo Dixon-Coles e gli stessi parametri (ρ, k, w) confermati in ML Engine — incluso il peso dato alla forma recente delle due squadre. <strong class="text-violet-300">Il risultato non viene salvato da nessuna parte</strong>: non entra nel Palinsesto, nell'Archivio Storico, nell'ML Engine, in Analisi o nei Value Bets — è un calcolo "usa e getta" da leggere qui.
                 </p>
                 <div id="manAlgoritmoInfo" class="text-[11px] text-violet-300 mb-4"></div>
 
@@ -410,9 +410,32 @@
                     </div>
                 </div>
 
+                <div class="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80 mb-4">
+                    <div class="text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-2">4. Forma Recente — ultime 5 partite di ciascuna squadra (miste casa/trasferta)</div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Squadra CASA — Media gol fatti<br><span class="text-slate-500">ultime 5 partite giocate (qualsiasi sede), stagione corrente</span></label>
+                            <input type="number" step="0.01" id="manFormaFattiCasa" placeholder="es. 1.60" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Squadra CASA — Media gol subiti<br><span class="text-slate-500">ultime 5 partite giocate (qualsiasi sede), stagione corrente</span></label>
+                            <input type="number" step="0.01" id="manFormaSubitiCasa" placeholder="es. 0.80" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Squadra OSPITE — Media gol fatti<br><span class="text-slate-500">ultime 5 partite giocate (qualsiasi sede), stagione corrente</span></label>
+                            <input type="number" step="0.01" id="manFormaFattiOspite" placeholder="es. 1.00" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Squadra OSPITE — Media gol subiti<br><span class="text-slate-500">ultime 5 partite giocate (qualsiasi sede), stagione corrente</span></label>
+                            <input type="number" step="0.01" id="manFormaSubitiOspite" placeholder="es. 1.40" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-xl p-2.5 focus:outline-none focus:border-violet-500">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-2">Media = (somma gol nelle ultime 5 partite) ÷ 5. Se la squadra ne ha giocate meno di 5 in stagione, dividi per quelle realmente giocate.</p>
+                </div>
+
                 <details class="mb-4 bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5">
                     <summary class="cursor-pointer text-slate-400 font-bold text-[10px] uppercase tracking-wider">❓ Dove trovo questi dati?</summary>
-                    <p class="mt-2 text-[11px] text-slate-400 leading-relaxed">Cerca un sito di statistiche calcistiche che mostri le tabelle "Casa / Trasferta" separate per il campionato che ti interessa (es. FBref, Soccerway, WhoScored, o il sito ufficiale del torneo). Ti servono le medie del campionato e le statistiche stagionali delle due squadre, filtrate solo per le partite giocate rispettivamente in casa (per la squadra di casa) e in trasferta (per la squadra ospite).</p>
+                    <p class="mt-2 text-[11px] text-slate-400 leading-relaxed">Cerca un sito di statistiche calcistiche che mostri le tabelle "Casa / Trasferta" separate per il campionato che ti interessa (es. FBref, Soccerway, WhoScored, o il sito ufficiale del torneo). Ti servono le medie del campionato e le statistiche stagionali delle due squadre, filtrate solo per le partite giocate rispettivamente in casa (per la squadra di casa) e in trasferta (per la squadra ospite). Per la Forma Recente (blocco 4), ti serve invece lo storico delle ultime 5 partite di ciascuna squadra, a prescindere da dove le ha giocate — di solito disponibile nella pagina della squadra sullo stesso sito.</p>
                 </details>
 
                 <div class="flex flex-col sm:flex-row gap-2">
@@ -807,7 +830,7 @@
                             <span class="font-bold text-emerald-400 text-center">${pr.multigolCombo.pronostico}</span>
                             <span class="text-right">${fv(pr.multigolCombo.probabilita,'%')}</span>
                         </div>
-                        <div class="text-slate-600 text-[9px] pt-1 border-t border-slate-800/60 mt-1">Modello: ${pr.versioneModello} · ρ=${fv(pr.rhoUsato)} · k=${fv(pr.kScalaUsato)}</div>
+                        <div class="text-slate-600 text-[9px] pt-1 border-t border-slate-800/60 mt-1">Modello: ${pr.versioneModello} · ρ=${fv(pr.rhoUsato)} · k=${fv(pr.kScalaUsato)} · w=${fv(pr.wFormaUsato)}</div>
                     </div>
                 </details>
             `;
@@ -1418,7 +1441,7 @@
             try {
                 await caricaConfigAlgoritmo();
 
-                const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}&rho=${configAlgoritmoCorrente.rho}&kScala=${configAlgoritmoCorrente.kScala}`;
+                const fullUrl = `${WORKER_URL}?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${encodeURIComponent(selectedComps.join(","))}&rho=${configAlgoritmoCorrente.rho}&kScala=${configAlgoritmoCorrente.kScala}&wForma=${configAlgoritmoCorrente.wForma}`;
                 const res = await fetch(fullUrl);
                 const data = await res.json();
 
@@ -1837,7 +1860,7 @@
             { cod: "WC", nome: "World Cup" }
         ];
 
-        let configAlgoritmoCorrente = { rho: -0.1, kScala: 1, versione: "v1", confermatoIl: null };
+        let configAlgoritmoCorrente = { rho: -0.1, kScala: 1, wForma: 0, versione: "v1", confermatoIl: null };
         let archivioCorrenteML = [];
         let ultimoBacktestNuoviParametri = null;
         let ultimoBacktestTrainCount = 0;
@@ -1851,6 +1874,7 @@
                     configAlgoritmoCorrente = {
                         rho: (typeof d.rho === "number") ? d.rho : -0.1,
                         kScala: (typeof d.kScala === "number") ? d.kScala : 1,
+                        wForma: (typeof d.wForma === "number") ? d.wForma : 0,
                         versione: d.versione || "v1",
                         confermatoIl: d.confermatoIl || null
                     };
@@ -1907,8 +1931,8 @@
             await caricaConfigAlgoritmo();
 
             const infoEl = document.getElementById("infoAlgoritmoCorrente");
-            infoEl.textContent = `Algoritmo attuale: ρ=${configAlgoritmoCorrente.rho.toFixed(2)}, k=${configAlgoritmoCorrente.kScala.toFixed(2)}` +
-                (configAlgoritmoCorrente.confermatoIl ? ` (confermato il ${configAlgoritmoCorrente.confermatoIl})` : " (valori di partenza, mai ricalibrati)");
+            infoEl.textContent = `Algoritmo attuale: ρ=${configAlgoritmoCorrente.rho.toFixed(2)}, k=${configAlgoritmoCorrente.kScala.toFixed(2)}, w=${configAlgoritmoCorrente.wForma.toFixed(2)}` +
+                (configAlgoritmoCorrente.confermatoIl ? ` (confermato il ${configAlgoritmoCorrente.confermatoIl})` : " (valori di partenza, mai ricalibrati — w=0 significa nessun peso alla forma recente)");
 
             let archivio = [];
             try {
@@ -1930,6 +1954,39 @@
             document.getElementById("infoNuoviParametri").textContent = "";
             document.getElementById("btnConfermaAlgoritmo").classList.add("hidden");
             ultimoBacktestNuoviParametri = null;
+        }
+
+        // Ricalcola lambdaCasa/lambdaOspite di una partita d'Archivio da
+        // zero, usando i dati grezzi già salvati nel documento (forza
+        // stagionale + forma recente), per un dato candidato w e k. Serve
+        // al backtesting per testare w, che a differenza di rho/k modifica
+        // COME si calcola lambda, non solo come si scala dopo.
+        function ricalcolaLambdaConForma(p, wForma, kScala) {
+            const sc = p.statCampionato || {};
+            const sac = p.statAvanzateCasa || {};
+            const sao = p.statAvanzateOspite || {};
+            if (sac.forzaAttacco == null || sac.forzaDifesa == null || sao.forzaAttacco == null || sao.forzaDifesa == null) return null;
+            if (!(sc.mediaGolCasa > 0) || !(sc.mediaGolTrasferta > 0)) return null;
+
+            const mediaGolSquadra = (sc.mediaGolCasa + sc.mediaGolTrasferta) / 2;
+
+            function forzaConForma(forzaStagionale, mediaRecente) {
+                if (forzaStagionale === null || forzaStagionale === undefined) return null;
+                if (mediaRecente === null || mediaRecente === undefined || !(mediaGolSquadra > 0)) return forzaStagionale;
+                const forzaRecente = mediaRecente / mediaGolSquadra;
+                return forzaStagionale * (1 - wForma) + forzaRecente * wForma;
+            }
+
+            const forzaAttaccoCasaFinale = forzaConForma(sac.forzaAttacco, sac.mediaGolFattiUltime5);
+            const forzaDifesaCasaFinale = forzaConForma(sac.forzaDifesa, sac.mediaGolSubitiUltime5);
+            const forzaAttaccoOspiteFinale = forzaConForma(sao.forzaAttacco, sao.mediaGolFattiUltime5);
+            const forzaDifesaOspiteFinale = forzaConForma(sao.forzaDifesa, sao.mediaGolSubitiUltime5);
+
+            if (forzaAttaccoCasaFinale === null || forzaDifesaOspiteFinale === null || forzaAttaccoOspiteFinale === null || forzaDifesaCasaFinale === null) return null;
+
+            const lambdaCasa = limita(sc.mediaGolCasa * forzaAttaccoCasaFinale * forzaDifesaOspiteFinale * kScala, 0.1, 6);
+            const lambdaOspite = limita(sc.mediaGolTrasferta * forzaAttaccoOspiteFinale * forzaDifesaCasaFinale * kScala, 0.1, 6);
+            return { lambdaCasa, lambdaOspite };
         }
 
         async function eseguiBacktesting() {
@@ -1961,8 +2018,10 @@
                 for (let r = -0.20; r <= 0.001; r += 0.02) rhoCandidati.push(+r.toFixed(2));
                 const kCandidati = [];
                 for (let k = 0.85; k <= 1.151; k += 0.05) kCandidati.push(+k.toFixed(2));
+                const wCandidati = [];
+                for (let w = 0; w <= 0.601; w += 0.1) wCandidati.push(+w.toFixed(2));
 
-                function punteggioSuInsieme(insieme, rho, kScala) {
+                function punteggioSuInsieme(insieme, rho, kScala, wForma) {
                     const conteggi = {};
                     MERCATI_LISTA.forEach(m => { conteggi[m.chiave] = { corretti: 0, totali: 0 }; });
 
@@ -1971,9 +2030,10 @@
                         const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
                         if (isNaN(gc) || isNaN(go)) return;
 
-                        const lambdaC = limita(p.pronostici.lambdaCasa * kScala, 0.1, 6);
-                        const lambdaO = limita(p.pronostici.lambdaOspite * kScala, 0.1, 6);
-                        const matrice = costruisciMatriceJS(lambdaC, lambdaO, rho);
+                        const lambdas = ricalcolaLambdaConForma(p, wForma, kScala);
+                        if (!lambdas) return;
+
+                        const matrice = costruisciMatriceJS(lambdas.lambdaCasa, lambdas.lambdaOspite, rho);
                         const compatti = pronosticiDaMatriceJS(matrice);
                         const esiti = verificaAzzeccati(compatti, gc, go);
 
@@ -1994,20 +2054,23 @@
                     return { punteggio: n > 0 ? somma / n : 0, conteggi };
                 }
 
-                let migliorRho = configAlgoritmoCorrente.rho, migliorK = configAlgoritmoCorrente.kScala, migliorPunteggio = -1;
+                let migliorRho = configAlgoritmoCorrente.rho, migliorK = configAlgoritmoCorrente.kScala, migliorW = configAlgoritmoCorrente.wForma, migliorPunteggio = -1;
 
                 rhoCandidati.forEach(rho => {
                     kCandidati.forEach(kScala => {
-                        const { punteggio } = punteggioSuInsieme(train, rho, kScala);
-                        if (punteggio > migliorPunteggio) {
-                            migliorPunteggio = punteggio;
-                            migliorRho = rho;
-                            migliorK = kScala;
-                        }
+                        wCandidati.forEach(wForma => {
+                            const { punteggio } = punteggioSuInsieme(train, rho, kScala, wForma);
+                            if (punteggio > migliorPunteggio) {
+                                migliorPunteggio = punteggio;
+                                migliorRho = rho;
+                                migliorK = kScala;
+                                migliorW = wForma;
+                            }
+                        });
                     });
                 });
 
-                const risultatoTest = punteggioSuInsieme(test, migliorRho, migliorK);
+                const risultatoTest = punteggioSuInsieme(test, migliorRho, migliorK, migliorW);
                 const nuoveAccuratezze = {};
                 MERCATI_LISTA.forEach(m => {
                     const c = risultatoTest.conteggi[m.chiave];
@@ -2016,11 +2079,11 @@
 
                 disegnaTabellaAccuratezze(archivio, nuoveAccuratezze);
 
-                ultimoBacktestNuoviParametri = { rho: migliorRho, kScala: migliorK };
+                ultimoBacktestNuoviParametri = { rho: migliorRho, kScala: migliorK, wForma: migliorW };
                 ultimoBacktestTrainCount = train.length;
                 ultimoBacktestTestCount = test.length;
                 document.getElementById("infoNuoviParametri").textContent =
-                    `Parametri proposti: ρ=${migliorRho.toFixed(2)}, k=${migliorK.toFixed(2)} (allenati su ${train.length} partite più vecchie, verificati su ${test.length} più recenti)`;
+                    `Parametri proposti: ρ=${migliorRho.toFixed(2)}, k=${migliorK.toFixed(2)}, w=${migliorW.toFixed(2)} (allenati su ${train.length} partite più vecchie, verificati su ${test.length} più recenti)`;
                 document.getElementById("btnConfermaAlgoritmo").classList.remove("hidden");
 
             } catch (err) {
@@ -2040,19 +2103,20 @@
                 avviso = `\n\n⚠️ ATTENZIONE: campione molto piccolo (${ultimoBacktestTrainCount} partite di allenamento, ${ultimoBacktestTestCount} di verifica). I parametri proposti potrebbero non essere affidabili — valuta se aspettare che l'Archivio cresca ancora prima di confermare.`;
             }
 
-            if (!confirm(`Confermi di sostituire l'algoritmo corrente con ρ=${ultimoBacktestNuoviParametri.rho.toFixed(2)}, k=${ultimoBacktestNuoviParametri.kScala.toFixed(2)}? Verrà usato dalla prossima estrazione partite.${avviso}`)) return;
+            if (!confirm(`Confermi di sostituire l'algoritmo corrente con ρ=${ultimoBacktestNuoviParametri.rho.toFixed(2)}, k=${ultimoBacktestNuoviParametri.kScala.toFixed(2)}, w=${ultimoBacktestNuoviParametri.wForma.toFixed(2)}? Verrà usato dalla prossima estrazione partite.${avviso}`)) return;
 
             try {
                 const ora = new Date().toLocaleString("it-IT");
                 await db.collection("config").doc("algoritmo").set({
                     rho: ultimoBacktestNuoviParametri.rho,
                     kScala: ultimoBacktestNuoviParametri.kScala,
+                    wForma: ultimoBacktestNuoviParametri.wForma,
                     versione: "v1",
                     confermatoIl: ora
                 });
-                configAlgoritmoCorrente = { rho: ultimoBacktestNuoviParametri.rho, kScala: ultimoBacktestNuoviParametri.kScala, versione: "v1", confermatoIl: ora };
+                configAlgoritmoCorrente = { rho: ultimoBacktestNuoviParametri.rho, kScala: ultimoBacktestNuoviParametri.kScala, wForma: ultimoBacktestNuoviParametri.wForma, versione: "v1", confermatoIl: ora };
                 document.getElementById("infoAlgoritmoCorrente").textContent =
-                    `Algoritmo attuale: ρ=${configAlgoritmoCorrente.rho.toFixed(2)}, k=${configAlgoritmoCorrente.kScala.toFixed(2)} (confermato il ${ora})`;
+                    `Algoritmo attuale: ρ=${configAlgoritmoCorrente.rho.toFixed(2)}, k=${configAlgoritmoCorrente.kScala.toFixed(2)}, w=${configAlgoritmoCorrente.wForma.toFixed(2)} (confermato il ${ora})`;
                 document.getElementById("btnConfermaAlgoritmo").classList.add("hidden");
                 document.getElementById("infoNuoviParametri").textContent = "";
                 disegnaTabellaAccuratezze(archivioCorrenteML, null);
@@ -2801,7 +2865,7 @@
         // Riproduce esattamente la stessa struttura di "pronostici" generata
         // dal Worker per le partite normali, così può essere mostrata con
         // la stessa funzione formattaPronostici() già usata ovunque nell'app.
-        function generaPronosticiCompletiClient(lambdaCasa, lambdaOspite, rho, kScala) {
+        function generaPronosticiCompletiClient(lambdaCasa, lambdaOspite, rho, kScala, wForma) {
             if (lambdaCasa === null || lambdaOspite === null || !(lambdaCasa > 0) || !(lambdaOspite > 0)) return null;
 
             const matrice = costruisciMatriceJS(lambdaCasa, lambdaOspite, rho);
@@ -2814,9 +2878,10 @@
             const multigolTrasferta = calcolaMultigolTrasfertaClient(matrice);
 
             return {
-                versioneModello: "dixon-coles-v1 (manuale)",
+                versioneModello: "dixon-coles-v2-forma (manuale)",
                 rhoUsato: rho,
                 kScalaUsato: kScala,
+                wFormaUsato: wForma,
                 lambdaCasa: +lambdaCasa.toFixed(2),
                 lambdaOspite: +lambdaOspite.toFixed(2),
                 mercato1X2: mercato1X2,
@@ -2850,11 +2915,16 @@
             const partiteTrasferta = parseFloat(document.getElementById("manPartiteTrasferta").value);
             const golSubitiTrasferta = parseFloat(document.getElementById("manGolSubitiTrasferta").value);
 
+            const formaFattiCasa = parseFloat(document.getElementById("manFormaFattiCasa").value);
+            const formaSubitiCasa = parseFloat(document.getElementById("manFormaSubitiCasa").value);
+            const formaFattiOspite = parseFloat(document.getElementById("manFormaFattiOspite").value);
+            const formaSubitiOspite = parseFloat(document.getElementById("manFormaSubitiOspite").value);
+
             const container = document.getElementById("risultatoManuale");
 
-            const campi = [mediaGolCasaCampionato, mediaGolTrasfertaCampionato, golFattiCasa, partiteCasa, golSubitiCasa, golFattiTrasferta, partiteTrasferta, golSubitiTrasferta];
+            const campi = [mediaGolCasaCampionato, mediaGolTrasfertaCampionato, golFattiCasa, partiteCasa, golSubitiCasa, golFattiTrasferta, partiteTrasferta, golSubitiTrasferta, formaFattiCasa, formaSubitiCasa, formaFattiOspite, formaSubitiOspite];
             if (campi.some(v => isNaN(v))) {
-                alert("Compila tutti gli 8 campi numerici prima di calcolare.");
+                alert("Compila tutti e 12 i campi numerici prima di calcolare.");
                 return;
             }
             if (partiteCasa <= 0 || partiteTrasferta <= 0 || mediaGolCasaCampionato <= 0 || mediaGolTrasfertaCampionato <= 0) {
@@ -2862,18 +2932,27 @@
                 return;
             }
 
-            const forzaAttaccoCasa = (golFattiCasa / partiteCasa) / mediaGolCasaCampionato;
-            const forzaDifesaCasa = (golSubitiCasa / partiteCasa) / mediaGolTrasfertaCampionato;
-            const forzaAttaccoTrasferta = (golFattiTrasferta / partiteTrasferta) / mediaGolTrasfertaCampionato;
-            const forzaDifesaTrasferta = (golSubitiTrasferta / partiteTrasferta) / mediaGolCasaCampionato;
+            const forzaAttaccoCasaStag = (golFattiCasa / partiteCasa) / mediaGolCasaCampionato;
+            const forzaDifesaCasaStag = (golSubitiCasa / partiteCasa) / mediaGolTrasfertaCampionato;
+            const forzaAttaccoTrasfertaStag = (golFattiTrasferta / partiteTrasferta) / mediaGolTrasfertaCampionato;
+            const forzaDifesaTrasfertaStag = (golSubitiTrasferta / partiteTrasferta) / mediaGolCasaCampionato;
 
             const rho = configAlgoritmoCorrente.rho;
             const kScala = configAlgoritmoCorrente.kScala;
+            const wForma = configAlgoritmoCorrente.wForma;
 
-            const lambdaCasa = limita(mediaGolCasaCampionato * forzaAttaccoCasa * forzaDifesaTrasferta * kScala, 0.1, 6);
-            const lambdaOspite = limita(mediaGolTrasfertaCampionato * forzaAttaccoTrasferta * forzaDifesaCasa * kScala, 0.1, 6);
+            // Stessa media pesata stagionale/forma-recente usata dal Worker.
+            // Con w=0 equivale esattamente a usare solo la forza stagionale.
+            const mediaGolSquadraCampionato = (mediaGolCasaCampionato + mediaGolTrasfertaCampionato) / 2;
+            const forzaAttaccoCasaFinale = forzaAttaccoCasaStag * (1 - wForma) + (formaFattiCasa / mediaGolSquadraCampionato) * wForma;
+            const forzaDifesaCasaFinale = forzaDifesaCasaStag * (1 - wForma) + (formaSubitiCasa / mediaGolSquadraCampionato) * wForma;
+            const forzaAttaccoTrasfertaFinale = forzaAttaccoTrasfertaStag * (1 - wForma) + (formaFattiOspite / mediaGolSquadraCampionato) * wForma;
+            const forzaDifesaTrasfertaFinale = forzaDifesaTrasfertaStag * (1 - wForma) + (formaSubitiOspite / mediaGolSquadraCampionato) * wForma;
 
-            const pronostici = generaPronosticiCompletiClient(lambdaCasa, lambdaOspite, rho, kScala);
+            const lambdaCasa = limita(mediaGolCasaCampionato * forzaAttaccoCasaFinale * forzaDifesaTrasfertaFinale * kScala, 0.1, 6);
+            const lambdaOspite = limita(mediaGolTrasfertaCampionato * forzaAttaccoTrasfertaFinale * forzaDifesaCasaFinale * kScala, 0.1, 6);
+
+            const pronostici = generaPronosticiCompletiClient(lambdaCasa, lambdaOspite, rho, kScala, wForma);
 
             if (!pronostici) {
                 container.innerHTML = `<div class="text-rose-400 text-xs text-center py-4">Dati insufficienti per calcolare un pronostico valido.</div>`;
@@ -2892,7 +2971,7 @@
         }
 
         function svuotaCalcoloManuale() {
-            ["manNomeCasa", "manNomeOspite", "manMediaGolCasa", "manMediaGolTrasferta", "manGolFattiCasa", "manPartiteCasa", "manGolSubitiCasa", "manGolFattiTrasferta", "manPartiteTrasferta", "manGolSubitiTrasferta"].forEach(id => {
+            ["manNomeCasa", "manNomeOspite", "manMediaGolCasa", "manMediaGolTrasferta", "manGolFattiCasa", "manPartiteCasa", "manGolSubitiCasa", "manGolFattiTrasferta", "manPartiteTrasferta", "manGolSubitiTrasferta", "manFormaFattiCasa", "manFormaSubitiCasa", "manFormaFattiOspite", "manFormaSubitiOspite"].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = "";
             });
@@ -2905,7 +2984,7 @@
             await caricaConfigAlgoritmo();
             const infoEl = document.getElementById("manAlgoritmoInfo");
             if (infoEl) {
-                infoEl.textContent = `Il calcolo userà l'algoritmo attualmente confermato in ML Engine: ρ=${configAlgoritmoCorrente.rho.toFixed(2)}, k=${configAlgoritmoCorrente.kScala.toFixed(2)}.`;
+                infoEl.textContent = `Il calcolo userà l'algoritmo attualmente confermato in ML Engine: ρ=${configAlgoritmoCorrente.rho.toFixed(2)}, k=${configAlgoritmoCorrente.kScala.toFixed(2)}, w=${configAlgoritmoCorrente.wForma.toFixed(2)}.`;
             }
             await caricaListeSalvate();
         }
