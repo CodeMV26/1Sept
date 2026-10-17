@@ -247,18 +247,23 @@
 
                 <div id="infoNuoviParametri" class="text-xs text-emerald-400 mt-3"></div>
 
+                <button id="btnAffinaStorico" type="button" onclick="eseguiAffinamentoStorico()" class="hidden w-full mt-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                    Passo 2 — Affina su tutto lo storico
+                </button>
+
                 <button id="btnConfermaAlgoritmo" type="button" onclick="confermaNuovoAlgoritmo()" class="hidden w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer">
                     Conferma Nuovo Algoritmo
                 </button>
             </div>
 
             <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto p-4 sm:p-5 overflow-x-auto">
+                <div id="notaTabellaML" class="text-[11px] text-slate-400 mb-3 leading-relaxed"></div>
                 <table class="w-full text-xs">
                     <thead>
                         <tr class="text-slate-400 uppercase text-[10px] border-b border-slate-800">
                             <th class="text-left py-2 pr-2">Mercato</th>
-                            <th class="text-center py-2 px-2">Accuratezza Corrente</th>
-                            <th class="text-center py-2 pl-2">Accuratezza Nuovo Algoritmo</th>
+                            <th id="thCorrente" class="text-center py-2 px-2">Accuratezza Corrente</th>
+                            <th id="thNuovo" class="text-center py-2 pl-2">Accuratezza Nuovo Algoritmo</th>
                         </tr>
                     </thead>
                     <tbody id="tabellaAccuratezzeBody"></tbody>
@@ -1659,7 +1664,9 @@
 
         const MAX_GOL_MATRICE_JS = 8;
 
+        const FATTORIALI_JS = [1, 1, 2, 6, 24, 120, 720, 5040, 40320];
         function fattorialeJS(n) {
+            if (n < FATTORIALI_JS.length) return FATTORIALI_JS[n];
             let r = 1;
             for (let i = 2; i <= n; i++) r *= i;
             return r;
@@ -1678,10 +1685,12 @@
         function costruisciMatriceJS(lambdaCasa, lambdaOspite, rho) {
             const matrice = [];
             let somma = 0;
+            const pCasaArr = [], pOspiteArr = [];
+            for (let g = 0; g <= MAX_GOL_MATRICE_JS; g++) { pCasaArr[g] = poissonJS(g, lambdaCasa); pOspiteArr[g] = poissonJS(g, lambdaOspite); }
             for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) {
                 matrice[i] = [];
                 for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
-                    const base = poissonJS(i, lambdaCasa) * poissonJS(j, lambdaOspite);
+                    const base = pCasaArr[i] * pOspiteArr[j];
                     const tau = tauDixonColesJS(i, j, lambdaCasa, lambdaOspite, rho);
                     const val = Math.max(0, base * tau);
                     matrice[i][j] = val;
@@ -1913,8 +1922,8 @@
             return risultato;
         }
 
-        function disegnaTabellaAccuratezze(archivio, nuoveAccuratezze) {
-            const accCorrente = calcolaAccuratezzePerArchivio(archivio);
+        function disegnaTabellaAccuratezze(archivio, nuoveAccuratezze, correntiOverride) {
+            const accCorrente = correntiOverride || calcolaAccuratezzePerArchivio(archivio);
             const tbody = document.getElementById("tabellaAccuratezzeBody");
             tbody.innerHTML = MERCATI_LISTA.map(m => {
                 const corrente = accCorrente[m.chiave];
@@ -1950,10 +1959,8 @@
             else if (archivio.length < 150) avviso = "Campione ancora ridotto: numeri indicativi, non definitivi.";
             document.getElementById("avvisoCampioneML").textContent = avviso;
 
+            resetVistaBacktest();
             disegnaTabellaAccuratezze(archivio, null);
-            document.getElementById("infoNuoviParametri").textContent = "";
-            document.getElementById("btnConfermaAlgoritmo").classList.add("hidden");
-            ultimoBacktestNuoviParametri = null;
         }
 
         // Ricalcola lambdaCasa/lambdaOspite di una partita d'Archivio da
@@ -1989,21 +1996,156 @@
             return { lambdaCasa, lambdaOspite };
         }
 
+        // ============================================================
+        // BACKTESTING — Passo 1 (verifica onesta 70/30) + Passo 2
+        // (affinamento su tutto lo storico, facoltativo)
+        //
+        // Passo 1: i parametri si SCELGONO sul 70% piu' vecchio e si
+        // GIUDICANO sul 30% piu' recente (mai visto in fase di scelta).
+        // Sulle stesse partite di verifica si misura l'accuratezza sia
+        // dei parametri correnti sia di quelli proposti, ricalcolando
+        // entrambi dai dati grezzi: il confronto e' alla pari.
+        // Passo 2: solo se il Passo 1 mostra un miglioramento netto, si
+        // puo' rifare la ricerca su TUTTE le partite per avere parametri
+        // piu' stabili. Quei valori non hanno un test indipendente.
+        // ============================================================
+
+        const SOGLIA_MIGLIORAMENTO_TEST = 0.01; // 1 punto % di accuratezza media sui 13 mercati
+        let ultimoBacktestValidi = [];
+        let ultimoBacktestProposta = null;      // proposta del Passo 1
+        let ultimoBacktestDiffTest = 0;         // differenza (0-1) sul test, proposti - correnti
+
+        function parametriUguali(a, b) {
+            return Math.abs(a.rho - b.rho) < 0.001 && Math.abs(a.kScala - b.kScala) < 0.001 && Math.abs(a.wForma - b.wForma) < 0.001;
+        }
+
+        function formattaParametri(p) {
+            return `ρ=${p.rho.toFixed(2)}, k=${p.kScala.toFixed(2)}, w=${p.wForma.toFixed(2)}`;
+        }
+
+        function resetVistaBacktest() {
+            ultimoBacktestNuoviParametri = null;
+            ultimoBacktestProposta = null;
+            ultimoBacktestValidi = [];
+            ultimoBacktestDiffTest = 0;
+            document.getElementById("infoNuoviParametri").textContent = "";
+            document.getElementById("btnConfermaAlgoritmo").classList.add("hidden");
+            document.getElementById("btnAffinaStorico").classList.add("hidden");
+            document.getElementById("thCorrente").textContent = "Accuratezza Corrente";
+            document.getElementById("thNuovo").textContent = "Accuratezza Nuovo Algoritmo";
+            document.getElementById("notaTabellaML").textContent = "Colonna \"corrente\": pronostici congelati di tutte le partite in Archivio. Premi \"Ricalcola e Confronta\" per il confronto alla pari sulle partite di verifica.";
+        }
+
+        function generaCandidatiGriglia() {
+            const rhoCandidati = [];
+            for (let r = -0.20; r <= 0.001; r += 0.02) rhoCandidati.push(+r.toFixed(2));
+            const kCandidati = [];
+            for (let k = 0.85; k <= 1.151; k += 0.05) kCandidati.push(+k.toFixed(2));
+            const wCandidati = [];
+            for (let w = 0; w <= 0.801; w += 0.1) wCandidati.push(+w.toFixed(2));
+            return { rhoCandidati, kCandidati, wCandidati };
+        }
+
+        // Accuratezza media sui 13 mercati di un insieme di partite, con
+        // un dato set di parametri (λ ricalcolati dai dati grezzi).
+        function punteggioSuInsieme(insieme, rho, kScala, wForma) {
+            const conteggi = {};
+            MERCATI_LISTA.forEach(m => { conteggi[m.chiave] = { corretti: 0, totali: 0 }; });
+
+            insieme.forEach(p => {
+                const parti = p.risultatoReale.split("-");
+                const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+                if (isNaN(gc) || isNaN(go)) return;
+
+                const lambdas = ricalcolaLambdaConForma(p, wForma, kScala);
+                if (!lambdas) return;
+
+                const matrice = costruisciMatriceJS(lambdas.lambdaCasa, lambdas.lambdaOspite, rho);
+                const compatti = pronosticiDaMatriceJS(matrice);
+                const esiti = verificaAzzeccati(compatti, gc, go);
+
+                MERCATI_LISTA.forEach(m => {
+                    conteggi[m.chiave].totali += 1;
+                    if (esiti[m.chiave]) conteggi[m.chiave].corretti += 1;
+                });
+            });
+
+            let somma = 0, n = 0;
+            MERCATI_LISTA.forEach(m => {
+                if (conteggi[m.chiave].totali > 0) {
+                    somma += conteggi[m.chiave].corretti / conteggi[m.chiave].totali;
+                    n += 1;
+                }
+            });
+
+            return { punteggio: n > 0 ? somma / n : 0, conteggi };
+        }
+
+        function accuratezzeDaConteggi(conteggi) {
+            const acc = {};
+            MERCATI_LISTA.forEach(m => {
+                const c = conteggi[m.chiave];
+                acc[m.chiave] = c.totali > 0 ? +((c.corretti / c.totali) * 100).toFixed(1) : null;
+            });
+            return acc;
+        }
+
+        // Ricerca a griglia su ρ × k × w. Parte dai parametri correnti come
+        // base: un candidato vince SOLO se e' strettamente migliore, quindi
+        // se nulla batte i correnti, i "proposti" coincidono con i correnti.
+        async function cercaParametriMigliori(insieme, partenza, onProgresso) {
+            const { rhoCandidati, kCandidati, wCandidati } = generaCandidatiGriglia();
+            const migliore = {
+                rho: partenza.rho, kScala: partenza.kScala, wForma: partenza.wForma,
+                punteggio: punteggioSuInsieme(insieme, partenza.rho, partenza.kScala, partenza.wForma).punteggio
+            };
+            const EPS = 1e-9;
+
+            for (let ri = 0; ri < rhoCandidati.length; ri++) {
+                const rho = rhoCandidati[ri];
+                for (const kScala of kCandidati) {
+                    for (const wForma of wCandidati) {
+                        const { punteggio } = punteggioSuInsieme(insieme, rho, kScala, wForma);
+                        if (punteggio > migliore.punteggio + EPS) {
+                            migliore.punteggio = punteggio;
+                            migliore.rho = rho;
+                            migliore.kScala = kScala;
+                            migliore.wForma = wForma;
+                        }
+                    }
+                }
+                if (onProgresso) onProgresso(Math.round(((ri + 1) / rhoCandidati.length) * 100));
+                await new Promise(r => setTimeout(r, 0)); // lascia respirare l'interfaccia
+            }
+            return migliore;
+        }
+
         async function eseguiBacktesting() {
             const btn = document.getElementById("btnRicalcola");
             btn.disabled = true;
             btn.textContent = "Backtesting in corso...";
+            await new Promise(r => setTimeout(r, 0));
 
             try {
+                await caricaConfigAlgoritmo();
+                const correnti = {
+                    rho: configAlgoritmoCorrente.rho,
+                    kScala: configAlgoritmoCorrente.kScala,
+                    wForma: configAlgoritmoCorrente.wForma
+                };
+
                 let archivio = [];
                 const snapshot = await db.collection("archivio_storico").get();
                 snapshot.forEach(doc => archivio.push(doc.data()));
                 archivioCorrenteML = archivio;
 
-                const validi = archivio.filter(p => p.pronostici && p.pronostici.lambdaCasa && p.pronostici.lambdaOspite && p.risultatoReale);
+                // Solo partite con risultato e con i dati grezzi necessari al ricalcolo dei λ
+                const validi = archivio.filter(p =>
+                    p.pronostici && p.risultatoReale && ricalcolaLambdaConForma(p, 0, 1) !== null
+                );
 
                 if (validi.length < 5) {
-                    alert("Servono almeno 5 partite valide in Archivio (con pronostici e risultato) per un backtesting minimo.");
+                    alert("Servono almeno 5 partite utilizzabili in Archivio (con risultato e dati grezzi completi) per un backtesting minimo.");
                     return;
                 }
 
@@ -2011,80 +2153,66 @@
 
                 const sogliaSplit = Math.max(1, Math.floor(validi.length * 0.7));
                 const train = validi.slice(0, sogliaSplit);
-                let test = validi.slice(sogliaSplit);
-                if (test.length === 0) test = train;
+                const test = validi.slice(sogliaSplit);
 
-                const rhoCandidati = [];
-                for (let r = -0.20; r <= 0.001; r += 0.02) rhoCandidati.push(+r.toFixed(2));
-                const kCandidati = [];
-                for (let k = 0.85; k <= 1.151; k += 0.05) kCandidati.push(+k.toFixed(2));
-                const wCandidati = [];
-                for (let w = 0; w <= 0.601; w += 0.1) wCandidati.push(+w.toFixed(2));
-
-                function punteggioSuInsieme(insieme, rho, kScala, wForma) {
-                    const conteggi = {};
-                    MERCATI_LISTA.forEach(m => { conteggi[m.chiave] = { corretti: 0, totali: 0 }; });
-
-                    insieme.forEach(p => {
-                        const parti = p.risultatoReale.split("-");
-                        const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
-                        if (isNaN(gc) || isNaN(go)) return;
-
-                        const lambdas = ricalcolaLambdaConForma(p, wForma, kScala);
-                        if (!lambdas) return;
-
-                        const matrice = costruisciMatriceJS(lambdas.lambdaCasa, lambdas.lambdaOspite, rho);
-                        const compatti = pronosticiDaMatriceJS(matrice);
-                        const esiti = verificaAzzeccati(compatti, gc, go);
-
-                        MERCATI_LISTA.forEach(m => {
-                            conteggi[m.chiave].totali += 1;
-                            if (esiti[m.chiave]) conteggi[m.chiave].corretti += 1;
-                        });
-                    });
-
-                    let somma = 0, n = 0;
-                    MERCATI_LISTA.forEach(m => {
-                        if (conteggi[m.chiave].totali > 0) {
-                            somma += conteggi[m.chiave].corretti / conteggi[m.chiave].totali;
-                            n += 1;
-                        }
-                    });
-
-                    return { punteggio: n > 0 ? somma / n : 0, conteggi };
-                }
-
-                let migliorRho = configAlgoritmoCorrente.rho, migliorK = configAlgoritmoCorrente.kScala, migliorW = configAlgoritmoCorrente.wForma, migliorPunteggio = -1;
-
-                rhoCandidati.forEach(rho => {
-                    kCandidati.forEach(kScala => {
-                        wCandidati.forEach(wForma => {
-                            const { punteggio } = punteggioSuInsieme(train, rho, kScala, wForma);
-                            if (punteggio > migliorPunteggio) {
-                                migliorPunteggio = punteggio;
-                                migliorRho = rho;
-                                migliorK = kScala;
-                                migliorW = wForma;
-                            }
-                        });
-                    });
+                // 1) Scelta dei parametri SOLO sull'allenamento
+                const proposta = await cercaParametriMigliori(train, correnti, perc => {
+                    btn.textContent = `Ricerca parametri... ${perc}%`;
                 });
+                const stessi = parametriUguali(proposta, correnti);
 
-                const risultatoTest = punteggioSuInsieme(test, migliorRho, migliorK, migliorW);
-                const nuoveAccuratezze = {};
-                MERCATI_LISTA.forEach(m => {
-                    const c = risultatoTest.conteggi[m.chiave];
-                    nuoveAccuratezze[m.chiave] = c.totali > 0 ? +((c.corretti / c.totali) * 100).toFixed(1) : null;
-                });
+                // 2) Giudizio SOLO sul test, sulle stesse partite, per entrambi i set
+                const risTestCorr = punteggioSuInsieme(test, correnti.rho, correnti.kScala, correnti.wForma);
+                const risTestProp = stessi ? risTestCorr : punteggioSuInsieme(test, proposta.rho, proposta.kScala, proposta.wForma);
 
-                disegnaTabellaAccuratezze(archivio, nuoveAccuratezze);
+                const accCorr = accuratezzeDaConteggi(risTestCorr.conteggi);
+                const accProp = accuratezzeDaConteggi(risTestProp.conteggi);
 
-                ultimoBacktestNuoviParametri = { rho: migliorRho, kScala: migliorK, wForma: migliorW };
+                document.getElementById("thCorrente").textContent = "Parametri Correnti (sul test)";
+                document.getElementById("thNuovo").textContent = "Parametri Proposti (sul test)";
+                disegnaTabellaAccuratezze(archivio, accProp, accCorr);
+
+                const dataTrain = `${formattaDataBreve(train[0].dataOraUTC || train[0].utcDate)} – ${formattaDataBreve(train[train.length - 1].dataOraUTC || train[train.length - 1].utcDate)}`;
+                const dataTest = `${formattaDataBreve(test[0].dataOraUTC || test[0].utcDate)} – ${formattaDataBreve(test[test.length - 1].dataOraUTC || test[test.length - 1].utcDate)}`;
+                const escluse = archivio.length - validi.length;
+                document.getElementById("notaTabellaML").textContent =
+                    `Entrambe le colonne sono calcolate sulle stesse ${test.length} partite di verifica (${dataTest}), le più recenti, mai usate per scegliere i parametri. ` +
+                    `I parametri sono stati cercati su ${train.length} partite di allenamento (${dataTrain}).` +
+                    (escluse > 0 ? ` ${escluse} partite in Archivio non sono utilizzabili per il ricalcolo (dati grezzi incompleti) e restano escluse.` : "");
+
+                ultimoBacktestValidi = validi;
                 ultimoBacktestTrainCount = train.length;
                 ultimoBacktestTestCount = test.length;
-                document.getElementById("infoNuoviParametri").textContent =
-                    `Parametri proposti: ρ=${migliorRho.toFixed(2)}, k=${migliorK.toFixed(2)}, w=${migliorW.toFixed(2)} (allenati su ${train.length} partite più vecchie, verificati su ${test.length} più recenti)`;
-                document.getElementById("btnConfermaAlgoritmo").classList.remove("hidden");
+
+                const infoEl = document.getElementById("infoNuoviParametri");
+                const btnConferma = document.getElementById("btnConfermaAlgoritmo");
+                const btnAffina = document.getElementById("btnAffinaStorico");
+                btnConferma.classList.add("hidden");
+                btnAffina.classList.add("hidden");
+
+                if (stessi) {
+                    ultimoBacktestNuoviParametri = null;
+                    ultimoBacktestProposta = null;
+                    ultimoBacktestDiffTest = 0;
+                    infoEl.textContent = `✅ Parametri già ottimali: la ricerca sull'allenamento non ha trovato nulla di meglio dei correnti (${formattaParametri(correnti)}). Nessuna modifica da confermare.`;
+                    return;
+                }
+
+                const diff = risTestProp.punteggio - risTestCorr.punteggio;
+                ultimoBacktestDiffTest = diff;
+                ultimoBacktestProposta = { rho: proposta.rho, kScala: proposta.kScala, wForma: proposta.wForma };
+
+                const testoDiff = `Sulle ${test.length} partite di verifica l'accuratezza media sui 13 mercati passa da ${(risTestCorr.punteggio * 100).toFixed(1)}% (correnti) a ${(risTestProp.punteggio * 100).toFixed(1)}% (proposti): ${diff >= 0 ? "+" : ""}${(diff * 100).toFixed(1)} punti.`;
+
+                if (diff >= SOGLIA_MIGLIORAMENTO_TEST) {
+                    ultimoBacktestNuoviParametri = { ...ultimoBacktestProposta };
+                    infoEl.textContent = `Parametri proposti: ${formattaParametri(proposta)} (cercati su ${train.length} partite più vecchie, verificati su ${test.length} più recenti). ${testoDiff} Miglioramento netto (soglia ${(SOGLIA_MIGLIORAMENTO_TEST * 100).toFixed(0)} punto).`;
+                    btnConferma.classList.remove("hidden");
+                    btnAffina.classList.remove("hidden");
+                } else {
+                    ultimoBacktestNuoviParametri = null;
+                    infoEl.textContent = `Parametri proposti: ${formattaParametri(proposta)}. ${testoDiff} ${diff > 0 ? "Il miglioramento è sotto la soglia di 1 punto: potrebbe essere solo rumore." : "Non c'è miglioramento."} Cambiare non è consigliato: nessun pulsante di conferma.`;
+                }
 
             } catch (err) {
                 console.error(err);
@@ -2092,6 +2220,56 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = "Ricalcola e Confronta";
+            }
+        }
+
+        // Passo 2 (facoltativo): disponibile solo dopo un Passo 1 con
+        // miglioramento netto. Rifa' la ricerca su TUTTE le partite utilizzabili.
+        async function eseguiAffinamentoStorico() {
+            if (!ultimoBacktestProposta || ultimoBacktestValidi.length === 0 || ultimoBacktestDiffTest < SOGLIA_MIGLIORAMENTO_TEST) {
+                alert("Esegui prima il Passo 1 (Ricalcola e Confronta): il Passo 2 è disponibile solo dopo un miglioramento netto sulle partite di verifica.");
+                return;
+            }
+
+            const btn = document.getElementById("btnAffinaStorico");
+            btn.disabled = true;
+            btn.textContent = "Affinamento in corso...";
+            await new Promise(r => setTimeout(r, 0));
+
+            try {
+                const correnti = {
+                    rho: configAlgoritmoCorrente.rho,
+                    kScala: configAlgoritmoCorrente.kScala,
+                    wForma: configAlgoritmoCorrente.wForma
+                };
+                const tutte = ultimoBacktestValidi;
+
+                const finale = await cercaParametriMigliori(tutte, correnti, perc => {
+                    btn.textContent = `Affinamento... ${perc}%`;
+                });
+
+                const accCorrTutte = punteggioSuInsieme(tutte, correnti.rho, correnti.kScala, correnti.wForma).punteggio;
+                const accFinaleTutte = punteggioSuInsieme(tutte, finale.rho, finale.kScala, finale.wForma).punteggio;
+
+                const infoEl = document.getElementById("infoNuoviParametri");
+                const btnConferma = document.getElementById("btnConfermaAlgoritmo");
+
+                ultimoBacktestNuoviParametri = { rho: finale.rho, kScala: finale.kScala, wForma: finale.wForma };
+                ultimoBacktestTrainCount = tutte.length;
+
+                infoEl.textContent =
+                    `Passo 2 — parametri affinati su tutte le ${tutte.length} partite utilizzabili: ${formattaParametri(finale)} (il Passo 1 proponeva ${formattaParametri(ultimoBacktestProposta)}). ` +
+                    `Su quelle stesse partite l'accuratezza media passa da ${(accCorrTutte * 100).toFixed(1)}% a ${(accFinaleTutte * 100).toFixed(1)}%: attenzione, questo dato è ottimistico per costruzione, perché i parametri sono stati scelti guardando proprio quelle partite. ` +
+                    `La decisione di cambiare si fonda sulla verifica del Passo 1 (${ultimoBacktestDiffTest >= 0 ? "+" : ""}${(ultimoBacktestDiffTest * 100).toFixed(1)} punti sul test). Se confermi, verranno salvati questi valori.`;
+
+                btnConferma.classList.remove("hidden");
+                btn.classList.add("hidden");
+            } catch (err) {
+                console.error(err);
+                alert("Errore durante l'affinamento: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Passo 2 — Affina su tutto lo storico";
             }
         }
 
@@ -2117,10 +2295,8 @@
                 configAlgoritmoCorrente = { rho: ultimoBacktestNuoviParametri.rho, kScala: ultimoBacktestNuoviParametri.kScala, wForma: ultimoBacktestNuoviParametri.wForma, versione: "v1", confermatoIl: ora };
                 document.getElementById("infoAlgoritmoCorrente").textContent =
                     `Algoritmo attuale: ρ=${configAlgoritmoCorrente.rho.toFixed(2)}, k=${configAlgoritmoCorrente.kScala.toFixed(2)}, w=${configAlgoritmoCorrente.wForma.toFixed(2)} (confermato il ${ora})`;
-                document.getElementById("btnConfermaAlgoritmo").classList.add("hidden");
-                document.getElementById("infoNuoviParametri").textContent = "";
+                resetVistaBacktest();
                 disegnaTabellaAccuratezze(archivioCorrenteML, null);
-                ultimoBacktestNuoviParametri = null;
                 alert("Nuovo algoritmo confermato! Verrà usato dalla prossima estrazione.");
             } catch (err) {
                 console.error(err);
