@@ -316,6 +316,36 @@
 
         <section id="sec-bet" class="hidden space-y-6">
             <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-emerald-400 uppercase mb-2">
+                    🎯 PROPOSTE — SINGOLE E MULTIPLE PIÙ AFFIDABILI
+                </h2>
+                <p class="text-xs text-slate-400 mb-3">
+                    Sceglie tra le partite non ancora iniziate del Palinsesto le selezioni su cui il modello è più affidabile, correggendo le sue probabilità con quante volte ha davvero avuto ragione in Archivio. La scelta non dipende dalle quote del bookmaker. Fino a 30 singole e fino a 20 multiple (da 2 a 4 partite diverse).
+                </p>
+                <p class="text-[11px] text-amber-300/90 mb-4">
+                    Nessuna schedina è sicura. La probabilità di una multipla è il prodotto delle probabilità delle singole selezioni: più partite metti insieme, meno è probabile vincerla.
+                </p>
+
+                <button id="btnGeneraProposte" type="button" onclick="generaProposteBet()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3.5 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer">
+                    Genera Proposte
+                </button>
+
+                <div id="propStato" class="hidden mt-3 p-3 rounded-xl text-xs text-center border"></div>
+
+                <div id="propRisultati" class="hidden mt-4">
+                    <div id="propRiepilogo" class="text-[11px] text-slate-400 mb-3"></div>
+
+                    <h3 class="text-[11px] font-bold tracking-widest text-emerald-300 uppercase mb-2">Singole</h3>
+                    <div id="propSingole" class="space-y-2 mb-5"></div>
+
+                    <h3 class="text-[11px] font-bold tracking-widest text-indigo-300 uppercase mb-2">Multiple</h3>
+                    <div id="propMultiple" class="space-y-3"></div>
+
+                    <div id="propCalibrazione"></div>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-2xl mx-auto">
                 <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-2">
                     🎲 BET — SELEZIONE SCOMMESSE DAL PALINSESTO
                 </h2>
@@ -2899,6 +2929,7 @@
                             <div class="col-span-6 min-w-0">
                                 <div class="text-[9px] text-slate-500 uppercase truncate">${r.campionato}</div>
                                 <div class="font-semibold text-slate-300 truncate">${r.squadraCasa} vs ${r.squadraOspite}</div>
+                                ${l.tipo ? `<div class="text-[9px] text-slate-500">${r.nomeMercato || ""}${r.affidabilita ? " · " + r.affidabilita : ""}${r.probabilitaCalibrata != null ? " · prob. " + Math.round(r.probabilitaCalibrata) + "%" : ""}</div>` : ""}
                             </div>
                             <div class="col-span-3 text-center font-bold text-emerald-400">${r.pronostico ?? "N/D"}</div>
                             <div class="col-span-3 text-center text-slate-400">${(r.quota !== null && r.quota !== undefined) ? r.quota : "N/D"}</div>
@@ -2910,7 +2941,7 @@
                             <div class="flex justify-between items-center mb-2">
                                 <div>
                                     <div class="font-bold text-slate-100 text-sm">${l.nome}</div>
-                                    <div class="text-[10px] text-slate-500">${l.creataIl} · ${(l.righe || []).length} partite · Mercato: ${(l.righe && l.righe[0]) ? l.righe[0].nomeMercato : "N/D"}</div>
+                                    <div class="text-[10px] text-slate-500">${l.creataIl} · ${(l.righe || []).length} partite · ${l.tipo ? (l.tipoEtichetta || "Proposta") + (l.probabilitaComplessiva != null ? " · probabilità " + Math.round(l.probabilitaComplessiva) + "%" : "") : "Mercato: " + ((l.righe && l.righe[0]) ? l.righe[0].nomeMercato : "N/D")}</div>
                                 </div>
                                 <button type="button" onclick="eliminaListaSalvata('${l.id}')" class="bg-rose-700 hover:bg-rose-600 text-white text-[10px] font-semibold py-1.5 px-3 rounded-xl transition cursor-pointer whitespace-nowrap">
                                     Elimina
@@ -3154,6 +3185,560 @@
             const container = document.getElementById("risultatoManuale");
             if (container) container.innerHTML = "";
         }
+
+        // ===== PROPOSTE BET: INIZIO =====
+        // Sezione "Proposte" della scheda Bet: singole e multiple scelte per
+        // affidabilita' (probabilita' corretta con i dati reali dell'Archivio),
+        // NON in base alle quote del bookmaker (che per molti mercati non ci sono).
+        const PROP_CFG = {
+            maxSingole: 30,
+            maxMultiple: 20,
+            quotaDoppie: 10,
+            quotaTriple: 6,
+            quotaQuadruple: 4,
+            minGiocate: 7,            // partite giocate minime per ciascuna squadra
+            sogliaAlta: 0.80,
+            sogliaMedia: 0.68,
+            minOssAlta: 50,           // partite simili minime in Archivio per "ALTA"
+            minOssMedia: 30,          // partite simili minime per "MEDIA"
+            minPartiteArchivio: 100,  // sotto questo numero di partite in Archivio non propongo nulla
+            finestra: 0.03,           // +/- 3 punti attorno alla probabilita' del modello
+            pesoPriore: 20,           // peso della probabilita' del modello nella fascia
+            minCampione: 30,          // sotto questo n il campionato/mercato pesa 0
+            tettoProbabilita: 0.95,   // nessuna probabilita' corretta oltre il 95%
+            capAggiustamento: 0.08,   // massimo +/- 8 punti per mercato e per campionato
+            sogliaQuadrupla: 0.35,    // probabilita' complessiva minima di una multipla da 4
+            avvisoQuota: 0.15,        // bookmaker meno ottimista di 15+ punti => avviso
+            maxUsiPartita: 5,         // una partita compare al massimo in 5 multiple
+            maxUsiSelezione: 4,       // una stessa selezione compare al massimo in 4 multiple
+            poolDoppie: 18,
+            poolAlta: 16
+        };
+        const PROP_MERCATI_ESCLUSI = ["over05", "risultatoEsatto"];
+
+        let propSingoleCorrenti = [];
+        let propMultipleCorrenti = [];
+
+        function propEsc(s) {
+            return String(s === null || s === undefined ? "" : s)
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        function propClamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+        // Probabilita' (0-1) che il modello assegna al PROPRIO pronostico di un mercato.
+        function propProbScelta(chiave, pr) {
+            if (!pr || !pr[chiave]) return null;
+            const m = pr[chiave];
+            const esito = m.pronostico;
+            const pb = m.probabilita;
+            if (pb === undefined || pb === null) return null;
+            let v = null;
+            if (typeof pb === "number") v = pb;
+            else if (chiave.indexOf("over") === 0) v = (esito === "Over") ? pb.over : pb.under;
+            else if (chiave === "goalNoGoal") v = (esito === "Goal") ? pb.goal : pb.noGoal;
+            else v = pb[esito];
+            return (typeof v === "number" && isFinite(v)) ? v / 100 : null;
+        }
+
+        // Peso dell'evidenza di un campionato/mercato: 0 fino a n=30, poi cresce.
+        function propPesoCampione(n) {
+            if (!(n > PROP_CFG.minCampione)) return 0;
+            return Math.min(0.85, (n - PROP_CFG.minCampione) / (n + 60));
+        }
+
+        function propLowerBound(arr, x) {
+            let lo = 0, hi = arr.length;
+            while (lo < hi) { const mid = (lo + hi) >> 1; if (arr[mid] < x) lo = mid + 1; else hi = mid; }
+            return lo;
+        }
+        function propUpperBound(arr, x) {
+            let lo = 0, hi = arr.length;
+            while (lo < hi) { const mid = (lo + hi) >> 1; if (arr[mid] <= x) lo = mid + 1; else hi = mid; }
+            return lo;
+        }
+
+        // Costruisce la calibrazione dai dati REALI dell'Archivio (pronostici congelati
+        // + risultato reale). Nessun dato inventato.
+        function propCostruisciCalibrazione(archivio) {
+            const oss = [];
+            let partiteUsate = 0;
+
+            (archivio || []).forEach((rec, idx) => {
+                if (!rec || !rec.pronostici || !rec.risultatoReale) return;
+                const parti = String(rec.risultatoReale).split("-");
+                if (parti.length !== 2) return;
+                const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+                if (isNaN(gc) || isNaN(go)) return;
+                let compatti = null;
+                try { compatti = estraiPronosticiCompatti(rec.pronostici); } catch (e) { compatti = null; }
+                if (!compatti) return;
+                const esiti = verificaAzzeccati(compatti, gc, go);
+                let usata = false;
+                MERCATI_LISTA.forEach(mm => {
+                    if (PROP_MERCATI_ESCLUSI.indexOf(mm.chiave) !== -1) return;
+                    let p = null;
+                    try { p = propProbScelta(mm.chiave, rec.pronostici); } catch (e) { p = null; }
+                    if (p === null) return;
+                    oss.push({ id: idx, m: mm.chiave, camp: rec.campionatoCode || "", p: p, hit: esiti[mm.chiave] ? 1 : 0, pBand: 0, pMer: 0 });
+                    usata = true;
+                });
+                if (usata) partiteUsate++;
+            });
+
+            // Ordino per probabilita' e uso somme cumulate (veloce anche con archivi grandi).
+            const ordinate = oss.slice().sort((a, b) => a.p - b.p);
+            const ps = ordinate.map(o => o.p);
+            const cum = [0];
+            ordinate.forEach(o => cum.push(cum[cum.length - 1] + o.hit));
+            const W = PROP_CFG.finestra, M = PROP_CFG.pesoPriore;
+
+            function banda(p) {
+                const lo = propLowerBound(ps, p - W - 1e-9);
+                const hi = propUpperBound(ps, p + W + 1e-9);
+                const n = hi - lo;
+                const h = cum[hi] - cum[lo];
+                return { n: n, hit: h, lo: lo, hi: hi, p: (h + M * p) / (n + M) };
+            }
+
+            oss.forEach(o => { o.pBand = banda(o.p).p; });
+
+            // Correzione per mercato (entra gradualmente con n).
+            const statM = {};
+            oss.forEach(o => {
+                if (!statM[o.m]) statM[o.m] = { n: 0, hit: 0, exp: 0 };
+                statM[o.m].n += 1; statM[o.m].hit += o.hit; statM[o.m].exp += o.pBand;
+            });
+            const adjM = {};
+            Object.keys(statM).forEach(k => {
+                const s = statM[k];
+                adjM[k] = propClamp(propPesoCampione(s.n) * (s.hit / s.n - s.exp / s.n), -PROP_CFG.capAggiustamento, PROP_CFG.capAggiustamento);
+            });
+            oss.forEach(o => { o.pMer = propClamp(o.pBand + (adjM[o.m] || 0), 0.01, 0.99); });
+
+            // Correzione per campionato (rispetto a cio' che il modello gia' prevedeva per le sue partite).
+            const statL = {};
+            oss.forEach(o => {
+                const k = o.m + "|" + o.camp;
+                if (!statL[k]) statL[k] = { n: 0, hit: 0, exp: 0 };
+                statL[k].n += 1; statL[k].hit += o.hit; statL[k].exp += o.pMer;
+            });
+
+            function calibra(chiave, camp, pModello) {
+                const b = banda(pModello);
+                // Le 11 selezioni della stessa partita sono correlate: per le soglie conto le PARTITE distinte.
+                const idDistinti = {};
+                let nPartiteSimili = 0;
+                for (let i = b.lo; i < b.hi; i++) { const id = ordinate[i].id; if (!idDistinti[id]) { idDistinti[id] = 1; nPartiteSimili++; } }
+                const aM = adjM[chiave] || 0;
+                const pMer = b.p + aM;
+                const L = statL[chiave + "|" + (camp || "")];
+                const nCamp = L ? L.n : 0;
+                const pesoCamp = propPesoCampione(nCamp);
+                const aL = L ? propClamp(pesoCamp * (L.hit / L.n - L.exp / L.n), -PROP_CFG.capAggiustamento, PROP_CFG.capAggiustamento) : 0;
+                return {
+                    pModello: pModello,
+                    pBanda: b.p,
+                    nBanda: nPartiteSimili,
+                    adjMercato: aM,
+                    adjCampionato: aL,
+                    pesoCamp: pesoCamp,
+                    nCamp: nCamp,
+                    pCal: propClamp(pMer + aL, 0.01, PROP_CFG.tettoProbabilita)
+                };
+            }
+
+            // Tabella riassuntiva per fasce da 5 punti (solo per trasparenza).
+            const bande = [];
+            for (let a = 0.50; a < 0.95 - 1e-9; a += 0.05) {
+                const b = a + 0.05;
+                let n = 0, h = 0, sp = 0;
+                oss.forEach(o => { if (o.p >= a && o.p < b + (b > 0.949 ? 0.0001 : 0)) { n++; h += o.hit; sp += o.p; } });
+                bande.push({ da: a, a: b, n: n, hitRate: n > 0 ? h / n : null, pMedia: n > 0 ? sp / n : null });
+            }
+
+            return { calibra: calibra, nOss: oss.length, partiteUsate: partiteUsate, bande: bande };
+        }
+
+        // Probabilita' implicita (margine tolto) del bookmaker per l'esito scelto, se c'e' la quota.
+        function propImplicitaBookmaker(p, chiave) {
+            if (!p.quote || !p.pronostici || !p.pronostici[chiave]) return null;
+            const esito = p.pronostici[chiave].pronostico;
+            try {
+                if (chiave === "mercato1X2") {
+                    const q = p.quote.mercato1x2;
+                    if (!q) return null;
+                    const n = probabilitaImpliciteNormalizzate({ "1": q.casa, "X": q.pareggio, "2": q.ospite });
+                    return (n && n[esito] !== undefined) ? n[esito] : null;
+                }
+                const linee = { over05: "0.5", over15: "1.5", over25: "2.5", over35: "3.5", over45: "4.5" };
+                if (linee[chiave]) {
+                    const ou = p.quote.overUnder ? p.quote.overUnder[linee[chiave]] : null;
+                    if (!ou) return null;
+                    const n = probabilitaImpliciteNormalizzate({ Over: ou.over, Under: ou.under });
+                    return (n && n[esito] !== undefined) ? n[esito] : null;
+                }
+            } catch (e) { return null; }
+            return null;
+        }
+
+        function propCandidati(palinsesto, cal, ora) {
+            const cands = [];
+            const stat = { future: 0, escluseDati: 0, senzaPronostici: 0 };
+            (palinsesto || []).forEach(p => {
+                if (["TIMED", "SCHEDULED"].indexOf(p.stato) === -1) return;
+                const d = new Date(p.dataOraUTC || p.utcDate);
+                if (isNaN(d.getTime()) || d <= ora) return;
+                stat.future++;
+                if (!p.pronostici) { stat.senzaPronostici++; return; }
+                if ((p.giocateCasa == null ? 0 : p.giocateCasa) < PROP_CFG.minGiocate
+                    || (p.giocateOspite == null ? 0 : p.giocateOspite) < PROP_CFG.minGiocate) {
+                    stat.escluseDati++; return;
+                }
+                MERCATI_LISTA.forEach(mm => {
+                    if (PROP_MERCATI_ESCLUSI.indexOf(mm.chiave) !== -1) return;
+                    const pm = propProbScelta(mm.chiave, p.pronostici);
+                    if (pm === null) return;
+                    const c = cal.calibra(mm.chiave, p.campionatoCode || "", pm);
+                    let aff = null;
+                    if (c.pCal >= PROP_CFG.sogliaAlta && c.nBanda >= PROP_CFG.minOssAlta) aff = "ALTA";
+                    else if (c.pCal >= PROP_CFG.sogliaMedia && c.nBanda >= PROP_CFG.minOssMedia) aff = "MEDIA";
+                    if (!aff) return;
+
+                    const quota = ottieniQuotaPerMercato(p, mm.chiave);
+                    const impl = propImplicitaBookmaker(p, mm.chiave);
+                    const ev = (quota && quota > 0) ? (c.pCal * quota - 1) : null;
+                    cands.push({
+                        matchId: p.matchId || p.id,
+                        campionato: p.campionato,
+                        campionatoCode: p.campionatoCode,
+                        squadraCasa: p.squadraCasa,
+                        squadraOspite: p.squadraOspite,
+                        dataOraUTC: p.dataOraUTC || p.utcDate,
+                        chiaveMercato: mm.chiave,
+                        nomeMercato: mm.nome,
+                        pronostico: p.pronostici[mm.chiave].pronostico,
+                        cal: c,
+                        pCal: c.pCal,
+                        affidabilita: aff,
+                        quota: (quota && quota > 0) ? quota : null,
+                        implicitaBookmaker: impl,
+                        ev: ev,
+                        avvisoQuota: (impl !== null && impl < c.pCal - PROP_CFG.avvisoQuota)
+                    });
+                });
+            });
+            return { cands: cands, stat: stat };
+        }
+
+        function propOrdina(a, b) {
+            if (b.pCal !== a.pCal) return b.pCal - a.pCal;
+            return b.cal.nBanda - a.cal.nBanda;
+        }
+
+        // Singole: al massimo una per partita (la piu' affidabile), massimo 30.
+        function propSelezionaSingole(cands) {
+            const migliori = new Map();
+            cands.forEach(c => {
+                const k = String(c.matchId);
+                if (!migliori.has(k) || propOrdina(c, migliori.get(k)) < 0) migliori.set(k, c);
+            });
+            return Array.from(migliori.values()).sort(propOrdina).slice(0, PROP_CFG.maxSingole);
+        }
+
+        function propCombinazioni(arr, k, accetta) {
+            const out = [];
+            const sel = [];
+            function rec(start) {
+                if (sel.length === k) {
+                    const legs = sel.slice();
+                    const prob = legs.reduce((p, l) => p * l.pCal, 1);
+                    if (accetta(legs, prob)) out.push({ legs: legs, prob: prob });
+                    return;
+                }
+                for (let i = start; i < arr.length; i++) {
+                    const c = arr[i];
+                    if (sel.some(s => String(s.matchId) === String(c.matchId))) continue;
+                    sel.push(c);
+                    rec(i + 1);
+                    sel.pop();
+                }
+            }
+            rec(0);
+            out.sort((a, b) => (b.prob - a.prob) || (Math.min.apply(null, b.legs.map(l => l.pCal)) - Math.min.apply(null, a.legs.map(l => l.pCal))));
+            return out;
+        }
+
+        // Multiple: da 2 a 4 selezioni da partite DIVERSE, anche con mercati diversi.
+        function propGeneraMultiple(cands) {
+            // Niente selezioni con avviso quote nelle multiple; al massimo 2 selezioni per partita.
+            const perPartita = new Map();
+            cands.filter(c => !c.avvisoQuota).forEach(c => {
+                const k = String(c.matchId);
+                if (!perPartita.has(k)) perPartita.set(k, []);
+                perPartita.get(k).push(c);
+            });
+            let pool = [];
+            perPartita.forEach(arr => { arr.sort(propOrdina); pool = pool.concat(arr.slice(0, 2)); });
+            pool.sort(propOrdina);
+
+            const poolDoppie = pool.slice(0, PROP_CFG.poolDoppie);
+            const poolAlta = pool.filter(c => c.affidabilita === "ALTA").slice(0, PROP_CFG.poolAlta);
+
+            const liste = {
+                4: propCombinazioni(poolAlta, 4, (legs, prob) => prob >= PROP_CFG.sogliaQuadrupla),
+                3: propCombinazioni(poolAlta, 3, () => true),
+                2: propCombinazioni(poolDoppie, 2, () => true)
+            };
+            const quote = { 2: PROP_CFG.quotaDoppie, 3: PROP_CFG.quotaTriple, 4: PROP_CFG.quotaQuadruple };
+
+            const scelte = [];
+            const usiPartita = {}, usiSelezione = {}, firme = {};
+            function chiaveSel(l) { return String(l.matchId) + "|" + l.chiaveMercato; }
+            function provaAggiungi(m) {
+                const firma = m.legs.map(chiaveSel).sort().join("+");
+                if (firme[firma]) return false;
+                for (let i = 0; i < m.legs.length; i++) {
+                    if ((usiPartita[String(m.legs[i].matchId)] || 0) >= PROP_CFG.maxUsiPartita) return false;
+                    if ((usiSelezione[chiaveSel(m.legs[i])] || 0) >= PROP_CFG.maxUsiSelezione) return false;
+                }
+                m.legs.forEach(l => {
+                    usiPartita[String(l.matchId)] = (usiPartita[String(l.matchId)] || 0) + 1;
+                    usiSelezione[chiaveSel(l)] = (usiSelezione[chiaveSel(l)] || 0) + 1;
+                });
+                firme[firma] = true;
+                scelte.push(m);
+                return true;
+            }
+
+            // 1) rispetto le quote per tipo, partendo dalle piu' esigenti.
+            [4, 3, 2].forEach(k => {
+                let presi = 0;
+                for (let i = 0; i < liste[k].length && presi < quote[k] && scelte.length < PROP_CFG.maxMultiple; i++) {
+                    if (provaAggiungi(liste[k][i])) presi++;
+                }
+            });
+            // 2) se restano posti liberi (massimo 20 in tutto), completo con doppie, poi triple, poi quadruple.
+            [2, 3, 4].forEach(k => {
+                for (let i = 0; i < liste[k].length && scelte.length < PROP_CFG.maxMultiple; i++) {
+                    provaAggiungi(liste[k][i]);
+                }
+            });
+
+            return scelte.sort((a, b) => (a.legs.length - b.legs.length) || (b.prob - a.prob));
+        }
+
+        function propQuotaTotale(legs) {
+            let q = 1;
+            for (let i = 0; i < legs.length; i++) {
+                if (legs[i].quota === null || legs[i].quota === undefined) return null;
+                q *= legs[i].quota;
+            }
+            return q;
+        }
+
+        function propPct(x) { return Math.round(x * 100) + "%"; }
+
+        function propDettaglioLegHtml(c, conAvviso) {
+            const badge = c.affidabilita === "ALTA"
+                ? '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700/60">ALTA</span>'
+                : '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-900/50 text-amber-300 border border-amber-700/60">MEDIA</span>';
+            const cal = c.cal;
+            let riga3 = `Basata su ${cal.nBanda} partite simili in Archivio`;
+            if (Math.abs(cal.adjMercato) >= 0.0005) riga3 += ` · mercato ${cal.adjMercato >= 0 ? "+" : ""}${(cal.adjMercato * 100).toFixed(1)} pt`;
+            riga3 += ` · campionato: peso ${Math.round(cal.pesoCamp * 100)}% (n=${cal.nCamp})`;
+            if (cal.pesoCamp > 0) riga3 += ` ${cal.adjCampionato >= 0 ? "+" : ""}${(cal.adjCampionato * 100).toFixed(1)} pt`;
+            let quotaRiga = "";
+            if (c.quota !== null) {
+                quotaRiga = `Quota ${c.quota}` + (c.ev !== null ? ` · EV ${c.ev >= 0 ? "+" : ""}${(c.ev * 100).toFixed(0)}% (con la probabilità corretta)` : "");
+            }
+            const avviso = (c.avvisoQuota)
+                ? `<div class="mt-1 text-[10px] text-rose-300">⚠️ Il bookmaker è molto meno ottimista (${propPct(c.implicitaBookmaker)} contro ${propPct(c.pCal)}): trattala con cautela.</div>` : "";
+            return `
+                <div class="flex justify-between items-start gap-2">
+                    <div class="min-w-0">
+                        <div class="text-[9px] uppercase text-slate-500 truncate">${propEsc(c.campionato)} · ${propEsc(formattaData(c.dataOraUTC))}</div>
+                        <div class="font-semibold text-slate-100 break-words">${propEsc(c.squadraCasa)} vs ${propEsc(c.squadraOspite)}</div>
+                    </div>
+                    ${badge}
+                </div>
+                <div class="mt-1 break-words">
+                    <span class="text-slate-400">${propEsc(c.nomeMercato)}</span>
+                    <span class="font-bold text-emerald-400">${propEsc(c.pronostico)}</span>
+                    · probabilità <span class="font-bold text-slate-100">${propPct(c.pCal)}</span>
+                    <span class="text-slate-500">(modello ${propPct(cal.pModello)})</span>
+                </div>
+                <div class="text-[10px] text-slate-500 mt-0.5 break-words">${propEsc(riga3)}</div>
+                ${quotaRiga ? `<div class="text-[10px] text-slate-400 mt-0.5">${propEsc(quotaRiga)}</div>` : ""}
+                ${conAvviso ? avviso : ""}
+            `;
+        }
+
+        function propDisegna(cal, stat, nCands, singole, multiple) {
+            const nota = document.getElementById("propRiepilogo");
+            const contSingole = document.getElementById("propSingole");
+            const contMultiple = document.getElementById("propMultiple");
+            const contCal = document.getElementById("propCalibrazione");
+
+            nota.innerHTML = `
+                Calibrazione su <b>${cal.partiteUsate}</b> partite dell'Archivio (${cal.nOss} osservazioni).
+                Partite future nel Palinsesto: <b>${stat.future}</b>
+                (escluse per meno di ${PROP_CFG.minGiocate} partite giocate da una squadra: ${stat.escluseDati}).
+                Selezioni che superano le soglie: <b>${nCands}</b>.
+            `;
+
+            if (singole.length === 0) {
+                contSingole.innerHTML = `<div class="text-center text-slate-400 text-xs py-4 bg-slate-950/50 rounded-2xl border border-slate-800">Nessuna selezione abbastanza affidabile oggi.</div>`;
+            } else {
+                contSingole.innerHTML = singole.map((c, i) => `
+                    <div class="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-3 text-xs">
+                        ${propDettaglioLegHtml(c, true)}
+                        <div class="mt-2 text-right">
+                            <button type="button" onclick="salvaProposta('singola', ${i})" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-1.5 px-3 rounded-xl text-[11px] cursor-pointer">Salva questa proposta</button>
+                        </div>
+                    </div>
+                `).join("");
+            }
+
+            if (multiple.length === 0) {
+                contMultiple.innerHTML = `<div class="text-center text-slate-400 text-xs py-4 bg-slate-950/50 rounded-2xl border border-slate-800">Nessuna multipla abbastanza affidabile oggi.</div>`;
+            } else {
+                contMultiple.innerHTML = multiple.map((m, i) => {
+                    const qt = propQuotaTotale(m.legs);
+                    const rischio = m.legs.length === 4 ? ' <span class="text-rose-300 font-bold">· Rischio elevato</span>' : "";
+                    const legsHtml = m.legs.map(l => `<div class="py-2 border-t border-slate-800/60">${propDettaglioLegHtml(l, false)}</div>`).join("");
+                    return `
+                        <div class="rounded-2xl border border-indigo-900/60 bg-slate-950/60 p-3 text-xs">
+                            <div class="flex justify-between items-center gap-2 pb-1">
+                                <div class="font-bold text-indigo-300 uppercase text-[10px] tracking-wider">Multipla da ${m.legs.length}${rischio}</div>
+                                <div class="text-slate-100 font-bold">Probabilità complessiva ${propPct(m.prob)}</div>
+                            </div>
+                            <div class="text-[10px] text-slate-500 pb-1">${qt !== null ? "Quota totale " + qt.toFixed(2) : "Quota totale non disponibile (manca la quota per almeno una selezione)"}</div>
+                            ${legsHtml}
+                            <div class="mt-2 text-right">
+                                <button type="button" onclick="salvaProposta('multipla', ${i})" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-1.5 px-3 rounded-xl text-[11px] cursor-pointer">Salva questa proposta</button>
+                            </div>
+                        </div>
+                    `;
+                }).join("");
+            }
+
+            const righeBande = cal.bande.map(b => `
+                <tr class="border-t border-slate-800/60">
+                    <td class="py-1 pr-2">${Math.round(b.da * 100)}–${Math.round(b.a * 100)}%</td>
+                    <td class="py-1 pr-2 text-right">${b.n}</td>
+                    <td class="py-1 text-right">${b.hitRate === null ? "—" : (b.hitRate * 100).toFixed(1) + "%"}</td>
+                </tr>
+            `).join("");
+            contCal.innerHTML = `
+                <details class="mt-3 bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 text-[11px] text-slate-400">
+                    <summary class="cursor-pointer font-bold text-[10px] uppercase tracking-wider text-slate-300">Dettagli della calibrazione (Archivio)</summary>
+                    <p class="mt-2">Quando il modello dichiara una certa probabilità, quante volte il pronostico è stato davvero azzeccato (tutti i mercati proponibili insieme, dati reali dell'Archivio).</p>
+                    <table class="w-full mt-2 text-slate-300">
+                        <thead><tr class="text-[9px] uppercase text-slate-500"><th class="text-left">Probabilità del modello</th><th class="text-right">Osservazioni</th><th class="text-right">Azzeccati</th></tr></thead>
+                        <tbody>${righeBande}</tbody>
+                    </table>
+                </details>
+            `;
+        }
+
+        async function generaProposteBet() {
+            const btn = document.getElementById("btnGeneraProposte");
+            const stato = document.getElementById("propStato");
+            function messaggio(testo, tipo) {
+                stato.textContent = testo;
+                stato.className = "mt-3 p-3 rounded-xl text-xs text-center border " + (tipo === "error"
+                    ? "bg-rose-950/40 border-rose-900/60 text-rose-300"
+                    : "bg-slate-950/60 border-slate-800 text-slate-300");
+                if (!testo) stato.classList.add("hidden");
+            }
+            btn.disabled = true;
+            btn.textContent = "Calcolo in corso…";
+            messaggio("Lettura dell'Archivio e calcolo della calibrazione…", "info");
+            try {
+                const archivio = [];
+                const snapshot = await db.collection("archivio_storico").get();
+                snapshot.forEach(doc => archivio.push(doc.data()));
+                archivioCorrenteML = archivio;
+
+                const palinsesto = cachePartiteFirestore || [];
+                if (palinsesto.length === 0) {
+                    messaggio("Il Palinsesto Attivo è vuoto: estrai prima le partite.", "error");
+                    return;
+                }
+                const cal = propCostruisciCalibrazione(archivio);
+                if (cal.partiteUsate < PROP_CFG.minPartiteArchivio) {
+                    messaggio(`Archivio troppo piccolo per calibrare in modo affidabile: servono almeno ${PROP_CFG.minPartiteArchivio} partite con pronostici e risultato (ora ${cal.partiteUsate}). Nessuna proposta.`, "error");
+                    return;
+                }
+                const r = propCandidati(palinsesto, cal, new Date());
+                propSingoleCorrenti = propSelezionaSingole(r.cands);
+                propMultipleCorrenti = propGeneraMultiple(r.cands);
+                propDisegna(cal, r.stat, r.cands.length, propSingoleCorrenti, propMultipleCorrenti);
+                document.getElementById("propRisultati").classList.remove("hidden");
+                messaggio(`Proposte generate: ${propSingoleCorrenti.length} singole, ${propMultipleCorrenti.length} multiple.`, "info");
+            } catch (err) {
+                console.error(err);
+                messaggio("Errore durante il calcolo: " + (err && err.message ? err.message : err), "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Genera Proposte";
+            }
+        }
+
+        function propRigaDaSelezione(c) {
+            return {
+                matchId: c.matchId,
+                campionato: c.campionato,
+                campionatoCode: c.campionatoCode,
+                squadraCasa: c.squadraCasa,
+                squadraOspite: c.squadraOspite,
+                dataOraUTC: c.dataOraUTC,
+                chiaveMercato: c.chiaveMercato,
+                nomeMercato: c.nomeMercato,
+                pronostico: c.pronostico,
+                quota: c.quota,
+                probabilitaCalibrata: +(c.pCal * 100).toFixed(1),
+                probabilitaModello: +(c.cal.pModello * 100).toFixed(1),
+                affidabilita: c.affidabilita
+            };
+        }
+
+        async function salvaProposta(tipo, indice) {
+            let righe, prob, etichetta, nome;
+            if (tipo === "singola") {
+                const c = propSingoleCorrenti[indice];
+                if (!c) return;
+                righe = [propRigaDaSelezione(c)];
+                prob = c.pCal;
+                etichetta = "Proposta singola";
+                nome = `Singola — ${c.squadraCasa} vs ${c.squadraOspite} (${c.nomeMercato} ${c.pronostico})`;
+            } else {
+                const m = propMultipleCorrenti[indice];
+                if (!m) return;
+                righe = m.legs.map(propRigaDaSelezione);
+                prob = m.prob;
+                etichetta = `Proposta multipla da ${m.legs.length}`;
+                nome = `Multipla da ${m.legs.length} — ${new Date().toLocaleString("it-IT")}`;
+            }
+            try {
+                await db.collection("liste_selezioni").add({
+                    nome: nome,
+                    tipo: tipo === "singola" ? "proposta-singola" : "proposta-multipla",
+                    tipoEtichetta: etichetta,
+                    probabilitaComplessiva: +(prob * 100).toFixed(1),
+                    righe: righe,
+                    creataIl: new Date().toLocaleString("it-IT"),
+                    creataIlTimestamp: Date.now()
+                });
+                alert(`Proposta salvata in "Liste Salvate" (valori congelati).`);
+                caricaListeSalvate();
+            } catch (err) {
+                console.error(err);
+                alert("Errore durante il salvataggio: " + err.message);
+            }
+        }
+        // ===== PROPOSTE BET: FINE =====
 
         async function mostraBet() {
             popolaControlliBet();
