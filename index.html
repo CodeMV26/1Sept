@@ -269,6 +269,27 @@
                     <tbody id="tabellaAccuratezzeBody"></tbody>
                 </table>
             </div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-emerald-400 uppercase mb-2">
+                    🧭 PESO MODELLO vs MERCATO (CALCOLO DELL'EV)
+                </h2>
+                <p class="text-xs text-slate-400 mb-3">
+                    Misura con i dati reali dell'Archivio quanto peso dare al nostro modello e quanto alle quote del bookmaker nel calcolo dell'EV. Conta le partite dell'Archivio che hanno le quote salvate e dice quante ne servono per una misura affidabile.
+                </p>
+                <button id="btnMisuraPesoEV" type="button" onclick="pevMisuraDaPulsante()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer">
+                    Misura il peso migliore
+                </button>
+                <div id="pesoEvRisultato" class="mt-3 text-[11px] text-slate-300 leading-relaxed"></div>
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-blue-400 uppercase mb-1">
+                    📘 GUIDA — SCHERMATA EV E PESI
+                </h2>
+                <p class="text-[11px] text-slate-400">Cosa è cambiato nella schermata EV e come leggere i pesi (tocca un titolo per aprire).</p>
+                <div id="pesoEvGuida"></div>
+            </div>
         </section>
 
         <section id="sec-analisi" class="hidden space-y-6">
@@ -296,7 +317,7 @@
                     💰 VALUE BETS — SCOMMESSE CON VANTAGGIO
                 </h2>
                 <p class="text-xs text-slate-400 mb-2">
-                    Solo le occasioni in cui il nostro modello stima una probabilità più alta di quella implicita nelle quote del bookmaker (margine rimosso), con vantaggio (EV) di almeno il 5%. Servono sia pronostici sia quote aggiornate sulla stessa partita.
+                    L'EV è calcolato su una probabilità mista: 30% stima del nostro modello e 70% probabilità implicita nelle quote del bookmaker (margine rimosso), perché il solo modello è meno informato del mercato (non conosce infortuni, formazioni, qualità delle rose). Sono elencate le occasioni con EV di almeno il 5%. Se su una partita modello e mercato differiscono di più di 15 punti su un esito, compare un avviso su tutte le sue selezioni: quasi sempre sbaglia il modello, quindi quelle righe stanno in fondo, senza importo consigliato e fuori dalle multiple. Servono sia pronostici sia quote aggiornate sulla stessa partita.
                 </p>
                 <p class="text-[11px] text-amber-400 mb-1">⚠️ Indicativo, non un consiglio finanziario. Gli importi consigliati compaiono solo per i mercati con almeno 30 partite di storico nell'Archivio — sotto quella soglia il modello non è ancora abbastanza testato per fidarsi di una cifra.</p>
                 <div id="statoValueBets" class="text-xs text-slate-400 mt-2"></div>
@@ -1966,6 +1987,305 @@
             }).join("");
         }
 
+        // ===== PANNELLO PESO MODELLO vs MERCATO (ML ENG.): INIZIO =====
+        const PEV_TRAGUARDI = [150, 300, 500, 1100, 2500];
+        const PEV_BOOTSTRAP = 400;
+        const PEV_MIN_PARTITE = 30;
+
+        function pevPct(x) { return Math.round(x * 100) + "%"; }
+
+        // Esito reale 1X2 come indice: 0 = "1", 1 = "X", 2 = "2".
+        function pevEsito(risultatoReale) {
+            if (!risultatoReale) return null;
+            const parti = String(risultatoReale).split("-");
+            if (parti.length !== 2) return null;
+            const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+            if (isNaN(gc) || isNaN(go)) return null;
+            return gc > go ? 0 : (gc === go ? 1 : 2);
+        }
+
+        // Estrae dall'Archivio le partite con quote 1X2 salvate + pronostico + risultato reale.
+        function pevRaccogliDati(archivio) {
+            const righe = [];
+            const c = { totale: 0, conQuote1X2: 0, conQuoteOU25: 0, utilizzabili: 0 };
+            (archivio || []).forEach(rec => {
+                c.totale++;
+                if (!rec) return;
+                const q = rec.quote ? rec.quote.mercato1x2 : null;
+                const quoteOk = !!(q && q.casa > 0 && q.pareggio > 0 && q.ospite > 0);
+                if (quoteOk) c.conQuote1X2++;
+                if (rec.quote && rec.quote.overUnder && rec.quote.overUnder["2.5"]) c.conQuoteOU25++;
+                if (!quoteOk) return;
+                const prob = (rec.pronostici && rec.pronostici.mercato1X2) ? rec.pronostici.mercato1X2.probabilita : null;
+                const k = pevEsito(rec.risultatoReale);
+                if (!prob || k === null) return;
+                const pm = [prob["1"] / 100, prob["X"] / 100, prob["2"] / 100];
+                if (!pm.every(v => isFinite(v) && v >= 0)) return;
+                const impl = probabilitaImpliciteNormalizzate({ "1": q.casa, "X": q.pareggio, "2": q.ospite });
+                if (!impl) return;
+                righe.push({ pm: pm, pi: [impl["1"], impl["X"], impl["2"]], k: k, t: new Date(rec.dataOraUTC || rec.utcDate || 0).getTime() });
+                c.utilizzabili++;
+            });
+            return { righe: righe, conteggi: c };
+        }
+
+        function pevGeneratoreCasuale(seme) {
+            let a = seme >>> 0;
+            return function () {
+                a = (a + 0x6D2B79F5) >>> 0;
+                let t = a;
+                t = Math.imul(t ^ (t >>> 15), t | 1);
+                t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+
+        // Errore (log-loss) di ogni peso da 0% a 100% (passo 5%) + incertezza (bootstrap).
+        async function pevMisura(righe) {
+            const m = 21;
+            const pesi = [];
+            for (let j = 0; j < m; j++) pesi.push(j / 20);
+            const n = righe.length;
+            const perdite = new Float64Array(n * m);
+            for (let i = 0; i < n; i++) {
+                const r = righe[i];
+                for (let j = 0; j < m; j++) {
+                    const p = pesi[j] * r.pm[r.k] + (1 - pesi[j]) * r.pi[r.k];
+                    perdite[i * m + j] = -Math.log(Math.max(p, 1e-6));
+                }
+            }
+            const medie = new Array(m).fill(0);
+            for (let i = 0; i < n; i++) for (let j = 0; j < m; j++) medie[j] += perdite[i * m + j];
+            for (let j = 0; j < m; j++) medie[j] /= n;
+            let best = 0;
+            for (let j = 1; j < m; j++) if (medie[j] < medie[best]) best = j;
+
+            function diffVs(jA, jB) { // media e errore standard di (perdita jA - perdita jB)
+                let s = 0, s2 = 0;
+                for (let i = 0; i < n; i++) { const d = perdite[i * m + jA] - perdite[i * m + jB]; s += d; s2 += d * d; }
+                const media = s / n;
+                const varianza = n > 1 ? Math.max(0, (s2 - n * media * media) / (n - 1)) : 0;
+                return { media: media, se: Math.sqrt(varianza / n) };
+            }
+            const diffDalMigliore = pesi.map((w, j) => diffVs(j, best));
+            const modelloVsMercato = diffVs(m - 1, 0);
+
+            const rnd = pevGeneratoreCasuale(20261025);
+            const migliori = [];
+            for (let b = 0; b < PEV_BOOTSTRAP; b++) {
+                const somme = new Float64Array(m);
+                for (let t = 0; t < n; t++) {
+                    const base = Math.floor(rnd() * n) * m;
+                    for (let j = 0; j < m; j++) somme[j] += perdite[base + j];
+                }
+                let bj = 0;
+                for (let j = 1; j < m; j++) if (somme[j] < somme[bj]) bj = j;
+                migliori.push(pesi[bj]);
+                if (b % 50 === 49) await new Promise(r => setTimeout(r, 0));
+            }
+            migliori.sort((a, b) => a - b);
+            const lo = migliori[Math.floor(0.025 * PEV_BOOTSTRAP)];
+            const hi = migliori[Math.min(PEV_BOOTSTRAP - 1, Math.floor(0.975 * PEV_BOOTSTRAP))];
+            return { pesi: pesi, medie: medie, best: best, diffDalMigliore: diffDalMigliore, modelloVsMercato: modelloVsMercato, lo: lo, hi: hi, n: n };
+        }
+
+        function pevVerdetto(ris) {
+            const w = ris.pesi[ris.best];
+            const larghezza = ris.hi - ris.lo;
+            const attuale = PESO_MODELLO_EV;
+            const dentro = attuale >= ris.lo - 1e-9 && attuale <= ris.hi + 1e-9;
+            const righe = [];
+            if (ris.n < 150) righe.push("⚠️ Campione ancora piccolo: lettura solo indicativa.");
+            righe.push(`Peso del modello con l'errore più basso: <b>${pevPct(w)}</b>. Intervallo al 95% (ricampionando l'Archivio ${PEV_BOOTSTRAP} volte): da <b>${pevPct(ris.lo)}</b> a <b>${pevPct(ris.hi)}</b>.`);
+            if (larghezza > 0.5) righe.push("Incertezza molto alta: i dati non permettono di scegliere tra pesi diversi. Non cambiare nulla.");
+            else if (larghezza > 0.25) righe.push("Incertezza media: si distinguono solo pesi molto lontani tra loro, non 30% da 40%.");
+            else righe.push("Incertezza contenuta: la misura comincia a essere utile per scegliere il peso.");
+            if (larghezza >= 0.4) righe.push(`Il peso attuale (${pevPct(attuale)}) ${dentro ? "è dentro" : "è fuori"} l'intervallo, ma l'intervallo è troppo largo per concludere qualcosa.`);
+            else if (dentro) righe.push(`Il peso attuale (${pevPct(attuale)}) è dentro l'intervallo: non ci sono ragioni per cambiarlo.`);
+            else righe.push(`Il peso attuale (${pevPct(attuale)}) è <b>fuori</b> dall'intervallo: ha senso valutare di cambiarlo (dimmelo e preparo il file).`);
+            const d = ris.modelloVsMercato;
+            if (d.media > 2 * d.se) righe.push(`Il modello da solo è peggiore del mercato da solo (errore medio +${d.media.toFixed(3)} per partita).`);
+            else if (d.media < -2 * d.se) righe.push(`Il modello da solo è migliore del mercato da solo (errore medio ${d.media.toFixed(3)} per partita).`);
+            else righe.push("Su questi dati il modello da solo e il mercato da solo non sono distinguibili.");
+            return righe.map(r => `<p class="mt-1">${r}</p>`).join("");
+        }
+
+        function pevTraguardoHtml(righe) {
+            const n = righe.length;
+            const prossimo = PEV_TRAGUARDI.find(t => t > n);
+            if (!prossimo) return `<p class="mt-1">Hai superato l'ultimo traguardo (${PEV_TRAGUARDI[PEV_TRAGUARDI.length - 1]} partite con quote).</p>`;
+            let testo = `Prossimo traguardo: <b>${prossimo}</b> partite con quote 1X2 utilizzabili (ora ${n}, ne mancano ${prossimo - n}).`;
+            const tempi = righe.map(r => r.t).filter(t => t > 0);
+            if (tempi.length >= 20) {
+                const settimane = (Math.max.apply(null, tempi) - Math.min.apply(null, tempi)) / (7 * 86400e3);
+                if (settimane >= 2) {
+                    const ritmo = n / settimane;
+                    testo += ` Al ritmo osservato (circa ${Math.round(ritmo)} partite con quote a settimana, calcolato sulle date delle partite) servono circa ${Math.max(1, Math.round((prossimo - n) / ritmo))} settimane.`;
+                }
+            }
+            return `<p class="mt-1">${testo}</p>`;
+        }
+
+        // Quante occasioni (EV >= soglia) compaiono nel Palinsesto attuale con pesi diversi.
+        function pevEffettoSuPalinsesto() {
+            const pesiTab = Array.from(new Set([1, 0.5, PESO_MODELLO_EV, 0])).sort((a, b) => b - a);
+            const righe = pesiTab.map(w => ({ w: w, tot: 0, moderato: 0, enorme: 0 }));
+            (cachePartiteFirestore || []).forEach(p => {
+                let ops = [];
+                try { ops = trovaOpportunitaValorePartita(p); } catch (e) { ops = []; }
+                ops.forEach(op => {
+                    righe.forEach(r => {
+                        const pMista = r.w * op.probabilitaModello + (1 - r.w) * op.probabilitaImplicita;
+                        if (pMista * op.quota - 1 >= SOGLIA_EV_MINIMA) {
+                            r.tot++;
+                            if (op.avvisoDistanza) r.enorme++; else r.moderato++;
+                        }
+                    });
+                });
+            });
+            return righe;
+        }
+
+        function pevEffettoHtml() {
+            const righe = pevEffettoSuPalinsesto();
+            const nomi = r => r.w === 1 ? "100% modello (calcolo precedente)"
+                : (r.w === PESO_MODELLO_EV ? `${pevPct(r.w)} modello (attuale)`
+                : (r.w === 0 ? "0% (solo mercato)" : `${pevPct(r.w)} modello`));
+            const trs = righe.map(r => `
+                <tr class="border-t border-slate-800/60 ${r.w === PESO_MODELLO_EV ? "text-emerald-300 font-semibold" : ""}">
+                    <td class="py-1 pr-2">${nomi(r)}</td>
+                    <td class="py-1 text-center">${r.tot}</td>
+                    <td class="py-1 text-center">${r.moderato}</td>
+                    <td class="py-1 text-center">${r.enorme}</td>
+                </tr>`).join("");
+            return `
+                <div class="mt-4 text-[11px] font-bold text-slate-300 uppercase tracking-wider">Effetto del peso sul Palinsesto attuale</div>
+                <p class="text-[11px] text-slate-400 mt-1">Quante occasioni con EV ≥ ${Math.round(SOGLIA_EV_MINIMA * 100)}% compaiono ora (partite con quote e pronostici) a seconda del peso dato al modello.</p>
+                <div class="overflow-x-auto"><table class="w-full mt-2 text-[11px] text-slate-300">
+                    <thead><tr class="text-[9px] uppercase text-slate-500"><th class="text-left">Peso</th><th>Occasioni</th><th>Disacc. moderato</th><th>Disacc. enorme</th></tr></thead>
+                    <tbody>${trs}</tbody>
+                </table></div>`;
+        }
+
+        function pevContaHtml(c) {
+            return `<p>Partite in Archivio: <b>${c.totale}</b> · con quote 1X2 salvate: <b>${c.conQuote1X2}</b> · utilizzabili (quote + pronostico + risultato): <b>${c.utilizzabili}</b> · con quote Over/Under 2.5: <b>${c.conQuoteOU25}</b>.</p>`;
+        }
+
+        async function pevAggiorna(completo) {
+            const cont = document.getElementById("pesoEvRisultato");
+            const btn = document.getElementById("btnMisuraPesoEV");
+            if (!cont) return;
+            const archivio = archivioCorrenteML || [];
+            const dati = pevRaccogliDati(archivio);
+            let html = pevContaHtml(dati.conteggi) + pevTraguardoHtml(dati.righe);
+
+            if (!completo) {
+                html += `<p class="mt-2 text-slate-500">Premi "Misura il peso migliore" per calcolare l'errore a ogni peso.</p>` + pevEffettoHtml();
+                cont.innerHTML = html;
+                return;
+            }
+
+            if (btn) { btn.disabled = true; btn.textContent = "Misura in corso…"; }
+            try {
+                if (dati.righe.length < PEV_MIN_PARTITE) {
+                    html += `<p class="mt-2 text-amber-300">Troppo poche partite per misurare: servono almeno ${PEV_MIN_PARTITE} partite con quote 1X2 utilizzabili (ora ${dati.righe.length}). Continua a estrarre le quote prima di validare le partite: restano salvate insieme alla partita.</p>`;
+                } else {
+                    const ris = await pevMisura(dati.righe);
+                    const trs = [];
+                    for (let j = 0; j < ris.pesi.length; j += 2) {
+                        const w = ris.pesi[j];
+                        const d = ris.diffDalMigliore[j];
+                        let giudizio = "—";
+                        if (j === ris.best) giudizio = "migliore";
+                        else if (Math.abs(d.media) < 2 * d.se) giudizio = "indistinguibile";
+                        else giudizio = "peggiore";
+                        const evid = Math.abs(w - PESO_MODELLO_EV) < 1e-9 ? "text-emerald-300 font-semibold" : (j === ris.best ? "text-amber-300 font-semibold" : "");
+                        trs.push(`<tr class="border-t border-slate-800/60 ${evid}">
+                            <td class="py-1 pr-2">${pevPct(w)}${Math.abs(w - PESO_MODELLO_EV) < 1e-9 ? " (attuale)" : ""}</td>
+                            <td class="py-1 text-center">${ris.medie[j].toFixed(4)}</td>
+                            <td class="py-1 text-center">${d.media >= 0 ? "+" : ""}${d.media.toFixed(4)}</td>
+                            <td class="py-1 text-right">${giudizio}</td>
+                        </tr>`);
+                    }
+                    html += `
+                        <div class="mt-3 text-[11px] font-bold text-slate-300 uppercase tracking-wider">Errore per peso del modello (solo 1X2, ${ris.n} partite)</div>
+                        <div class="overflow-x-auto"><table class="w-full mt-2 text-[11px] text-slate-300">
+                            <thead><tr class="text-[9px] uppercase text-slate-500"><th class="text-left">Peso modello</th><th>Errore medio</th><th>Diff. dal migliore</th><th class="text-right">Giudizio</th></tr></thead>
+                            <tbody>${trs.join("")}</tbody>
+                        </table></div>
+                        <p class="text-[10px] text-slate-500 mt-1">Errore = −ln(probabilità assegnata all'esito realmente accaduto): più basso è meglio. "Indistinguibile" = la differenza dal migliore è dentro il rumore statistico (meno di 2 errori standard).</p>
+                        <div class="mt-3">${pevVerdetto(ris)}</div>`;
+                }
+                html += pevEffettoHtml();
+                cont.innerHTML = html;
+            } catch (err) {
+                console.error(err);
+                cont.innerHTML = html + `<p class="mt-2 text-rose-300">Errore durante la misura: ${err && err.message ? err.message : err}</p>`;
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = "Misura il peso migliore"; }
+            }
+        }
+
+        async function pevMisuraDaPulsante() {
+            if (!archivioCorrenteML || archivioCorrenteML.length === 0) {
+                try {
+                    const archivio = [];
+                    const snapshot = await db.collection("archivio_storico").get();
+                    snapshot.forEach(doc => archivio.push(doc.data()));
+                    archivioCorrenteML = archivio;
+                } catch (err) { console.error(err); }
+            }
+            await pevAggiorna(true);
+        }
+
+        // Guida: riepilogo delle modifiche alla schermata EV e di come leggere i pesi.
+        function pevDisegnaGuida() {
+            const cont = document.getElementById("pesoEvGuida");
+            if (!cont) return;
+            const wm = PESO_MODELLO_EV, wk = 1 - PESO_MODELLO_EV;
+            const sez = (titolo, corpo, aperta) => `
+                <details class="mt-2 bg-slate-950/50 border border-slate-800/60 rounded-xl p-2.5 text-[11px] text-slate-300 leading-relaxed" ${aperta ? "open" : ""}>
+                    <summary class="cursor-pointer font-bold text-[10px] uppercase tracking-wider text-blue-300">${titolo}</summary>
+                    <div class="mt-2 space-y-1.5">${corpo}</div>
+                </details>`;
+            cont.innerHTML =
+                sez("1. Cosa è cambiato nella schermata EV", `
+                    <p>• L'EV non si calcola più sul solo modello ma su una <b>probabilità mista</b>: p mista = ${pevPct(wm)} × p modello + ${pevPct(wk)} × p mercato (probabilità implicita nelle quote, margine tolto). EV = p mista × quota − 1.</p>
+                    <p>• Se su una partita modello e mercato differiscono di più di ${Math.round(SOGLIA_DISTANZA_MODELLO_MERCATO * 100)} punti su un esito, compare un <b>avviso rosso</b> su tutte le selezioni di quel mercato.</p>
+                    <p>• Ordine: prima le occasioni senza avviso (EV decrescente), poi quelle con avviso.</p>
+                    <p>• Le righe con avviso non hanno importo consigliato e non entrano nelle multiple. L'importo consigliato (Kelly) usa la probabilità mista.</p>
+                    <p>• Sotto ogni occasione vedi modello, mercato, mista e l'EV che si avrebbe sul solo modello.</p>`, true) +
+                sez("2. Peso del modello e peso del mercato: come cambiano l'analisi", `
+                    <p>• <b>Peso del modello alto:</b> l'EV segue le idee del modello. Compaiono molte occasioni, ma se il modello sbaglia (pochi dati, non conosce infortuni, formazioni, qualità delle rose) sono in gran parte illusioni. Esempio PSG–Lyon (25/10/2026): modello 40,1% sul "2", mercato circa 14%, quota 6,96.</p>
+                    <p>• <b>Peso del mercato alto:</b> l'EV segue il bookmaker, di solito più informato. Restano solo le partite in cui il modello vede qualcosa di molto diverso: poche, e da verificare.</p>
+                    <p>• Stesso esempio al variare del peso del modello (valori indicativi: la quota del pareggio è ipotizzata, i numeri esatti li vedi nella schermata EV): 100% → EV +179%; 50% → circa +87%; 30% → circa +50%; 0% → circa −5% (con il solo mercato l'EV è sempre negativo, pari al margine del bookmaker: nessuna occasione).</p>
+                    <p>• Non esiste un peso giusto a priori: dipende da quanta informazione il modello aggiunge rispetto al mercato. Lo si misura con l'Archivio (punto 5).</p>`, false) +
+                sez(`3. L'effetto del peso al ${pevPct(wm)}: lista occasioni più corta`, `
+                    <p>• Con il modello al ${pevPct(wm)}, per superare la soglia EV ${Math.round(SOGLIA_EV_MINIMA * 100)}% il modello deve dare a un esito una probabilità di circa il <b>35% più alta</b> di quella del mercato (es. 33% contro 24%), con un margine del bookmaker di circa il 5%. Dove modello e mercato concordano non c'è più nessuna occasione.</p>
+                    <p>• Quindi la lista è corta, a volte vuota, e anche le multiple della schermata EV sono poche. È voluto: meno occasioni ma più credibili.</p>
+                    <p>• La tabella "Effetto del peso sul Palinsesto attuale" qui sopra mostra i numeri reali di oggi.</p>`, false) +
+                sez("4. Disaccordo moderato e disaccordo enorme", `
+                    <p>• Per ogni partita si guarda la <b>distanza massima</b> (in punti percentuali) tra modello e mercato su un esito dello stesso mercato.</p>
+                    <p>• <b>Disaccordo moderato</b> (fino a ${Math.round(SOGLIA_DISTANZA_MODELLO_MERCATO * 100)} punti, es. modello 40% contro mercato 29%): può essere un'informazione che il modello coglie (per esempio la forma recente). La riga è normale, ha l'importo consigliato (se il mercato ha almeno 30 partite in Archivio) e può entrare nelle multiple.</p>
+                    <p>• <b>Disaccordo enorme</b> (oltre ${Math.round(SOGLIA_DISTANZA_MODELLO_MERCATO * 100)} punti, es. PSG–Lyon, fino a 40 punti sull'"1"): di solito è il modello a sbagliare. La riga ha l'avviso rosso, sta in fondo, senza importo e fuori dalle multiple.</p>
+                    <p>• La soglia di ${Math.round(SOGLIA_DISTANZA_MODELLO_MERCATO * 100)} punti è una scelta iniziale: con più dati si potrà verificare se è quella giusta.</p>`, false) +
+                sez("5. Come misurare quale peso funziona meglio al crescere dell'Archivio", `
+                    <p>• Servono partite dell'Archivio con le <b>quote 1X2 salvate</b> prima del via (si salvano da sole insieme alla partita se le estrai prima di validarla).</p>
+                    <p>• Per ogni partita e per ogni peso (0%, 5%, … 100% di modello) si guarda che probabilità la miscela aveva dato all'esito realmente accaduto. L'errore è −ln(quella probabilità): più è basso, meglio è. Il peso con l'errore medio più basso è il migliore.</p>
+                    <p>• L'incertezza si stima ricampionando ${PEV_BOOTSTRAP} volte l'Archivio: si ottiene l'intervallo (95%) in cui cade il peso migliore.</p>
+                    <p>• Traguardi indicativi, in partite con quote 1X2 utilizzabili (ordini di grandezza da un calcolo semplificato): ~150–200 → capire solo se il modello da solo è nettamente peggiore del mercato; ~300 → dirlo con fiducia; ~500 → peso migliore a ±0,3; ~1.100 → ±0,2; 2.500+ → ±0,13 (distingue 30% da 50%).</p>
+                    <p>• Come leggere il risultato: intervallo largo → non cambiare il peso. Intervallo stretto e peso attuale fuori → valutare di cambiarlo.</p>
+                    <p>• Limiti: solo il mercato 1X2 (le quote Over/Under sono poche); le quote salvate sono quelle dell'estrazione, non quelle di chiusura.</p>`, false);
+        }
+
+        function pevAlMostraML() {
+            try {
+                pevDisegnaGuida();
+                pevAggiorna(false);
+            } catch (err) { console.error(err); }
+        }
+        // ===== PANNELLO PESO MODELLO vs MERCATO (ML ENG.): FINE =====
+
         async function mostraMLEngine() {
             await caricaConfigAlgoritmo();
 
@@ -1991,6 +2311,7 @@
 
             resetVistaBacktest();
             disegnaTabellaAccuratezze(archivio, null);
+            pevAlMostraML();
         }
 
         // Ricalcola lambdaCasa/lambdaOspite di una partita d'Archivio da
@@ -2416,6 +2737,35 @@
         // ============================================================
 
         const SOGLIA_EV_MINIMA = 0.05; // 5%
+        // L'EV viene calcolato su una probabilità MISTA: il solo modello è meno informato
+        // del mercato (non vede infortuni, formazioni, qualità delle rose).
+        const PESO_MODELLO_EV = 0.3; // 30% modello + 70% probabilità implicita del bookmaker
+        const SOGLIA_DISTANZA_MODELLO_MERCATO = 0.15; // oltre 15 punti: avviso
+
+        // distanzaMercato = la massima differenza (in punti, 0-1) tra modello e mercato su
+        // un esito QUALSIASI dello stesso mercato della stessa partita: se il modello vede
+        // una partita diversa dal mercato, tutte le sue selezioni in quel mercato sono sospette
+        // (non solo quella con la quota piu' alta).
+        function arricchisciOpportunitaEV(op, distanzaMercato) {
+            const pm = op.probabilitaModello;
+            const pi = op.probabilitaImplicita;
+            const pMista = PESO_MODELLO_EV * pm + (1 - PESO_MODELLO_EV) * pi;
+            return {
+                ...op,
+                evModello: op.ev,
+                probabilitaMista: pMista,
+                ev: calcolaValoreScommessa(pMista, op.quota),
+                scostamento: pm - pi,
+                distanzaMercato: distanzaMercato,
+                avvisoDistanza: distanzaMercato > SOGLIA_DISTANZA_MODELLO_MERCATO
+            };
+        }
+
+        // Prima le occasioni senza avviso (per EV decrescente), poi quelle con avviso.
+        function ordinaOpportunitaEV(a, b) {
+            if (!!a.avvisoDistanza !== !!b.avvisoDistanza) return a.avvisoDistanza ? 1 : -1;
+            return b.ev - a.ev;
+        }
 
         function calcolaConteggiTotaliPerMercato(archivio) {
             const conteggi = {};
@@ -2536,13 +2886,19 @@
                 }
             });
 
-            return opportunita;
+            const distanzaPerMercato = {};
+            opportunita.forEach(o => {
+                const d = Math.abs(o.probabilitaModello - o.probabilitaImplicita);
+                distanzaPerMercato[o.chiaveMercato] = Math.max(distanzaPerMercato[o.chiaveMercato] || 0, d);
+            });
+            return opportunita.map(o => arricchisciOpportunitaEV(o, distanzaPerMercato[o.chiaveMercato]));
         }
 
         function importoConsigliato(op, conteggiMercati, frazioneKelly) {
             const n = conteggiMercati ? (conteggiMercati[op.chiaveMercato] || 0) : 0;
             if (n < 30) return null;
-            const frazione = kellyFrazionato(op.probabilitaModello, op.quota, frazioneKelly);
+            if (op.avvisoDistanza) return null;
+            const frazione = kellyFrazionato(op.probabilitaMista, op.quota, frazioneKelly);
             const percentuale = Math.min(frazione * 100, 5);
             return percentuale > 0 ? +percentuale.toFixed(2) : 0;
         }
@@ -2561,14 +2917,21 @@
                 const colore = sopraSoglia ? "text-emerald-400 font-bold" : "text-slate-500";
                 let importoTesto = "";
                 if (sopraSoglia) {
-                    const importo = importoConsigliato(op, conteggiMercatiGlobale, 0.25);
-                    importoTesto = importo !== null ? `${importo}% bankroll` : "N/D (campione piccolo)";
+                    if (op.avvisoDistanza) {
+                        importoTesto = "nessun importo";
+                    } else {
+                        const importo = importoConsigliato(op, conteggiMercatiGlobale, 0.25);
+                        importoTesto = importo !== null ? `${importo}% bankroll` : "N/D (campione piccolo)";
+                    }
                 }
-                return `<div class="grid grid-cols-4 items-center gap-1 ${sopraSoglia ? 'bg-emerald-950/30 -mx-1 px-1 rounded' : ''}">
+                const avvisoRiga = (sopraSoglia && op.avvisoDistanza)
+                    ? `<div class="col-span-4 text-[10px] text-rose-300">⚠️ Modello e mercato troppo distanti su questa partita (fino a ${Math.round(op.distanzaMercato * 100)} punti su un esito): probabile errore del modello.</div>` : "";
+                return `<div class="grid grid-cols-4 items-center gap-1 ${sopraSoglia ? (op.avvisoDistanza ? 'bg-rose-950/20' : 'bg-emerald-950/30') + ' -mx-1 px-1 rounded' : ''}">
                     <span class="text-slate-400 truncate">${op.nomeMercato} ${op.esito}</span>
                     <span class="text-center">${op.quota.toFixed(2)}</span>
-                    <span class="text-center ${colore}">${(op.ev * 100).toFixed(1)}%</span>
+                    <span class="text-center ${op.avvisoDistanza && sopraSoglia ? 'text-amber-400 font-bold' : colore}">${(op.ev * 100).toFixed(1)}%</span>
                     <span class="text-right text-[10px] ${colore}">${importoTesto}</span>
+                    ${avvisoRiga}
                 </div>`;
             }).join("");
 
@@ -2579,6 +2942,7 @@
                                 <span>Mercato</span><span class="text-center">Quota</span><span class="text-center">EV</span><span class="text-right">Consigliato</span>
                             </div>
                             ${righe}
+                            <div class="text-[9px] text-slate-500 pt-1">EV calcolato sulla probabilità mista: ${Math.round(PESO_MODELLO_EV * 100)}% modello + ${Math.round((1 - PESO_MODELLO_EV) * 100)}% mercato.</div>
                         </div>
                     </details>`;
         }
@@ -2600,16 +2964,16 @@
                     }
                 });
             });
-            tutte.sort((a, b) => b.ev - a.ev);
+            tutte.sort(ordinaOpportunitaEV);
             return tutte;
         }
 
         function migliorOpportunitaPerPartita(tutteOpportunita) {
             const mappa = {};
             tutteOpportunita.forEach(op => {
-                if (!mappa[op.matchId] || op.ev > mappa[op.matchId].ev) mappa[op.matchId] = op;
+                if (!mappa[op.matchId] || ordinaOpportunitaEV(op, mappa[op.matchId]) < 0) mappa[op.matchId] = op;
             });
-            return Object.values(mappa).sort((a, b) => b.ev - a.ev);
+            return Object.values(mappa).sort(ordinaOpportunitaEV);
         }
 
         function generaCombinazioni(arr, k) {
@@ -2627,13 +2991,13 @@
         }
 
         function costruisciMultiple(migliori) {
-            const base = migliori.slice(0, 12); // limite per evitare esplosione combinatoria
+            const base = migliori.filter(op => !op.avvisoDistanza).slice(0, 12); // niente selezioni con avviso; limite per evitare esplosione combinatoria
             const multiple = [];
             [2, 3, 4].forEach(k => {
                 if (base.length < k) return;
                 generaCombinazioni(base, k).forEach(combo => {
                     const quotaTotale = combo.reduce((acc, op) => acc * op.quota, 1);
-                    const probTotale = combo.reduce((acc, op) => acc * op.probabilitaModello, 1);
+                    const probTotale = combo.reduce((acc, op) => acc * op.probabilitaMista, 1);
                     const ev = (probTotale * quotaTotale) - 1;
                     multiple.push({ selezioni: combo, quotaTotale, probTotale, ev, numSelezioni: k });
                 });
@@ -2652,9 +3016,18 @@
                 containerSingole.innerHTML = `<div class="text-slate-500 text-center py-4">Nessuna occasione con vantaggio ≥5% trovata nel Palinsesto corrente (serve avere sia i pronostici sia le quote aggiornate).</div>`;
             } else {
                 containerSingole.innerHTML = tutte.map(op => {
-                    const importo = importoConsigliato(op, conteggiMercatiGlobale, 0.25);
-                    const importoTesto = importo !== null ? `${importo}% bankroll` : "N/D (campione piccolo)";
-                    return `<div class="bg-slate-950/50 border border-emerald-900/50 rounded-xl p-3">
+                    let importoTesto;
+                    if (op.avvisoDistanza) {
+                        importoTesto = "nessun importo";
+                    } else {
+                        const importo = importoConsigliato(op, conteggiMercatiGlobale, 0.25);
+                        importoTesto = importo !== null ? `${importo}% bankroll` : "N/D (campione piccolo)";
+                    }
+                    const bordo = op.avvisoDistanza ? "border-rose-900/60" : "border-emerald-900/50";
+                    const coloreEv = op.avvisoDistanza ? "text-amber-400" : "text-emerald-400";
+                    const avviso = op.avvisoDistanza
+                        ? `<div class="mt-1 text-[10px] text-rose-300">⚠️ Modello e mercato molto distanti su questa partita (fino a ${Math.round(op.distanzaMercato * 100)} punti su un esito): probabile errore del modello, non un'occasione. Nessun importo consigliato e non entra nelle multiple.</div>` : "";
+                    return `<div class="bg-slate-950/50 border ${bordo} rounded-xl p-3">
                         <div class="flex justify-between items-center mb-1">
                             <span class="font-bold text-slate-200 truncate">${op.squadraCasa} vs ${op.squadraOspite}</span>
                             <span class="text-[10px] text-slate-500">${op.campionato}</span>
@@ -2662,9 +3035,11 @@
                         <div class="grid grid-cols-4 items-center gap-1 text-[11px]">
                             <span class="text-slate-400">${op.nomeMercato} ${op.esito}</span>
                             <span class="text-center">Quota ${op.quota.toFixed(2)}</span>
-                            <span class="text-center text-emerald-400 font-bold">EV ${(op.ev * 100).toFixed(1)}%</span>
-                            <span class="text-right text-emerald-400">${importoTesto}</span>
+                            <span class="text-center ${coloreEv} font-bold">EV ${(op.ev * 100).toFixed(1)}%</span>
+                            <span class="text-right ${coloreEv}">${importoTesto}</span>
                         </div>
+                        <div class="mt-1 text-[10px] text-slate-500">Modello ${Math.round(op.probabilitaModello * 100)}% · Mercato ${Math.round(op.probabilitaImplicita * 100)}% · Mista ${Math.round(op.probabilitaMista * 100)}% (EV sul solo modello: ${(op.evModello * 100).toFixed(0)}%)</div>
+                        ${avviso}
                     </div>`;
                 }).join("");
             }
