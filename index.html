@@ -281,6 +281,7 @@
                     Misura il peso migliore
                 </button>
                 <div id="pesoEvRisultato" class="mt-3 text-[11px] text-slate-300 leading-relaxed"></div>
+                <div id="pesoEvControllo" class="mt-4"></div>
             </div>
 
             <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto">
@@ -317,7 +318,7 @@
                     💰 VALUE BETS — SCOMMESSE CON VANTAGGIO
                 </h2>
                 <p class="text-xs text-slate-400 mb-2">
-                    L'EV è calcolato su una probabilità mista: 30% stima del nostro modello e 70% probabilità implicita nelle quote del bookmaker (margine rimosso), perché il solo modello è meno informato del mercato (non conosce infortuni, formazioni, qualità delle rose). Sono elencate le occasioni con EV di almeno il 5%. Se su una partita modello e mercato differiscono di più di 15 punti su un esito, compare un avviso su tutte le sue selezioni: quasi sempre sbaglia il modello, quindi quelle righe stanno in fondo, senza importo consigliato e fuori dalle multiple. Servono sia pronostici sia quote aggiornate sulla stessa partita.
+                    L'EV è calcolato su una probabilità mista: <span id="evPesiTesto">30% stima del nostro modello e 70% probabilità implicita nelle quote del bookmaker</span> (margine rimosso), perché il solo modello è meno informato del mercato (non conosce infortuni, formazioni, qualità delle rose). Sono elencate le occasioni con EV di almeno il 5%. Se su una partita modello e mercato differiscono di più di 15 punti su un esito, compare un avviso su tutte le sue selezioni: quasi sempre sbaglia il modello, quindi quelle righe stanno in fondo, senza importo consigliato e fuori dalle multiple. Servono sia pronostici sia quote aggiornate sulla stessa partita.
                 </p>
                 <p class="text-[11px] text-amber-400 mb-1">⚠️ Indicativo, non un consiglio finanziario. Gli importi consigliati compaiono solo per i mercati con almeno 30 partite di storico nell'Archivio — sotto quella soglia il modello non è ancora abbastanza testato per fidarsi di una cifra.</p>
                 <div id="statoValueBets" class="text-xs text-slate-400 mt-2"></div>
@@ -599,6 +600,10 @@
 
             caricaConfigAlgoritmo();
             caricaConteggiMercatiGlobale();
+            caricaPesoEV().then(() => {
+                aggiornaTestoPesiEV();
+                if (cachePartiteFirestore && cachePartiteFirestore.length) aggiornaFiltriVisualizzazione();
+            });
 
             db.collection("palinsesto").doc("corrente").onSnapshot((doc) => {
                 if (doc.exists) {
@@ -2102,7 +2107,7 @@
             else righe.push("Incertezza contenuta: la misura comincia a essere utile per scegliere il peso.");
             if (larghezza >= 0.4) righe.push(`Il peso attuale (${pevPct(attuale)}) ${dentro ? "è dentro" : "è fuori"} l'intervallo, ma l'intervallo è troppo largo per concludere qualcosa.`);
             else if (dentro) righe.push(`Il peso attuale (${pevPct(attuale)}) è dentro l'intervallo: non ci sono ragioni per cambiarlo.`);
-            else righe.push(`Il peso attuale (${pevPct(attuale)}) è <b>fuori</b> dall'intervallo: ha senso valutare di cambiarlo (dimmelo e preparo il file).`);
+            else righe.push(`Il peso attuale (${pevPct(attuale)}) è <b>fuori</b> dall'intervallo: ha senso valutare di cambiarlo: usa il pulsante qui sotto, nel riquadro "Peso in uso".`);
             const d = ris.modelloVsMercato;
             if (d.media > 2 * d.se) righe.push(`Il modello da solo è peggiore del mercato da solo (errore medio +${d.media.toFixed(3)} per partita).`);
             else if (d.media < -2 * d.se) righe.push(`Il modello da solo è migliore del mercato da solo (errore medio ${d.media.toFixed(3)} per partita).`);
@@ -2182,6 +2187,7 @@
             if (!completo) {
                 html += `<p class="mt-2 text-slate-500">Premi "Misura il peso migliore" per calcolare l'errore a ogni peso.</p>` + pevEffettoHtml();
                 cont.innerHTML = html;
+                pevDisegnaControllo();
                 return;
             }
 
@@ -2191,6 +2197,7 @@
                     html += `<p class="mt-2 text-amber-300">Troppo poche partite per misurare: servono almeno ${PEV_MIN_PARTITE} partite con quote 1X2 utilizzabili (ora ${dati.righe.length}). Continua a estrarre le quote prima di validare le partite: restano salvate insieme alla partita.</p>`;
                 } else {
                     const ris = await pevMisura(dati.righe);
+                    pevUltimaMisura = { n: ris.n, lo: ris.lo, hi: ris.hi, best: ris.pesi[ris.best], suggerito: Math.round(((ris.lo + ris.hi) / 2) * 20) / 20 };
                     const trs = [];
                     for (let j = 0; j < ris.pesi.length; j += 2) {
                         const w = ris.pesi[j];
@@ -2223,6 +2230,7 @@
                 cont.innerHTML = html + `<p class="mt-2 text-rose-300">Errore durante la misura: ${err && err.message ? err.message : err}</p>`;
             } finally {
                 if (btn) { btn.disabled = false; btn.textContent = "Misura il peso migliore"; }
+                pevDisegnaControllo();
             }
         }
 
@@ -2258,11 +2266,10 @@
                 sez("2. Peso del modello e peso del mercato: come cambiano l'analisi", `
                     <p>• <b>Peso del modello alto:</b> l'EV segue le idee del modello. Compaiono molte occasioni, ma se il modello sbaglia (pochi dati, non conosce infortuni, formazioni, qualità delle rose) sono in gran parte illusioni. Esempio PSG–Lyon (25/10/2026): modello 40,1% sul "2", mercato circa 14%, quota 6,96.</p>
                     <p>• <b>Peso del mercato alto:</b> l'EV segue il bookmaker, di solito più informato. Restano solo le partite in cui il modello vede qualcosa di molto diverso: poche, e da verificare.</p>
-                    <p>• Stesso esempio al variare del peso del modello (valori indicativi: la quota del pareggio è ipotizzata, i numeri esatti li vedi nella schermata EV): 100% → EV +179%; 50% → circa +87%; 30% → circa +50%; 0% → circa −5% (con il solo mercato l'EV è sempre negativo, pari al margine del bookmaker: nessuna occasione).</p>
+                    ${pevEsempioEVHtml()}
                     <p>• Non esiste un peso giusto a priori: dipende da quanta informazione il modello aggiunge rispetto al mercato. Lo si misura con l'Archivio (punto 5).</p>`, false) +
-                sez(`3. L'effetto del peso al ${pevPct(wm)}: lista occasioni più corta`, `
-                    <p>• Con il modello al ${pevPct(wm)}, per superare la soglia EV ${Math.round(SOGLIA_EV_MINIMA * 100)}% il modello deve dare a un esito una probabilità di circa il <b>35% più alta</b> di quella del mercato (es. 33% contro 24%), con un margine del bookmaker di circa il 5%. Dove modello e mercato concordano non c'è più nessuna occasione.</p>
-                    <p>• Quindi la lista è corta, a volte vuota, e anche le multiple della schermata EV sono poche. È voluto: meno occasioni ma più credibili.</p>
+                sez(`3. L'effetto del peso al ${pevPct(wm)}: ${wm <= 0.5 ? "lista occasioni più corta" : "lista occasioni più lunga"}`, `
+                    ${pevTestoLista(wm)}
                     <p>• La tabella "Effetto del peso sul Palinsesto attuale" qui sopra mostra i numeri reali di oggi.</p>`, false) +
                 sez("4. Disaccordo moderato e disaccordo enorme", `
                     <p>• Per ogni partita si guarda la <b>distanza massima</b> (in punti percentuali) tra modello e mercato su un esito dello stesso mercato.</p>
@@ -2284,6 +2291,132 @@
                 pevAggiorna(false);
             } catch (err) { console.error(err); }
         }
+        // --- Peso del modello nell'EV: salvato su Firestore (config/pesoEV), cambiabile con un clic ---
+        let pevUltimaMisura = null;
+        let pesoEvInfo = { impostatoIl: null, precedente: null };
+        const PEV_MIN_APPLICA = 500; // partite con quote 1X2 utilizzabili necessarie per sbloccare il pulsante
+
+        async function caricaPesoEV() {
+            try {
+                const doc = await db.collection("config").doc("pesoEV").get();
+                if (doc.exists) {
+                    const d = doc.data();
+                    if (typeof d.pesoModello === "number" && isFinite(d.pesoModello) && d.pesoModello >= 0 && d.pesoModello <= 1) {
+                        PESO_MODELLO_EV = d.pesoModello;
+                        pesoEvInfo = {
+                            impostatoIl: d.impostatoIl || null,
+                            precedente: (typeof d.precedente === "number") ? d.precedente : null
+                        };
+                    }
+                }
+            } catch (err) {
+                console.error("Errore caricamento peso EV:", err);
+            }
+        }
+
+        function aggiornaTestoPesiEV() {
+            const el = document.getElementById("evPesiTesto");
+            if (el) el.textContent = `${pevPct(PESO_MODELLO_EV)} stima del nostro modello e ${pevPct(1 - PESO_MODELLO_EV)} probabilità implicita nelle quote del bookmaker`;
+        }
+
+        // Esempio PSG–Lyon (valori indicativi: quota del pareggio ipotizzata).
+        function pevEsempioEVHtml() {
+            const wm = PESO_MODELLO_EV;
+            const pesi = Array.from(new Set([1, 0.5, wm, 0])).sort((a, b) => b - a);
+            const voci = pesi.map(w => {
+                const ev = (w * 0.401 + (1 - w) * 0.137) * 6.96 - 1;
+                const testo = (ev >= 0 ? "+" : "−") + Math.abs(Math.round(ev * 100)) + "%";
+                const attuale = Math.abs(w - wm) < 1e-9 ? " (attuale)" : "";
+                return `${pevPct(w)}${attuale} → EV ${w === 1 ? "" : "circa "}${testo}`;
+            });
+            return `<p>• Stesso esempio al variare del peso del modello (valori indicativi: la quota del pareggio è ipotizzata, i numeri esatti li vedi nella schermata EV): ${voci.join("; ")}. Con il solo mercato l'EV è sempre negativo, pari al margine del bookmaker: nessuna occasione.</p>`;
+        }
+
+        function pevTestoLista(wm) {
+            if (wm <= 0) return `<p>• Con il modello allo 0% l'EV è sempre negativo (pari al margine del bookmaker): nessuna occasione può superare la soglia.</p>`;
+            const rel = ((1 + SOGLIA_EV_MINIMA) * 1.05 - 1) / wm; // aumento relativo richiesto, con margine del bookmaker ~5%
+            const esempio = Math.round(24 * (1 + rel));
+            let t = `<p>• Con il modello al ${pevPct(wm)}, per superare la soglia EV ${Math.round(SOGLIA_EV_MINIMA * 100)}% il modello deve dare a un esito una probabilità di circa il <b>${Math.round(rel * 100)}% più alta</b> di quella del mercato (es. ${esempio}% contro 24%), con un margine del bookmaker di circa il 5%.</p>`;
+            if (rel >= 0.2) {
+                t += `<p>• Dove modello e mercato concordano non c'è nessuna occasione: la lista è corta, a volte vuota, e anche le multiple della schermata EV sono poche. È voluto: meno occasioni ma più credibili.</p>`;
+            } else {
+                t += `<p>• Con un peso così alto al modello la lista è più lunga, ma molte occasioni possono essere solo errori del modello.</p>`;
+            }
+            return t;
+        }
+
+        function pevDisegnaControllo() {
+            const cont = document.getElementById("pesoEvControllo");
+            if (!cont) return;
+            const w = PESO_MODELLO_EV;
+            let info = " (valore di partenza)";
+            if (pesoEvInfo.impostatoIl) {
+                info = ` (impostato il ${pesoEvInfo.impostatoIl}` + (pesoEvInfo.precedente !== null ? `, prima ${pevPct(pesoEvInfo.precedente)}` : "") + ")";
+            }
+            let html = `<div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-300 leading-relaxed">
+                <div><b>Peso in uso nel calcolo dell'EV:</b> ${pevPct(w)} modello / ${pevPct(1 - w)} mercato${info}</div>`;
+
+            const m = pevUltimaMisura;
+            if (!m) {
+                html += `<p class="mt-2 text-slate-500">Premi "Misura il peso migliore": qui comparirà il peso suggerito e il pulsante per applicarlo.</p>`;
+            } else if (Math.abs(m.suggerito - w) < 1e-9) {
+                html += `<p class="mt-2">Il peso suggerito dall'ultima misura (${pevPct(m.suggerito)}, centro dell'intervallo ${pevPct(m.lo)}–${pevPct(m.hi)}) coincide con quello in uso: nessun cambio necessario.</p>`;
+            } else {
+                html += `<p class="mt-2">Peso suggerito dall'ultima misura: <b>${pevPct(m.suggerito)} modello</b> / ${pevPct(1 - m.suggerito)} mercato (centro dell'intervallo al 95%: ${pevPct(m.lo)}–${pevPct(m.hi)}, su ${m.n} partite).</p>`;
+                if (m.n >= PEV_MIN_APPLICA) {
+                    html += `<button type="button" onclick="pevApplicaSuggerito()" class="w-full mt-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold py-2.5 rounded-xl shadow-lg text-xs cursor-pointer">Applica il peso suggerito: ${pevPct(m.suggerito)} modello / ${pevPct(1 - m.suggerito)} mercato</button>`;
+                } else {
+                    html += `<button type="button" disabled class="w-full mt-2 bg-slate-800 text-slate-500 font-semibold py-2.5 rounded-xl text-xs cursor-not-allowed">Applica il peso suggerito (bloccato)</button>
+                        <p class="mt-1 text-[10px] text-slate-500">Il pulsante si sblocca con ${PEV_MIN_APPLICA} partite con quote 1X2 utilizzabili (ora ${m.n}, ne mancano ${PEV_MIN_APPLICA - m.n}), così il cambio si fa su una misura più solida.</p>`;
+                }
+            }
+            if (Math.abs(w - PESO_MODELLO_EV_DEFAULT) > 1e-9) {
+                html += `<button type="button" onclick="pevRipristinaPeso()" class="w-full mt-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2 rounded-xl text-[11px] cursor-pointer">Ripristina il peso di partenza (${pevPct(PESO_MODELLO_EV_DEFAULT)} modello)</button>`;
+            }
+            html += `</div>`;
+            cont.innerHTML = html;
+        }
+
+        async function pevApplicaPeso(nuovo, motivo, misura) {
+            if (!(typeof nuovo === "number" && nuovo >= 0 && nuovo <= 1)) return;
+            const prec = PESO_MODELLO_EV;
+            const testo = `Cambiare il peso del modello nel calcolo dell'EV da ${pevPct(prec)} a ${pevPct(nuovo)} (mercato da ${pevPct(1 - prec)} a ${pevPct(1 - nuovo)})?\n\nVale per tutte le schermate e per tutti i dispositivi. Potrai tornare indietro con "Ripristina".`;
+            if (!confirm(testo)) return;
+            const quando = new Date().toLocaleString("it-IT");
+            try {
+                await db.collection("config").doc("pesoEV").set({
+                    pesoModello: nuovo,
+                    precedente: prec,
+                    motivo: motivo,
+                    impostatoIl: quando,
+                    nPartite: misura ? misura.n : null,
+                    intervalloLo: misura ? misura.lo : null,
+                    intervalloHi: misura ? misura.hi : null
+                });
+                PESO_MODELLO_EV = nuovo;
+                pesoEvInfo = { impostatoIl: quando, precedente: prec };
+                aggiornaTestoPesiEV();
+                pevDisegnaGuida();
+                pevDisegnaControllo();
+                await pevAggiorna(!!pevUltimaMisura);
+                if (cachePartiteFirestore && cachePartiteFirestore.length) aggiornaFiltriVisualizzazione();
+                alert(`Fatto: ora l'EV usa ${pevPct(nuovo)} modello / ${pevPct(1 - nuovo)} mercato.`);
+            } catch (err) {
+                console.error(err);
+                alert("Errore durante il salvataggio del peso: " + (err && err.message ? err.message : err));
+            }
+        }
+
+        async function pevApplicaSuggerito() {
+            const m = pevUltimaMisura;
+            if (!m || m.n < PEV_MIN_APPLICA) return;
+            await pevApplicaPeso(m.suggerito, "misura", m);
+        }
+
+        async function pevRipristinaPeso() {
+            await pevApplicaPeso(PESO_MODELLO_EV_DEFAULT, "ripristino", null);
+        }
+
         // ===== PANNELLO PESO MODELLO vs MERCATO (ML ENG.): FINE =====
 
         async function mostraMLEngine() {
@@ -2311,6 +2444,7 @@
 
             resetVistaBacktest();
             disegnaTabellaAccuratezze(archivio, null);
+            await caricaPesoEV();
             pevAlMostraML();
         }
 
@@ -2739,7 +2873,8 @@
         const SOGLIA_EV_MINIMA = 0.05; // 5%
         // L'EV viene calcolato su una probabilità MISTA: il solo modello è meno informato
         // del mercato (non vede infortuni, formazioni, qualità delle rose).
-        const PESO_MODELLO_EV = 0.3; // 30% modello + 70% probabilità implicita del bookmaker
+        let PESO_MODELLO_EV = 0.3; // peso del modello nell'EV (cambiabile da ML Eng., salvato su Firestore: config/pesoEV)
+        const PESO_MODELLO_EV_DEFAULT = 0.3; // valore di partenza
         const SOGLIA_DISTANZA_MODELLO_MERCATO = 0.15; // oltre 15 punti: avviso
 
         // distanzaMercato = la massima differenza (in punti, 0-1) tra modello e mercato su
@@ -3007,6 +3142,8 @@
         }
 
         async function mostraValueBets() {
+            await caricaPesoEV();
+            aggiornaTestoPesiEV();
             document.getElementById("statoValueBets").textContent = `${(cachePartiteFirestore || []).length} partite nel Palinsesto corrente analizzate`;
 
             const tutte = trovaTutteLeOpportunitaValore(cachePartiteFirestore);
