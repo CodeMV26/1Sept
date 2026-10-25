@@ -342,7 +342,7 @@
                     🎯 PROPOSTE — SINGOLE E MULTIPLE PIÙ AFFIDABILI
                 </h2>
                 <p class="text-xs text-slate-400 mb-3">
-                    Sceglie tra le partite non ancora iniziate del Palinsesto le selezioni su cui il modello è più affidabile, correggendo le sue probabilità con quante volte ha davvero avuto ragione in Archivio. La scelta non dipende dalle quote del bookmaker. Fino a 30 singole e fino a 20 multiple (da 2 a 4 partite diverse).
+                    Sceglie tra le partite non ancora iniziate del Palinsesto le selezioni su cui il modello è più affidabile, correggendo le sue probabilità con quante volte ha davvero avuto ragione in Archivio. Niente quote troppo basse: singole con probabilità almeno 60% e quota almeno 1,40; selezioni nelle multiple con probabilità almeno 65% e quota almeno 1,20, quota totale almeno 1,80. Dove manca la quota del bookmaker la quota è stimata (0,95 diviso la probabilità) e segnata come tale. Fino a 30 singole, fino a 20 multiple (da 2 a 4 partite diverse) e una multipla a lunga quota per fascia.
                 </p>
                 <p class="text-[11px] text-amber-300/90 mb-4">
                     Nessuna schedina è sicura. La probabilità di una multipla è il prodotto delle probabilità delle singole selezioni: più partite metti insieme, meno è probabile vincerla.
@@ -362,6 +362,10 @@
 
                     <h3 class="text-[11px] font-bold tracking-widest text-indigo-300 uppercase mb-2">Multiple</h3>
                     <div id="propMultiple" class="space-y-3"></div>
+
+                    <h3 class="text-[11px] font-bold tracking-widest text-fuchsia-300 uppercase mt-5 mb-1">Multiple a lunga quota</h3>
+                    <p class="text-[11px] text-amber-300/90 mb-2">Sono biglietti della lotteria: la probabilità di vincere è molto bassa (circa 1 diviso la quota) e il margine del bookmaker si ripete su ogni selezione. La probabilità indicata è una stima ottimistica: la combinazione è scelta proprio perché, tra moltissime possibili, è la più favorevole. Da giocare, se mai, con puntate minime. Una per fascia, da 4 a 8 selezioni (10 per la fascia più alta) di partite diverse, solo con quote vere del bookmaker tra 1,30 e 2,50.</p>
+                    <div id="propLunghe" class="space-y-3"></div>
 
                     <div id="propCalibrazione"></div>
                 </div>
@@ -3453,7 +3457,7 @@
                             <div class="flex justify-between items-center mb-2">
                                 <div>
                                     <div class="font-bold text-slate-100 text-sm">${l.nome}</div>
-                                    <div class="text-[10px] text-slate-500">${l.creataIl} · ${(l.righe || []).length} partite · ${l.tipo ? (l.tipoEtichetta || "Proposta") + (l.probabilitaComplessiva != null ? " · probabilità " + Math.round(l.probabilitaComplessiva) + "%" : "") : "Mercato: " + ((l.righe && l.righe[0]) ? l.righe[0].nomeMercato : "N/D")}</div>
+                                    <div class="text-[10px] text-slate-500">${l.creataIl} · ${(l.righe || []).length} partite · ${l.tipo ? (l.tipoEtichetta || "Proposta") + (l.probabilitaComplessiva != null ? " · probabilità " + (l.probabilitaComplessiva < 1 ? Number(l.probabilitaComplessiva).toFixed(2) : Math.round(l.probabilitaComplessiva)) + "%" : "") : "Mercato: " + ((l.righe && l.righe[0]) ? l.righe[0].nomeMercato : "N/D")}</div>
                                 </div>
                                 <button type="button" onclick="eliminaListaSalvata('${l.id}')" class="bg-rose-700 hover:bg-rose-600 text-white text-[10px] font-semibold py-1.5 px-3 rounded-xl transition cursor-pointer whitespace-nowrap">
                                     Elimina
@@ -3700,8 +3704,12 @@
 
         // ===== PROPOSTE BET: INIZIO =====
         // Sezione "Proposte" della scheda Bet: singole e multiple scelte per
-        // affidabilita' (probabilita' corretta con i dati reali dell'Archivio),
-        // NON in base alle quote del bookmaker (che per molti mercati non ci sono).
+        // affidabilita' (probabilita' corretta con i dati reali dell'Archivio).
+        // La quota non decide QUALE selezione e' piu' probabile, ma pone dei MINIMI
+        // (niente selezioni a quota troppo bassa). Dove la quota del bookmaker non c'e'
+        // si usa una quota STIMATA (0,95 / probabilita'), sempre segnalata come tale.
+        // Le "multiple a lunga quota" usano invece solo quote vere e probabilita' mista
+        // (modello + mercato, stesso peso della schermata EV).
         const PROP_CFG = {
             maxSingole: 30,
             maxMultiple: 20,
@@ -3709,27 +3717,48 @@
             quotaTriple: 6,
             quotaQuadruple: 4,
             minGiocate: 7,            // partite giocate minime per ciascuna squadra
-            sogliaAlta: 0.80,
-            sogliaMedia: 0.68,
-            minOssAlta: 50,           // partite simili minime in Archivio per "ALTA"
-            minOssMedia: 30,          // partite simili minime per "MEDIA"
+            minOssAlta: 50,           // partite simili minime in Archivio per affidabilita' "ALTA"
+            minOssMedia: 30,          // partite simili minime per "MEDIA" (sotto: selezione non proposta)
+            minProbSingola: 0.60,     // probabilita' corretta minima di una singola
+            minQuotaSingola: 1.40,    // quota minima di una singola
+            maxSingolePerMercato: 3,  // al massimo 3 singole dello stesso mercato
+            minProbMultipla: 0.65,    // probabilita' corretta minima di una selezione dentro una multipla
+            minQuotaLeg: 1.20,        // quota minima di una selezione dentro una multipla
+            minQuotaTotale: 1.80,     // quota totale minima di una multipla
+            fattoreQuotaStimata: 0.95,// quota stimata = 0,95 / probabilita' (dove manca la quota vera)
             minPartiteArchivio: 100,  // sotto questo numero di partite in Archivio non propongo nulla
             finestra: 0.03,           // +/- 3 punti attorno alla probabilita' del modello
             pesoPriore: 20,           // peso della probabilita' del modello nella fascia
             minCampione: 30,          // sotto questo n il campionato/mercato pesa 0
             tettoProbabilita: 0.95,   // nessuna probabilita' corretta oltre il 95%
             capAggiustamento: 0.08,   // massimo +/- 8 punti per mercato e per campionato
-            sogliaQuadrupla: 0.35,    // probabilita' complessiva minima di una multipla da 4
+            sogliaQuadrupla: 0.25,    // probabilita' complessiva minima di una multipla da 4
             avvisoQuota: 0.15,        // bookmaker meno ottimista di 15+ punti => avviso
             maxUsiPartita: 5,         // una partita compare al massimo in 5 multiple
             maxUsiSelezione: 4,       // una stessa selezione compare al massimo in 4 multiple
-            poolDoppie: 18,
-            poolAlta: 16
+            poolDoppie: 30,
+            poolTriple: 22,
+            poolQuadruple: 18,
+            // Multiple a lunga quota
+            lungaQuotaMin: 1.30,      // quota minima di ogni selezione
+            lungaQuotaMax: 2.50,      // quota massima di ogni selezione
+            lungaMinSel: 4,
+            lungaFasce: [
+                { da: 10,   a: 20,   maxSel: 8 },
+                { da: 20,   a: 50,   maxSel: 8 },
+                { da: 50,   a: 100,  maxSel: 8 },
+                { da: 100,  a: 200,  maxSel: 8 },
+                { da: 200,  a: 500,  maxSel: 8 },
+                { da: 500,  a: 1000, maxSel: 8 },
+                { da: 1000, a: 1200, maxSel: 10 }   // con tetto 2,50 e 8 selezioni servirebbe quasi sempre 2,37+ a selezione
+            ]
         };
         const PROP_MERCATI_ESCLUSI = ["over05", "risultatoEsatto"];
 
         let propSingoleCorrenti = [];
         let propMultipleCorrenti = [];
+        let propLungheCorrenti = [];   // solo le fasce con una multipla
+        let propLungheDisegnate = [];  // tutte le fasce, nell'ordine mostrato (l'indice del pulsante Salva)
 
         function propEsc(s) {
             return String(s === null || s === undefined ? "" : s)
@@ -3912,14 +3941,23 @@
                     const pm = propProbScelta(mm.chiave, p.pronostici);
                     if (pm === null) return;
                     const c = cal.calibra(mm.chiave, p.campionatoCode || "", pm);
+                    // Affidabilita' = quante partite simili ci sono in Archivio.
                     let aff = null;
-                    if (c.pCal >= PROP_CFG.sogliaAlta && c.nBanda >= PROP_CFG.minOssAlta) aff = "ALTA";
-                    else if (c.pCal >= PROP_CFG.sogliaMedia && c.nBanda >= PROP_CFG.minOssMedia) aff = "MEDIA";
+                    if (c.nBanda >= PROP_CFG.minOssAlta) aff = "ALTA";
+                    else if (c.nBanda >= PROP_CFG.minOssMedia) aff = "MEDIA";
                     if (!aff) return;
+                    // Sotto la probabilita' minima delle multiple (la piu' bassa) la selezione non serve.
+                    if (c.pCal < Math.min(PROP_CFG.minProbSingola, PROP_CFG.minProbMultipla)) return;
 
-                    const quota = ottieniQuotaPerMercato(p, mm.chiave);
+                    // Quota vera se esiste, altrimenti stimata come 0,95 / probabilita'.
+                    const quotaVera = ottieniQuotaPerMercato(p, mm.chiave);
+                    const haVera = !!(quotaVera && quotaVera > 0);
+                    const quota = haVera ? quotaVera : Math.round(PROP_CFG.fattoreQuotaStimata / c.pCal * 100) / 100;
                     const impl = propImplicitaBookmaker(p, mm.chiave);
-                    const ev = (quota && quota > 0) ? (c.pCal * quota - 1) : null;
+                    const ev = haVera ? (c.pCal * quotaVera - 1) : null;
+                    const perSingola = c.pCal >= PROP_CFG.minProbSingola && quota >= PROP_CFG.minQuotaSingola;
+                    const perMultipla = c.pCal >= PROP_CFG.minProbMultipla && quota >= PROP_CFG.minQuotaLeg;
+                    if (!perSingola && !perMultipla) return;
                     cands.push({
                         matchId: p.matchId || p.id,
                         campionato: p.campionato,
@@ -3933,7 +3971,10 @@
                         cal: c,
                         pCal: c.pCal,
                         affidabilita: aff,
-                        quota: (quota && quota > 0) ? quota : null,
+                        quota: quota,
+                        quotaStimata: !haVera,
+                        perSingola: perSingola,
+                        perMultipla: perMultipla,
                         implicitaBookmaker: impl,
                         ev: ev,
                         avvisoQuota: (impl !== null && impl < c.pCal - PROP_CFG.avvisoQuota)
@@ -3948,14 +3989,23 @@
             return b.cal.nBanda - a.cal.nBanda;
         }
 
-        // Singole: al massimo una per partita (la piu' affidabile), massimo 30.
+        // Singole: al massimo una per partita (la piu' probabile), massimo 30,
+        // al massimo 3 dello stesso mercato; probabilita' >= 60% e quota >= 1,40.
         function propSelezionaSingole(cands) {
-            const migliori = new Map();
-            cands.forEach(c => {
+            const ordinati = cands.filter(c => c.perSingola).sort(propOrdina);
+            const usate = new Set();
+            const perMercato = {};
+            const out = [];
+            for (let i = 0; i < ordinati.length && out.length < PROP_CFG.maxSingole; i++) {
+                const c = ordinati[i];
                 const k = String(c.matchId);
-                if (!migliori.has(k) || propOrdina(c, migliori.get(k)) < 0) migliori.set(k, c);
-            });
-            return Array.from(migliori.values()).sort(propOrdina).slice(0, PROP_CFG.maxSingole);
+                if (usate.has(k)) continue;
+                if ((perMercato[c.chiaveMercato] || 0) >= PROP_CFG.maxSingolePerMercato) continue;
+                usate.add(k);
+                perMercato[c.chiaveMercato] = (perMercato[c.chiaveMercato] || 0) + 1;
+                out.push(c);
+            }
+            return out;
         }
 
         function propCombinazioni(arr, k, accetta) {
@@ -3982,10 +4032,11 @@
         }
 
         // Multiple: da 2 a 4 selezioni da partite DIVERSE, anche con mercati diversi.
+        // Ogni selezione: probabilita' >= 65% e quota >= 1,20; quota totale >= 1,80.
         function propGeneraMultiple(cands) {
             // Niente selezioni con avviso quote nelle multiple; al massimo 2 selezioni per partita.
             const perPartita = new Map();
-            cands.filter(c => !c.avvisoQuota).forEach(c => {
+            cands.filter(c => c.perMultipla && !c.avvisoQuota).forEach(c => {
                 const k = String(c.matchId);
                 if (!perPartita.has(k)) perPartita.set(k, []);
                 perPartita.get(k).push(c);
@@ -3995,12 +4046,16 @@
             pool.sort(propOrdina);
 
             const poolDoppie = pool.slice(0, PROP_CFG.poolDoppie);
-            const poolAlta = pool.filter(c => c.affidabilita === "ALTA").slice(0, PROP_CFG.poolAlta);
+            const solteAlta = pool.filter(c => c.affidabilita === "ALTA");
+            const poolTriple = solteAlta.slice(0, PROP_CFG.poolTriple);
+            const poolQuad = solteAlta.slice(0, PROP_CFG.poolQuadruple);
 
+            // Quota totale minima 1,80 (le quote sono vere o stimate, ma ci sono sempre).
+            const quotaOk = legs => { const q = propQuotaTotale(legs); return q !== null && q >= PROP_CFG.minQuotaTotale - 1e-9; };
             const liste = {
-                4: propCombinazioni(poolAlta, 4, (legs, prob) => prob >= PROP_CFG.sogliaQuadrupla),
-                3: propCombinazioni(poolAlta, 3, () => true),
-                2: propCombinazioni(poolDoppie, 2, () => true)
+                4: propCombinazioni(poolQuad, 4, (legs, prob) => prob >= PROP_CFG.sogliaQuadrupla && quotaOk(legs)),
+                3: propCombinazioni(poolTriple, 3, (legs) => quotaOk(legs)),
+                2: propCombinazioni(poolDoppie, 2, (legs) => quotaOk(legs))
             };
             const quote = { 2: PROP_CFG.quotaDoppie, 3: PROP_CFG.quotaTriple, 4: PROP_CFG.quotaQuadruple };
 
@@ -4040,6 +4095,143 @@
             return scelte.sort((a, b) => (a.legs.length - b.legs.length) || (b.prob - a.prob));
         }
 
+
+        // ---------- Multiple a lunga quota ----------
+        // Selezioni con quota VERA del bookmaker (1X2 e Over/Under), una per partita,
+        // probabilita' mista = peso modello (come nell'EV) + resto mercato.
+        function propOpzioniLunga(palinsesto, ora) {
+            const gruppi = [];
+            const stat = { conQuote: 0, opzioni: 0, scartateDistanza: 0 };
+            (palinsesto || []).forEach(p => {
+                if (["TIMED", "SCHEDULED"].indexOf(p.stato) === -1) return;
+                const d = new Date(p.dataOraUTC || p.utcDate);
+                if (isNaN(d.getTime()) || d <= ora) return;
+                if (!p.pronostici || !p.quote) return;
+                if ((p.giocateCasa == null ? 0 : p.giocateCasa) < PROP_CFG.minGiocate
+                    || (p.giocateOspite == null ? 0 : p.giocateOspite) < PROP_CFG.minGiocate) return;
+                let opps = [];
+                try { opps = trovaOpportunitaValorePartita(p); } catch (e) { opps = []; }
+                if (!opps.length) return;
+                stat.conQuote++;
+                // Distanza modello-mercato per mercato (stessa regola della schermata EV).
+                const dist = {};
+                opps.forEach(o => {
+                    const dd = Math.abs(o.probabilitaModello - o.probabilitaImplicita);
+                    if (dist[o.chiaveMercato] === undefined || dd > dist[o.chiaveMercato]) dist[o.chiaveMercato] = dd;
+                });
+                const w = PESO_MODELLO_EV;
+                const opzioni = [];
+                opps.forEach(o => {
+                    if (PROP_MERCATI_ESCLUSI.indexOf(o.chiaveMercato) !== -1) return;
+                    if (!(o.quota >= PROP_CFG.lungaQuotaMin && o.quota <= PROP_CFG.lungaQuotaMax)) return;
+                    if (dist[o.chiaveMercato] > SOGLIA_DISTANZA_MODELLO_MERCATO) { stat.scartateDistanza++; return; }
+                    const pMista = w * o.probabilitaModello + (1 - w) * o.probabilitaImplicita;
+                    if (!(pMista > 0)) return;
+                    const info = MERCATI_LISTA.find(m => m.chiave === o.chiaveMercato);
+                    opzioni.push({
+                        matchId: p.matchId || p.id,
+                        campionato: p.campionato,
+                        campionatoCode: p.campionatoCode,
+                        squadraCasa: p.squadraCasa,
+                        squadraOspite: p.squadraOspite,
+                        dataOraUTC: p.dataOraUTC || p.utcDate,
+                        chiaveMercato: o.chiaveMercato,
+                        nomeMercato: info ? info.nome : o.nomeMercato,
+                        pronostico: o.esito,
+                        quota: o.quota,
+                        quotaStimata: false,
+                        pCal: pMista,
+                        pMista: pMista,
+                        pMercato: o.probabilitaImplicita,
+                        cal: { pModello: o.probabilitaModello },
+                        affidabilita: null
+                    });
+                });
+                if (opzioni.length) { gruppi.push(opzioni); stat.opzioni += opzioni.length; }
+            });
+            return { gruppi: gruppi, stat: stat };
+        }
+
+        // Programmazione dinamica esatta: tra tutte le combinazioni di kMin..kMax selezioni
+        // (al massimo una per partita) con quota totale in [lo, hi) sceglie quella con la
+        // probabilita' complessiva piu' alta. La quota e' discretizzata (passo 0,4% sul
+        // logaritmo) e la quota esatta della combinazione trovata viene sempre ricontrollata.
+        function propMigliorLunga(gruppi, lo, hi, kMin, kMax) {
+            const STEP = 0.004;
+            const nb = Math.ceil(Math.log(hi) / STEP) + 3;
+            const K = kMax + 1;
+            const idx = (k, b) => k * nb + b;
+            let dp = new Float64Array(K * nb).fill(-Infinity);
+            dp[idx(0, 0)] = 0;
+            const scelte = [];
+            for (let g = 0; g < gruppi.length; g++) {
+                const opz = gruppi[g];
+                const nuovo = dp.slice();
+                const ch = new Int16Array(K * nb).fill(-1);
+                for (let o = 0; o < opz.length; o++) {
+                    const bo = Math.round(Math.log(opz[o].quota) / STEP);
+                    const lp = Math.log(opz[o].pMista);
+                    for (let k = 0; k < kMax; k++) {
+                        const base = k * nb;
+                        const dest = (k + 1) * nb + bo;
+                        for (let b = 0; b + bo < nb; b++) {
+                            const v = dp[base + b];
+                            if (v === -Infinity) continue;
+                            const c = v + lp;
+                            if (c > nuovo[dest + b]) { nuovo[dest + b] = c; ch[dest + b] = o; }
+                        }
+                    }
+                }
+                scelte.push(ch);
+                dp = nuovo;
+            }
+            const bLo = Math.max(0, Math.floor(Math.log(lo) / STEP) - 6);
+            const bHi = Math.min(nb - 1, Math.ceil(Math.log(hi) / STEP) + 2);
+            const stati = [];
+            for (let k = kMin; k <= kMax; k++) {
+                for (let b = bLo; b <= bHi; b++) {
+                    const v = dp[idx(k, b)];
+                    if (v > -Infinity) stati.push({ k: k, b: b, v: v });
+                }
+            }
+            stati.sort((x, y) => y.v - x.v);
+            for (let i = 0; i < stati.length; i++) {
+                let k = stati[i].k, b = stati[i].b;
+                const legs = [];
+                for (let g = gruppi.length - 1; g >= 0 && k > 0; g--) {
+                    const o = scelte[g][idx(k, b)];
+                    if (o >= 0) {
+                        const leg = gruppi[g][o];
+                        legs.push(leg);
+                        b -= Math.round(Math.log(leg.quota) / STEP);
+                        k -= 1;
+                    }
+                }
+                if (k !== 0 || legs.length < kMin) continue;
+                legs.reverse();
+                let q = 1, pr = 1;
+                legs.forEach(l => { q *= l.quota; pr *= l.pMista; });
+                if (q >= lo && q < hi) return { legs: legs, quotaTotale: q, prob: pr };
+            }
+            return null;
+        }
+
+        function propGeneraLunghe(palinsesto, ora) {
+            const r = propOpzioniLunga(palinsesto, ora);
+            const fasce = PROP_CFG.lungaFasce.map(f => {
+                const m = propMigliorLunga(r.gruppi, f.da, f.a, PROP_CFG.lungaMinSel, f.maxSel);
+                return { da: f.da, a: f.a, maxSel: f.maxSel, multipla: m };
+            });
+            return { fasce: fasce, stat: r.stat, nPartite: r.gruppi.length };
+        }
+
+        function propPctFine(x) {
+            const v = x * 100;
+            if (v >= 10) return Math.round(v) + "%";
+            if (v >= 1) return v.toFixed(1).replace(".", ",") + "%";
+            return v.toFixed(2).replace(".", ",") + "%";
+        }
+
         function propQuotaTotale(legs) {
             let q = 1;
             for (let i = 0; i < legs.length; i++) {
@@ -4053,16 +4245,18 @@
 
         function propDettaglioLegHtml(c, conAvviso) {
             const badge = c.affidabilita === "ALTA"
-                ? '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700/60">ALTA</span>'
-                : '<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-900/50 text-amber-300 border border-amber-700/60">MEDIA</span>';
+                ? '<span title="Almeno 50 partite simili in Archivio" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700/60 whitespace-nowrap">AFFID. ALTA</span>'
+                : '<span title="Da 30 a 49 partite simili in Archivio" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-900/50 text-amber-300 border border-amber-700/60 whitespace-nowrap">AFFID. MEDIA</span>';
             const cal = c.cal;
             let riga3 = `Basata su ${cal.nBanda} partite simili in Archivio`;
             if (Math.abs(cal.adjMercato) >= 0.0005) riga3 += ` · mercato ${cal.adjMercato >= 0 ? "+" : ""}${(cal.adjMercato * 100).toFixed(1)} pt`;
             riga3 += ` · campionato: peso ${Math.round(cal.pesoCamp * 100)}% (n=${cal.nCamp})`;
             if (cal.pesoCamp > 0) riga3 += ` ${cal.adjCampionato >= 0 ? "+" : ""}${(cal.adjCampionato * 100).toFixed(1)} pt`;
             let quotaRiga = "";
-            if (c.quota !== null) {
-                quotaRiga = `Quota ${c.quota}` + (c.ev !== null ? ` · EV ${c.ev >= 0 ? "+" : ""}${(c.ev * 100).toFixed(0)}% (con la probabilità corretta)` : "");
+            if (c.quota !== null && c.quota !== undefined) {
+                quotaRiga = c.quotaStimata
+                    ? `Quota stimata ${c.quota.toFixed(2)} (non c'è la quota del bookmaker: 0,95 diviso la probabilità)`
+                    : `Quota ${c.quota}` + (c.ev !== null ? ` · EV ${c.ev >= 0 ? "+" : ""}${(c.ev * 100).toFixed(0)}% (con la probabilità corretta)` : "");
             }
             const avviso = (c.avvisoQuota)
                 ? `<div class="mt-1 text-[10px] text-rose-300">⚠️ Il bookmaker è molto meno ottimista (${propPct(c.implicitaBookmaker)} contro ${propPct(c.pCal)}): trattala con cautela.</div>` : "";
@@ -4086,10 +4280,11 @@
             `;
         }
 
-        function propDisegna(cal, stat, nCands, singole, multiple) {
+        function propDisegna(cal, stat, nCands, singole, multiple, lunghe) {
             const nota = document.getElementById("propRiepilogo");
             const contSingole = document.getElementById("propSingole");
             const contMultiple = document.getElementById("propMultiple");
+            const contLunghe = document.getElementById("propLunghe");
             const contCal = document.getElementById("propCalibrazione");
 
             nota.innerHTML = `
@@ -4125,7 +4320,7 @@
                                 <div class="font-bold text-indigo-300 uppercase text-[10px] tracking-wider">Multipla da ${m.legs.length}${rischio}</div>
                                 <div class="text-slate-100 font-bold">Probabilità complessiva ${propPct(m.prob)}</div>
                             </div>
-                            <div class="text-[10px] text-slate-500 pb-1">${qt !== null ? "Quota totale " + qt.toFixed(2) : "Quota totale non disponibile (manca la quota per almeno una selezione)"}</div>
+                            <div class="text-[10px] text-slate-500 pb-1">${qt !== null ? "Quota totale " + qt.toFixed(2) + (m.legs.some(l => l.quotaStimata) ? " (in parte stimata)" : "") : "Quota totale non disponibile"}</div>
                             ${legsHtml}
                             <div class="mt-2 text-right">
                                 <button type="button" onclick="salvaProposta('multipla', ${i})" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-1.5 px-3 rounded-xl text-[11px] cursor-pointer">Salva questa proposta</button>
@@ -4133,6 +4328,52 @@
                         </div>
                     `;
                 }).join("");
+            }
+
+
+            if (contLunghe) {
+                if (!lunghe) {
+                    contLunghe.innerHTML = "";
+                } else {
+                    const st = lunghe.stat;
+                    let h = `<div class="text-[10px] text-slate-500 mb-2">Partite con quote vere utilizzabili: <b>${lunghe.nPartite}</b> · selezioni con quota ${PROP_CFG.lungaQuotaMin.toFixed(2).replace(".", ",")}–${PROP_CFG.lungaQuotaMax.toFixed(2).replace(".", ",")}: <b>${st.opzioni}</b>${st.scartateDistanza ? " · scartate per forte disaccordo modello-mercato: " + st.scartateDistanza : ""}. Probabilità: ${Math.round(PESO_MODELLO_EV * 100)}% modello + ${Math.round((1 - PESO_MODELLO_EV) * 100)}% mercato.</div>`;
+                    h += lunghe.fasce.map((f, i) => {
+                        const titolo = `Quota ${f.da}–${f.a}`;
+                        if (!f.multipla) {
+                            return `<div class="rounded-2xl border border-slate-800/70 bg-slate-950/50 p-3 text-xs text-slate-400">
+                                <div class="font-bold text-fuchsia-300 uppercase text-[10px] tracking-wider mb-1">${titolo}</div>
+                                Nessuna combinazione valida con le partite di oggi (da ${PROP_CFG.lungaMinSel} a ${f.maxSel} selezioni da partite diverse, quota di ogni selezione tra ${PROP_CFG.lungaQuotaMin.toFixed(2).replace(".", ",")} e ${PROP_CFG.lungaQuotaMax.toFixed(2).replace(".", ",")}). Non la forzo.
+                            </div>`;
+                        }
+                        const m = f.multipla;
+                        const uno = Math.round(1 / m.prob);
+                        const legsHtml = m.legs.map(l => `
+                            <div class="py-2 border-t border-slate-800/60">
+                                <div class="text-[9px] uppercase text-slate-500 truncate">${propEsc(l.campionato)} · ${propEsc(formattaData(l.dataOraUTC))}</div>
+                                <div class="font-semibold text-slate-100 break-words">${propEsc(l.squadraCasa)} vs ${propEsc(l.squadraOspite)}</div>
+                                <div class="mt-0.5 break-words">
+                                    <span class="text-slate-400">${propEsc(l.nomeMercato)}</span>
+                                    <span class="font-bold text-fuchsia-300">${propEsc(l.pronostico)}</span>
+                                    · quota <span class="font-bold text-slate-100">${l.quota}</span>
+                                    · prob. <span class="text-slate-200">${propPct(l.pMista)}</span>
+                                    <span class="text-slate-500">(modello ${propPct(l.cal.pModello)}, mercato ${propPct(l.pMercato)})</span>
+                                </div>
+                            </div>`).join("");
+                        return `
+                            <div class="rounded-2xl border border-fuchsia-900/50 bg-slate-950/60 p-3 text-xs">
+                                <div class="flex flex-wrap justify-between items-center gap-x-2 gap-y-1 pb-1">
+                                    <div class="font-bold text-fuchsia-300 uppercase text-[10px] tracking-wider">${titolo} · ${m.legs.length} selezioni</div>
+                                    <div class="text-slate-100 font-bold">Quota totale ${m.quotaTotale.toFixed(m.quotaTotale >= 100 ? 0 : 1)}</div>
+                                </div>
+                                <div class="text-[10px] text-amber-300/90 pb-1">Probabilità di vincere: ${propPctFine(m.prob)} (circa 1 volta su ${uno.toLocaleString("it-IT")}). Solo puntate minime.</div>
+                                ${legsHtml}
+                                <div class="mt-2 text-right">
+                                    <button type="button" onclick="salvaProposta('lunga', ${i})" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-1.5 px-3 rounded-xl text-[11px] cursor-pointer">Salva questa proposta</button>
+                                </div>
+                            </div>`;
+                    }).join("");
+                    contLunghe.innerHTML = h;
+                }
             }
 
             const righeBande = cal.bande.map(b => `
@@ -4186,9 +4427,12 @@
                 const r = propCandidati(palinsesto, cal, new Date());
                 propSingoleCorrenti = propSelezionaSingole(r.cands);
                 propMultipleCorrenti = propGeneraMultiple(r.cands);
-                propDisegna(cal, r.stat, r.cands.length, propSingoleCorrenti, propMultipleCorrenti);
+                const lung = propGeneraLunghe(palinsesto, new Date());
+                propLungheCorrenti = lung.fasce.filter(f => f.multipla);
+                propLungheDisegnate = lung.fasce;
+                propDisegna(cal, r.stat, r.cands.length, propSingoleCorrenti, propMultipleCorrenti, lung);
                 document.getElementById("propRisultati").classList.remove("hidden");
-                messaggio(`Proposte generate: ${propSingoleCorrenti.length} singole, ${propMultipleCorrenti.length} multiple.`, "info");
+                messaggio(`Proposte generate: ${propSingoleCorrenti.length} singole, ${propMultipleCorrenti.length} multiple, ${propLungheCorrenti.length} multiple a lunga quota.`, "info");
             } catch (err) {
                 console.error(err);
                 messaggio("Errore durante il calcolo: " + (err && err.message ? err.message : err), "error");
@@ -4210,6 +4454,8 @@
                 nomeMercato: c.nomeMercato,
                 pronostico: c.pronostico,
                 quota: c.quota,
+                quotaStimata: !!c.quotaStimata,
+                probabilitaMercato: (c.pMercato !== undefined) ? +(c.pMercato * 100).toFixed(1) : null,
                 probabilitaCalibrata: +(c.pCal * 100).toFixed(1),
                 probabilitaModello: +(c.cal.pModello * 100).toFixed(1),
                 affidabilita: c.affidabilita
@@ -4225,6 +4471,14 @@
                 prob = c.pCal;
                 etichetta = "Proposta singola";
                 nome = `Singola — ${c.squadraCasa} vs ${c.squadraOspite} (${c.nomeMercato} ${c.pronostico})`;
+            } else if (tipo === "lunga") {
+                const f = propLungheDisegnate[indice];
+                if (!f || !f.multipla) return;
+                const m = f.multipla;
+                righe = m.legs.map(propRigaDaSelezione);
+                prob = m.prob;
+                etichetta = `Multipla a lunga quota ${f.da}–${f.a} da ${m.legs.length} (quota ${m.quotaTotale.toFixed(m.quotaTotale >= 100 ? 0 : 1)})`;
+                nome = `Lunga quota ${f.da}–${f.a} — ${new Date().toLocaleString("it-IT")}`;
             } else {
                 const m = propMultipleCorrenti[indice];
                 if (!m) return;
@@ -4236,9 +4490,9 @@
             try {
                 await db.collection("liste_selezioni").add({
                     nome: nome,
-                    tipo: tipo === "singola" ? "proposta-singola" : "proposta-multipla",
+                    tipo: tipo === "singola" ? "proposta-singola" : (tipo === "lunga" ? "proposta-lunga" : "proposta-multipla"),
                     tipoEtichetta: etichetta,
-                    probabilitaComplessiva: +(prob * 100).toFixed(1),
+                    probabilitaComplessiva: +(prob * 100).toFixed(3),
                     righe: righe,
                     creataIl: new Date().toLocaleString("it-IT"),
                     creataIlTimestamp: Date.now()
@@ -4251,6 +4505,7 @@
             }
         }
         // ===== PROPOSTE BET: FINE =====
+
 
         async function mostraBet() {
             popolaControlliBet();
