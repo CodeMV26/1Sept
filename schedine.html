@@ -54,6 +54,13 @@
         <div id="schedValutazione" class="mt-3 text-xs"></div>
     </section>
 
+    <section class="p-4 rounded-3xl bg-slate-900/60 border border-slate-800/80">
+        <h2 class="text-xs font-bold tracking-widest text-orange-300 uppercase mb-2">Schedine salvate</h2>
+        <p class="text-xs text-slate-400 mb-3">Elenco letto dal registro dello Studio: lo stesso su iPhone e su Mac. Gli esiti delle partite vengono letti dall'Archivio.</p>
+        <button id="btnElencoSched" type="button" onclick="studioElencoSchedine()" class="w-full bg-slate-800 border border-slate-700 text-slate-100 font-semibold py-3 rounded-xl text-sm cursor-pointer">Aggiorna l'elenco</button>
+        <div id="schedElenco" class="mt-3 text-xs"></div>
+    </section>
+
     <footer class="text-[10px] text-slate-600 text-center pb-6">Studio parallelo · nessuna modifica all'app principale</footer>
 </div>
 
@@ -1894,12 +1901,50 @@
                     });
                 });
                 await batch.commit();
-                st.innerHTML = `<div class="text-emerald-300">Salvate <b>${g.schedine.length}</b> schedine nel registro dello Studio. Dopo le partite usa "Valuta le schedine salvate".</div>`;
+                st.innerHTML = `<div class="text-emerald-300">Salvate <b>${g.schedine.length}</b> schedine nel registro dello Studio. Le trovi in "Schedine salvate" qui sotto, anche dagli altri dispositivi. Dopo le partite usa "Valuta le schedine salvate".</div>`;
+                studioElencoSchedine();
                 studioSchedineGenerate = Object.assign({}, g, { schedine: [] });
             } catch (err) {
                 console.error(err);
                 st.textContent = "Errore nel salvataggio: " + (err && err.message ? err.message : err);
                 btn.disabled = false;
+            }
+        }
+
+        // Elenco delle schedine salvate (sola lettura), visibile da qualunque dispositivo.
+        async function studioElencoSchedine() {
+            const out = document.getElementById("schedElenco");
+            if (!out) return;
+            try {
+                const docs = [];
+                (await db.collection(SCHED.raccolta).get()).forEach(d => docs.push(Object.assign({ id: d.id }, d.data())));
+                if (!docs.length) { out.innerHTML = `<div class="text-slate-500">Nessuna schedina salvata finora.</div>`; return; }
+                const arch = []; (await db.collection("archivio_storico").get()).forEach(d => arch.push(d.data()));
+                const perId = {}; arch.forEach(r => { if (r && r.matchId !== undefined && r.risultatoReale) perId[String(r.matchId)] = r.risultatoReale; });
+                docs.sort((a, b) => (b.creataIlTs || 0) - (a.creataIlTs || 0) || String(a.id).localeCompare(String(b.id)));
+                const gruppi = {};
+                docs.forEach(d => { const k = d.creataIlTs || 0; (gruppi[k] = gruppi[k] || []).push(d); });
+                let h = `<div class="text-slate-400 mb-2">Schedine salvate: <b class="text-slate-200">${docs.length}</b> (le più recenti in alto).</div>`;
+                Object.keys(gruppi).sort((a, b) => b - a).forEach(k => {
+                    const g = gruppi[k];
+                    h += `<div class="mt-3 text-slate-300 font-semibold">Salvate il ${studioEsc(studioFormattaData(g[0].creataIl))}${g[0].pesiModello && g[0].pesiModello.length ? " · peso del modello " + g[0].pesiModello.map(x => studioEsc(x.mercato) + " " + Math.round(x.peso * 100) + "%").join(", ") : ""}</div>`;
+                    g.forEach((d, i) => {
+                        const esiti = d.legs.map(l => perId[l.matchId] ? studioEsitoLeg(l, perId[l.matchId]) : null);
+                        const stato = d.esito || (esiti.some(e => e === false) ? "persa" : (esiti.every(e => e !== null) ? "vinta" : "in attesa"));
+                        const col = stato === "vinta" ? "text-emerald-300" : (stato === "persa" ? "text-rose-300" : "text-amber-300");
+                        h += `<div class="mt-2 p-3 rounded-2xl bg-slate-950/60 border border-slate-800"><div class="font-bold text-slate-100 text-sm">Schedina ${i + 1} · <span class="${col}">${stato}</span></div>`;
+                        d.legs.forEach((l, j) => {
+                            const e = esiti[j];
+                            h += `<div class="py-1.5 border-t border-slate-800/60"><div class="text-slate-200 break-words">${studioEsc(l.casa)} – ${studioEsc(l.ospite)} <span class="text-[10px] text-slate-500">${studioEsc(studioFormattaData(l.dataOraUTC))}</span></div>
+                                <div class="text-slate-400">${studioEsc(l.mercato)}: <b class="text-amber-300">${studioEsc(l.esito)}</b> · quota ${studioNum(l.quota, 2)} · prob. ${studioPct(l.p, 0)} ${e === true ? '<span class="text-emerald-300">✓ azzeccata</span>' : (e === false ? '<span class="text-rose-300">✗ sbagliata</span>' : '<span class="text-slate-500">in attesa</span>')}${perId[l.matchId] ? " · risultato " + studioEsc(perId[l.matchId]) : ""}</div></div>`;
+                        });
+                        h += `<div class="mt-1 pt-1 border-t border-slate-700 text-slate-300">Probabilità ${studioPct(d.probabilita)} · quota totale <b class="text-slate-100">${studioNum(d.quota, 2)}</b></div></div>`;
+                    });
+                });
+                out.innerHTML = h;
+            } catch (err) {
+                console.error(err);
+                out.textContent = "Errore nella lettura delle schedine salvate: " + (err && err.message ? err.message : err);
             }
         }
 
@@ -1948,6 +1993,7 @@
                     if (v.chiuse < 30) h += `<div class="mt-2 text-amber-400">Poche schedine concluse (meno di 30): i numeri non dicono ancora nulla di affidabile.</div>`;
                 }
                 out.innerHTML = h;
+                studioElencoSchedine();
             } catch (err) {
                 console.error(err);
                 out.textContent = "Errore nella valutazione: " + (err && err.message ? err.message : err);
@@ -1958,6 +2004,7 @@
 
 
         window.addEventListener("load", studioRiepilogoIniziale);
+        window.addEventListener("load", studioElencoSchedine);
 </script>
 </body>
 </html>
