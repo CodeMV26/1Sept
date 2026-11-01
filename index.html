@@ -526,6 +526,10 @@
 
             <div class="max-w-2xl mx-auto">
                 <h3 class="text-xs font-bold tracking-widest text-indigo-400 uppercase mb-3 px-1">📋 Liste Salvate</h3>
+                <button id="btnValutaListe" type="button" onclick="valutaListeSalvate()" class="w-full mb-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold py-3 rounded-xl shadow-lg transition duration-200 text-sm cursor-pointer disabled:opacity-60">
+                    Valuta le liste salvate
+                </button>
+                <div id="statoValutaListe" class="text-[11px] text-slate-400 mb-3 px-1"></div>
                 <div id="listeSalvateContainer" class="space-y-3"></div>
             </div>
         </section>
@@ -2070,7 +2074,7 @@
                     <td class="py-1.5 px-1 text-center font-semibold ${nuova !== null && nuova !== undefined ? 'text-emerald-400' : 'text-slate-600'}">${nuova !== null && nuova !== undefined ? nuova + '%' : '—'}</td>
                     <td class="py-1.5 pl-1 text-center ${sotto ? 'text-amber-400' : 'text-slate-400'}" title="${sotto ? 'Il modello non fa meglio del livello banale' : ''}">
                         <div class="font-semibold">${b ? b.acc + '%' : '—'}</div>
-                        <div class="text-[9px] text-slate-500 break-words">${b ? 'sempre ' + propEsc(b.pick) : ''}</div>
+                        <div class="text-[9px] text-slate-500 whitespace-nowrap">${b ? 'sempre ' + propEsc(b.pick) : ''}</div>
                     </td>
                 </tr>`;
             }).join("");
@@ -3738,6 +3742,73 @@
             }
         }
 
+        // ---- Valutazione delle liste salvate (sola lettura: non scrive nulla) ----
+        // Risultati dell'Archivio per partita; null finche' non si preme "Valuta le liste salvate".
+        let risultatiPerValutazioneListe = null;
+
+        // Esito di una riga salvata: true = pronostico azzeccato, false = sbagliato, null = partita non ancora in Archivio con risultato.
+        function valutaRigaSalvata(r, risultatoReale) {
+            if (!risultatoReale) return null;
+            const parti = String(risultatoReale).split("-");
+            const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+            if (isNaN(gc) || isNaN(go) || !r.chiaveMercato || r.pronostico === null || r.pronostico === undefined) return null;
+            const compatti = {};
+            compatti[r.chiaveMercato] = r.pronostico;
+            const esiti = verificaAzzeccati(compatti, gc, go);
+            return esiti[r.chiaveMercato] === true;
+        }
+
+        function valutaListaSalvata(l, perId) {
+            const righe = (l.righe || []).map(r => {
+                const ris = perId[String(r.matchId)] || "";
+                return { esito: valutaRigaSalvata(r, ris), risultato: ris };
+            });
+            const concluse = righe.filter(x => x.esito !== null).length;
+            const azzeccate = righe.filter(x => x.esito === true).length;
+            const attesa = righe.length - concluse;
+            const schedina = !!l.tipo;
+            let stato;
+            if (schedina) {
+                if (righe.some(x => x.esito === false)) stato = "persa";
+                else if (righe.length > 0 && attesa === 0) stato = "vinta";
+                else stato = "in attesa";
+            } else {
+                stato = attesa === 0 && righe.length > 0 ? "conclusa" : (concluse > 0 ? "parziale" : "in attesa");
+            }
+            // Risultato economico con 1 unita' di puntata, solo se tutte le quote sono vere (non stimate).
+            let profitto = null;
+            const quoteOk = (l.righe || []).length > 0 && (l.righe || []).every(r => typeof r.quota === "number" && r.quota > 0 && !r.quotaStimata);
+            if (quoteOk) {
+                if (schedina) {
+                    if (stato === "persa") profitto = -1;
+                    else if (stato === "vinta") profitto = (l.righe || []).reduce((a, r) => a * r.quota, 1) - 1;
+                } else if (concluse > 0) {
+                    profitto = 0;
+                    (l.righe || []).forEach((r, i) => { if (righe[i].esito === true) profitto += r.quota - 1; else if (righe[i].esito === false) profitto -= 1; });
+                }
+            }
+            return { righe, concluse, azzeccate, attesa, stato, profitto, schedina };
+        }
+
+        async function valutaListeSalvate() {
+            const btn = document.getElementById("btnValutaListe");
+            const stato = document.getElementById("statoValutaListe");
+            btn.disabled = true; btn.textContent = "Valutazione in corso…";
+            try {
+                const snap = await db.collection("archivio_storico").get();
+                const perId = {};
+                snap.forEach(doc => { const r = doc.data(); if (r && r.matchId !== undefined && r.risultatoReale) perId[String(r.matchId)] = r.risultatoReale; });
+                risultatiPerValutazioneListe = perId;
+                await caricaListeSalvate();
+                stato.textContent = "Valutazione aggiornata con i risultati presenti nell'Archivio (" + Object.keys(perId).length + " partite con risultato). Le partite non ancora validate restano \"in attesa\".";
+            } catch (err) {
+                console.error(err);
+                stato.textContent = "Errore durante la valutazione: " + err.message;
+            } finally {
+                btn.disabled = false; btn.textContent = "Valuta le liste salvate";
+            }
+        }
+
         async function caricaListeSalvate() {
             const container = document.getElementById("listeSalvateContainer");
             if (!container) return;
@@ -3756,12 +3827,14 @@
                 }
 
                 container.innerHTML = liste.map(l => {
-                    const righeHtml = (l.righe || []).map(r => `
+                    const val = risultatiPerValutazioneListe ? valutaListaSalvata(l, risultatiPerValutazioneListe) : null;
+                    const righeHtml = (l.righe || []).map((r, idxRiga) => `
                         <div class="grid grid-cols-12 items-center gap-2 py-1.5 px-1 border-b border-slate-800/40 text-[11px]">
                             <div class="col-span-6 min-w-0">
                                 <div class="text-[9px] text-slate-500 uppercase truncate">${r.campionato}</div>
                                 <div class="font-semibold text-slate-300 truncate">${r.squadraCasa} vs ${r.squadraOspite}</div>
                                 ${l.tipo ? `<div class="text-[9px] text-slate-500">${r.nomeMercato || ""}${r.affidabilita ? " · " + r.affidabilita : ""}${r.probabilitaCalibrata != null ? " · prob. " + Math.round(r.probabilitaCalibrata) + "%" : ""}</div>` : ""}
+                                ${val ? (val.righe[idxRiga].esito === true ? `<div class="text-[10px] text-emerald-400 font-semibold">✓ azzeccata · risultato ${val.righe[idxRiga].risultato}</div>` : (val.righe[idxRiga].esito === false ? `<div class="text-[10px] text-rose-400 font-semibold">✗ sbagliata · risultato ${val.righe[idxRiga].risultato}</div>` : `<div class="text-[10px] text-slate-500">in attesa del risultato</div>`)) : ""}
                             </div>
                             <div class="col-span-3 text-center font-bold text-emerald-400">${r.pronostico ?? "N/D"}</div>
                             <div class="col-span-3 text-center text-slate-400">${(r.quota !== null && r.quota !== undefined) ? r.quota : "N/D"}</div>
@@ -3779,6 +3852,12 @@
                                     Elimina
                                 </button>
                             </div>
+                            ${val ? `<div class="mt-2 p-2 rounded-xl bg-slate-950/70 border border-slate-800 text-[11px] text-slate-300">
+                                ${val.schedina
+                                    ? `Esito: <b class="${val.stato === "vinta" ? "text-emerald-400" : (val.stato === "persa" ? "text-rose-400" : "text-amber-300")}">${val.stato.toUpperCase()}</b> · selezioni azzeccate ${val.azzeccate} su ${val.righe.length}${val.attesa ? " (" + val.attesa + " in attesa)" : ""}`
+                                    : `Azzeccate <b class="text-slate-100">${val.azzeccate}</b> su ${val.concluse} concluse${val.attesa ? " · " + val.attesa + " in attesa" : ""}`}
+                                ${val.profitto !== null ? `<br>Con 1 unità di puntata${val.schedina ? " sulla schedina" : " su ogni partita conclusa"}: <b class="${val.profitto >= 0 ? "text-emerald-400" : "text-rose-400"}">${val.profitto >= 0 ? "+" : ""}${val.profitto.toFixed(2)}</b> unità` : ""}
+                            </div>` : ""}
                             <div class="mt-2">
                                 <div class="grid grid-cols-12 gap-2 px-1 pb-1 text-[9px] text-slate-500 uppercase font-bold border-b border-slate-800">
                                     <div class="col-span-6">Partita</div>
