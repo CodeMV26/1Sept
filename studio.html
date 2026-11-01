@@ -63,6 +63,13 @@
         <div id="extraRisultato" class="mt-3 text-xs"></div>
     </section>
 
+    <section class="p-4 rounded-3xl bg-slate-900/60 border border-slate-800/80">
+        <h2 class="text-xs font-bold tracking-widest text-rose-300 uppercase mb-2">6 · Mix mercato + modello e prova economica</h2>
+        <p class="text-xs text-slate-400 mb-3"><b>A)</b> Si mescolano le probabilità del bookmaker con quelle del modello a pesi diversi (0%-100%) e si misura accuratezza ed errore sulle partite con quote: serve a capire se il modello aggiunge qualcosa al solo mercato. <b>B)</b> Con le quote vere dell'Archivio si calcola il guadagno o la perdita puntando 1 unità a partita con regole diverse (sempre il favorito, sempre il pronostico del modello, solo dove il modello vede valore). Non scrive niente. Richiede pochi secondi.</p>
+        <button id="btnMix" type="button" onclick="studioEseguiMixEconomia()" class="w-full bg-gradient-to-r from-rose-600 to-pink-600 text-white font-semibold py-3.5 rounded-xl text-sm cursor-pointer disabled:opacity-60">Esegui mix e prova economica</button>
+        <div id="mixRisultato" class="mt-4 text-xs"></div>
+    </section>
+
     <footer class="text-[10px] text-slate-600 text-center pb-6">Studio parallelo · nessuna modifica all'app principale</footer>
 </div>
 
@@ -242,6 +249,17 @@
             return { x12: [p1, pX, p2], over: pOver };
         }
 
+        // Quote vere salvate in Archivio (con il margine del bookmaker), per la prova economica.
+        function studioQuoteGrezze(q) {
+            const out = { q1: null, qo: null };
+            if (!q) return out;
+            const a = q.mercato1x2;
+            if (a && a.casa > 0 && a.pareggio > 0 && a.ospite > 0) out.q1 = [a.casa, a.pareggio, a.ospite];
+            const ou = q.overUnder ? q.overUnder["2.5"] : null;
+            if (ou && ou.over > 0 && ou.under > 0) out.qo = { over: ou.over, under: ou.under };
+            return out;
+        }
+
         // Probabilita' del bookmaker (margine tolto) dalle quote salvate.
         function studioMercatoDaQuote(q) {
             const out = { x12: null, over: null };
@@ -334,7 +352,7 @@
                     id: rec.matchId, t: new Date(rec.dataOraUTC || rec.utcDate || 0).getTime(),
                     k: r.gc > r.go ? 0 : (r.gc === r.go ? 1 : 2), y: (r.gc + r.go) > 2.5 ? 1 : 0,
                     p1: pr.x12, pO: pr.over, mk1: mk.x12, mkO: mk.over,
-                    f: studioCaratteristiche(rec, params), st: studioForze(rec, params.wForma), ex: studioExtra(rec)
+                    f: studioCaratteristiche(rec, params), st: studioForze(rec, params.wForma), ex: studioExtra(rec), q1: studioQuoteGrezze(rec.quote).q1, qo: studioQuoteGrezze(rec.quote).qo
                 });
             });
             out.sort((a, b) => a.t - b.t);
@@ -1301,6 +1319,192 @@
                 out.textContent = "Errore durante la prova: " + (err && err.message ? err.message : err);
             } finally {
                 btn.disabled = false; btn.textContent = "Esegui la prova sui dati non usati";
+            }
+        }
+
+
+        // ============================================================
+        // 6) MIX MERCATO + MODELLO  e  PROVA ECONOMICA
+        // ============================================================
+        const MIX_PESI = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 1];
+        const MIX_VARIANTI = [{ id: "mod", nome: "Modello attuale" }, { id: "rid", nome: "Modello attuale + riduzione" }];
+
+        function studioMix(oos) {
+            const out = { n: 0, mercati: [] };
+            const B = STUDIO.bootstrap;
+            [["x12", "1X2"], ["over", "Over/Under 2.5"]].forEach(([mercato, nome]) => {
+                const q = oos.filter(e => mercato === "x12" ? !!e.r.mk1 : (e.r.mkO !== null && e.r.mkO !== undefined));
+                const n = q.length;
+                const m = { nome: nome, n: n, varianti: [] };
+                if (mercato === "x12") out.n = n;
+                if (n >= 20) {
+                    const boot = studioRipesca(n, B, pevGeneratoreCasuale(STUDIO.seme + 13));
+                    MIX_VARIANTI.forEach(v => {
+                        const L = {}, H = {};
+                        MIX_PESI.forEach(w => {
+                            const l = new Float64Array(n), h = new Float64Array(n);
+                            q.forEach((e, i) => {
+                                if (mercato === "x12") {
+                                    const pm = e.cand[v.id].x12, pk = e.r.mk1;
+                                    const p = [0, 1, 2].map(c => w * pm[c] + (1 - w) * pk[c]);
+                                    l[i] = studioPerdita1(p, e.r.k);
+                                    let b = 0; for (let c = 1; c < 3; c++) if (p[c] > p[b]) b = c;
+                                    h[i] = b === e.r.k ? 1 : 0;
+                                } else {
+                                    const p = w * e.cand[v.id].o + (1 - w) * e.r.mkO;
+                                    l[i] = studioPerditaO(p, e.r.y);
+                                    h[i] = ((p > 0.5 ? 1 : 0) === e.r.y) ? 1 : 0;
+                                }
+                            });
+                            L[w] = l; H[w] = h;
+                        });
+                        const righe = MIX_PESI.map(w => {
+                            const r = { w: w, acc: studioMedia(H[w]), perdita: studioMedia(L[w]), dAcc: null, dPerd: null };
+                            if (w > 0) {
+                                const da = new Float64Array(n), dp = new Float64Array(n);
+                                for (let i = 0; i < n; i++) { da[i] = H[w][i] - H[0][i]; dp[i] = L[0][i] - L[w][i]; }
+                                const ia = studioIntervallo(studioMediaBoot(da, boot, B)), ip = studioIntervallo(studioMediaBoot(dp, boot, B));
+                                r.dAcc = { media: studioMedia(da), lo: ia.lo, hi: ia.hi };
+                                r.dPerd = { media: studioMedia(dp), lo: ip.lo, hi: ip.hi };
+                            }
+                            return r;
+                        });
+                        m.varianti.push({ id: v.id, nome: v.nome, righe: righe });
+                    });
+                }
+                out.mercati.push(m);
+            });
+            return out;
+        }
+
+        function studioHtmlMix(res) {
+            let h = `<div class="text-slate-400 mb-2">Si mescolano le probabilità del bookmaker (margine tolto) con quelle del modello: peso del modello 0% = solo mercato, 100% = solo modello. Solo partite con quote, previste "in avanti" come nelle sezioni precedenti. Il peso usato dall'app per il valore atteso è 30%.</div>`;
+            res.mercati.forEach(m => {
+                h += `<div class="mt-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800"><div class="font-bold text-slate-100 text-sm mb-1">${studioEsc(m.nome)} · ${m.n} partite con quote</div>`;
+                if (!m.varianti.length) { h += `<div class="text-amber-400">Partite con quote troppo poche (servono almeno 20).</div></div>`; return; }
+                m.varianti.forEach(v => {
+                    const bestA = Math.max.apply(null, v.righe.map(r => r.acc)), bestP = Math.min.apply(null, v.righe.map(r => r.perdita));
+                    h += `<div class="mt-2 font-semibold text-slate-200">${studioEsc(v.nome)}</div>`;
+                    v.righe.forEach(r => {
+                        const etichetta = r.w === 0 ? "solo mercato" : (r.w === 1 ? "solo modello" : "");
+                        h += `<div class="py-1.5 border-t border-slate-800/60">
+                            <div class="text-slate-300">Peso del modello <b class="text-slate-100">${Math.round(r.w * 100)}%</b>${etichetta ? " (" + etichetta + ")" : ""}</div>
+                            <div class="text-slate-400">accuratezza <b class="${r.acc === bestA ? "text-amber-300" : "text-slate-200"}">${studioPct(r.acc)}</b> · errore <b class="${r.perdita === bestP ? "text-amber-300" : "text-slate-200"}">${studioNum(r.perdita, 3)}</b></div>
+                            ${r.dAcc ? `<div class="text-[10px] text-slate-500 break-words">rispetto al solo mercato: accuratezza ${studioNum(r.dAcc.media * 100, 1, true)} punti (da ${studioNum(r.dAcc.lo * 100, 1, true)} a ${studioNum(r.dAcc.hi * 100, 1, true)}) · errore ${studioNum(r.dPerd.media, 3, true)} (da ${studioNum(r.dPerd.lo, 3, true)} a ${studioNum(r.dPerd.hi, 3, true)})</div>` : ""}</div>`;
+                    });
+                });
+                h += `</div>`;
+            });
+            h += `<div class="mt-3 text-[10px] text-slate-500 leading-relaxed">Giallo = valore migliore della colonna. Se l'intervallo contiene lo zero, aggiungere il modello al mercato non cambia in modo dimostrabile il risultato. Per l'errore, un numero positivo = il mix sbaglia meno del solo mercato.</div>`;
+            return h;
+        }
+
+        // ---------- Prova economica: puntata fissa di 1 unita' con le quote vere ----------
+        function studioEconomia(recs) {
+            const B = STUDIO.bootstrap, SOGLIA = 0.05, PM = 0.3;
+            const strat = {
+                x12: [
+                    { id: "fav", nome: "Sempre il favorito del bookmaker (quota più bassa)" },
+                    { id: "mod", nome: "Sempre l'esito che il modello ritiene più probabile" },
+                    { id: "evm", nome: "Dove il modello vede valore (valore atteso sopra +5%), con le sue sole probabilità" },
+                    { id: "evx", nome: "Dove il mix 30% modello / 70% mercato vede valore (sopra +5%)" },
+                    { id: "tutti", nome: "Riferimento: puntare su tutti e tre gli esiti (costo del margine)" }
+                ],
+                over: [
+                    { id: "fav", nome: "Sempre il favorito del bookmaker (quota più bassa)" },
+                    { id: "mod", nome: "Sempre Over o Under come dice il modello" },
+                    { id: "evm", nome: "Dove il modello vede valore (valore atteso sopra +5%), con le sue sole probabilità" },
+                    { id: "evx", nome: "Dove il mix 30% modello / 70% mercato vede valore (sopra +5%)" },
+                    { id: "tutti", nome: "Riferimento: puntare su Over e Under (costo del margine)" }
+                ]
+            };
+            const out = { mercati: [] };
+            [["x12", "1X2"], ["over", "Over/Under 2.5"]].forEach(([mercato, nome]) => {
+                const usa = recs.filter(r => mercato === "x12" ? (r.q1 && r.mk1) : (r.qo && r.mkO !== null && r.mkO !== undefined));
+                const m = { nome: nome, n: usa.length, righe: [] };
+                const boot = pevGeneratoreCasuale(STUDIO.seme + 17);
+                strat[mercato].forEach(s => {
+                    const puntate = [];
+                    usa.forEach(r => {
+                        let quote, pm, pk, esito;
+                        if (mercato === "x12") { quote = r.q1; pm = r.p1; pk = r.mk1; esito = r.k; }
+                        else { quote = [r.qo.over, r.qo.under]; pm = [r.pO, 1 - r.pO]; pk = [r.mkO, 1 - r.mkO]; esito = r.y ? 0 : 1; }
+                        const nE = quote.length;
+                        const punta = i => puntate.push({ q: quote[i], vinta: i === esito });
+                        if (s.id === "fav") { let b = 0; for (let i = 1; i < nE; i++) if (quote[i] < quote[b]) b = i; punta(b); }
+                        else if (s.id === "mod") { let b = 0; for (let i = 1; i < nE; i++) if (pm[i] > pm[b]) b = i; punta(b); }
+                        else if (s.id === "tutti") { for (let i = 0; i < nE; i++) punta(i); }
+                        else {
+                            let b = -1, bv = SOGLIA;
+                            for (let i = 0; i < nE; i++) {
+                                const p = s.id === "evm" ? pm[i] : PM * pm[i] + (1 - PM) * pk[i];
+                                const ev = p * quote[i] - 1;
+                                if (ev > bv) { bv = ev; b = i; }
+                            }
+                            if (b >= 0) punta(b);
+                        }
+                    });
+                    const nP = puntate.length;
+                    const riga = { id: s.id, nome: s.nome, n: nP, vinte: null, quotaMedia: null, profitto: null, roi: null, lo: null, hi: null };
+                    if (nP > 0) {
+                        const prof = new Float64Array(nP);
+                        let vin = 0, sq = 0;
+                        puntate.forEach((b, i) => { prof[i] = b.vinta ? b.q - 1 : -1; if (b.vinta) vin++; sq += b.q; });
+                        riga.vinte = vin / nP; riga.quotaMedia = sq / nP; riga.profitto = prof.reduce((a, b) => a + b, 0); riga.roi = riga.profitto / nP;
+                        if (nP >= 20) {
+                            const bi = studioRipesca(nP, B, boot), iv = studioIntervallo(studioMediaBoot(prof, bi, B));
+                            riga.lo = iv.lo; riga.hi = iv.hi;
+                        }
+                    }
+                    m.righe.push(riga);
+                });
+                out.mercati.push(m);
+            });
+            return out;
+        }
+
+        function studioHtmlEconomia(res) {
+            let h = `<div class="text-slate-400 mb-2">Si punta <b class="text-slate-200">1 unità</b> a partita con le <b class="text-slate-200">quote vere</b> salvate in Archivio (con il margine del bookmaker). Il risultato è il guadagno medio per ogni unità puntata (ROI): +5% significa +0,05 per ogni unità; sotto zero si perde. Le regole del modello non sono state costruite guardando queste partite, quindi non c'è "copiatura".</div>`;
+            res.mercati.forEach(m => {
+                h += `<div class="mt-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800"><div class="font-bold text-slate-100 text-sm mb-1">${studioEsc(m.nome)} · ${m.n} partite con quote</div>`;
+                m.righe.forEach(r => {
+                    h += `<div class="py-2 border-t border-slate-800/60"><div class="font-semibold text-slate-200">${studioEsc(r.nome)}</div>`;
+                    if (!r.n) h += `<div class="text-slate-500">Nessuna puntata con questa regola.</div>`;
+                    else {
+                        const segno = r.profitto >= 0 ? "text-emerald-300" : "text-rose-300";
+                        h += `<div class="text-slate-400">${r.n} puntate · vinte <b class="text-slate-200">${studioPct(r.vinte)}</b> · quota media <b class="text-slate-200">${studioNum(r.quotaMedia, 2)}</b></div>
+                            <div class="text-slate-400">risultato <b class="${segno}">${studioNum(r.profitto, 1, true)}</b> unità · ROI <b class="${segno}">${studioNum(r.roi * 100, 1, true)}%</b>${r.lo !== null ? ` <span class="text-[10px] text-slate-500">(da ${studioNum(r.lo * 100, 1, true)}% a ${studioNum(r.hi * 100, 1, true)}%)</span>` : ""}</div>`;
+                    }
+                    h += `</div>`;
+                });
+                h += `</div>`;
+            });
+            h += `<div class="mt-3 text-[10px] text-slate-500 leading-relaxed">Come si legge: se l'intervallo del ROI contiene lo zero, il guadagno o la perdita potrebbero essere solo fortuna. Un ROI positivo e stabile su molte partite sarebbe il segnale di un vantaggio vero. Le quote in Archivio sono quelle salvate al momento dell'aggiornamento quote (non necessariamente quelle finali) e di un solo bookmaker: nella pratica le quote migliori o peggiori cambiano i numeri.</div>`;
+            return h;
+        }
+
+        async function studioEseguiMixEconomia() {
+            const btn = document.getElementById("btnMix");
+            const out = document.getElementById("mixRisultato");
+            btn.disabled = true; btn.textContent = "Prova in corso…";
+            try {
+                const arch = await studioCaricaBase();
+                const recs = studioPreparaArchivio(arch, studioParametri);
+                if (recs.length < STUDIO.minIniziale + 3 * STUDIO.blocco) {
+                    out.innerHTML = `<div class="text-amber-400">Partite utilizzabili troppo poche (${recs.length}).</div>`;
+                    return;
+                }
+                await new Promise(r => setTimeout(r, 0));
+                const wf = studioWalkForward(recs);
+                const mix = studioMix(wf.oos);
+                const eco = studioEconomia(recs);
+                out.innerHTML = `<div class="font-bold text-slate-100 text-sm mb-1">A · Mix mercato + modello</div>` + studioHtmlMix(mix) +
+                    `<div class="font-bold text-slate-100 text-sm mt-5 mb-1">B · Prova economica</div>` + studioHtmlEconomia(eco);
+            } catch (err) {
+                console.error(err);
+                out.textContent = "Errore durante la prova: " + (err && err.message ? err.message : err);
+            } finally {
+                btn.disabled = false; btn.textContent = "Esegui mix e prova economica";
             }
         }
 
