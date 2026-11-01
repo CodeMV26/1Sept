@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoccerStats ML — Studio parallelo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <style>
+        html, body { max-width: 100%; overflow-x: hidden; }
+        body { background: #020617; color: #cbd5e1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    </style>
+</head>
+<body class="min-h-screen">
+<div class="max-w-2xl mx-auto px-3 py-4 space-y-4 break-words">
+
+    <header class="p-4 rounded-3xl bg-slate-900/60 border border-slate-800/80">
+        <h1 class="text-sm font-bold tracking-widest text-emerald-400 uppercase">🔬 Studio parallelo</h1>
+        <p class="text-xs text-slate-400 mt-1">Mercati: <b class="text-slate-200">1X2</b> e <b class="text-slate-200">Over/Under 2.5</b>. Pagina separata dall'app: <a href="index.html" class="text-emerald-400 underline">torna all'app</a>.</p>
+        <div class="mt-3 p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/50 text-[11px] text-emerald-200 leading-relaxed">
+            <b>Garanzia di separazione.</b> Questa pagina <b>legge soltanto</b> Archivio, Palinsesto e parametri dell'app. Scrive <b>solo</b> nella raccolta <code>studio_registro</code>. Non cambia il modello, i pronostici congelati, le proposte, le quote né i pesi dell'app.
+        </div>
+        <div id="studioStatoBase" class="mt-3 text-[11px] text-slate-400">Lettura dell'Archivio in corso…</div>
+    </header>
+
+    <section class="p-4 rounded-3xl bg-slate-900/60 border border-slate-800/80">
+        <h2 class="text-xs font-bold tracking-widest text-indigo-300 uppercase mb-2">1 · Studio sui dati d'Archivio</h2>
+        <p class="text-xs text-slate-400 mb-3">Si chiede: correggere le probabilità del modello le rende più giuste? Le partite vengono previste "in avanti": ogni gruppo di 15 partite è corretto usando solo le partite precedenti, quindi nessuna partita giudica una correzione che l'ha già vista. Si confrontano modello attuale, due correzioni, livello banale e (dove ci sono le quote) il mercato.</p>
+        <button id="btnStudio" type="button" onclick="studioEsegui()" class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold py-3.5 rounded-xl text-sm cursor-pointer disabled:opacity-60">Esegui lo studio</button>
+        <div id="studioRisultato" class="mt-4 text-xs"></div>
+    </section>
+
+    <section class="p-4 rounded-3xl bg-slate-900/60 border border-slate-800/80">
+        <h2 class="text-xs font-bold tracking-widest text-fuchsia-300 uppercase mb-2">2 · Registro in avanti</h2>
+        <p class="text-xs text-slate-400 mb-3">È la prova più pulita: i pronostici di ogni correzione vengono <b>congelati prima</b> della partita e valutati solo dopo. Procedura: (a) dopo ogni estrazione del Palinsesto, <b>prima che le partite inizino</b>, premi il primo pulsante; (b) dopo aver validato le partite nell'app, premi il secondo.</p>
+        <button id="btnRegistra" type="button" onclick="studioRegistra()" class="w-full bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white font-semibold py-3.5 rounded-xl text-sm cursor-pointer disabled:opacity-60">Registra i pronostici delle partite future</button>
+        <div id="registroStato" class="mt-3 text-xs"></div>
+        <button id="btnAggiornaRegistro" type="button" onclick="studioAggiornaRegistro()" class="w-full mt-4 bg-slate-800 border border-slate-700 text-slate-100 font-semibold py-3.5 rounded-xl text-sm cursor-pointer disabled:opacity-60">Aggiorna risultati e valuta il registro</button>
+        <div id="registroRisultato" class="mt-4 text-xs"></div>
+    </section>
+
+    <footer class="text-[10px] text-slate-600 text-center pb-6">Studio parallelo · nessuna modifica all'app principale</footer>
+</div>
+
+<script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDvZ6My0UlFyzAIMvKvWdNneQPajryjvsw",
+            authDomain: "betting-pro-db.firebaseapp.com",
+            projectId: "betting-pro-db",
+            storageBucket: "betting-pro-db.firebasestorage.app",
+            messagingSenderId: "157886609369",
+            appId: "1:157886609369:web:565f3a44ec8d1dba3c8bc8"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // ===== FUNZIONI DEL MODELLO: copiate identiche dall'app (non modificarle) =====
+        const MAX_GOL_MATRICE_JS = 8;
+        const FATTORIALI_JS = [1, 1, 2, 6, 24, 120, 720, 5040, 40320];
+        function fattorialeJS(n) {
+            if (n < FATTORIALI_JS.length) return FATTORIALI_JS[n];
+            let r = 1;
+            for (let i = 2; i <= n; i++) r *= i;
+            return r;
+        }
+        function poissonJS(k, lambda) {
+            if (lambda <= 0) return k === 0 ? 1 : 0;
+            return Math.exp(-lambda) * Math.pow(lambda, k) / fattorialeJS(k);
+        }
+        function tauDixonColesJS(i, j, lambdaCasa, lambdaOspite, rho) {
+            if (i === 0 && j === 0) return 1 - (lambdaCasa * lambdaOspite * rho);
+            if (i === 0 && j === 1) return 1 + (lambdaCasa * rho);
+            if (i === 1 && j === 0) return 1 + (lambdaOspite * rho);
+            if (i === 1 && j === 1) return 1 - rho;
+            return 1;
+        }
+        function costruisciMatriceJS(lambdaCasa, lambdaOspite, rho) {
+            const matrice = [];
+            let somma = 0;
+            const pCasaArr = [], pOspiteArr = [];
+            for (let g = 0; g <= MAX_GOL_MATRICE_JS; g++) { pCasaArr[g] = poissonJS(g, lambdaCasa); pOspiteArr[g] = poissonJS(g, lambdaOspite); }
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) {
+                matrice[i] = [];
+                for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
+                    const base = pCasaArr[i] * pOspiteArr[j];
+                    const tau = tauDixonColesJS(i, j, lambdaCasa, lambdaOspite, rho);
+                    const val = Math.max(0, base * tau);
+                    matrice[i][j] = val;
+                    somma += val;
+                }
+            }
+            if (somma > 0) {
+                for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++)
+                    for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++)
+                        matrice[i][j] = matrice[i][j] / somma;
+            }
+            return matrice;
+        }
+        function limita(v, min, max) { return Math.max(min, Math.min(max, v)); }
+        function ricalcolaLambdaConForma(p, wForma, kScala) {
+            const sc = p.statCampionato || {};
+            const sac = p.statAvanzateCasa || {};
+            const sao = p.statAvanzateOspite || {};
+            if (sac.forzaAttacco == null || sac.forzaDifesa == null || sao.forzaAttacco == null || sao.forzaDifesa == null) return null;
+            if (!(sc.mediaGolCasa > 0) || !(sc.mediaGolTrasferta > 0)) return null;
+
+            const mediaGolSquadra = (sc.mediaGolCasa + sc.mediaGolTrasferta) / 2;
+
+            function forzaConForma(forzaStagionale, mediaRecente) {
+                if (forzaStagionale === null || forzaStagionale === undefined) return null;
+                if (mediaRecente === null || mediaRecente === undefined || !(mediaGolSquadra > 0)) return forzaStagionale;
+                const forzaRecente = mediaRecente / mediaGolSquadra;
+                return forzaStagionale * (1 - wForma) + forzaRecente * wForma;
+            }
+
+            const forzaAttaccoCasaFinale = forzaConForma(sac.forzaAttacco, sac.mediaGolFattiUltime5);
+            const forzaDifesaCasaFinale = forzaConForma(sac.forzaDifesa, sac.mediaGolSubitiUltime5);
+            const forzaAttaccoOspiteFinale = forzaConForma(sao.forzaAttacco, sao.mediaGolFattiUltime5);
+            const forzaDifesaOspiteFinale = forzaConForma(sao.forzaDifesa, sao.mediaGolSubitiUltime5);
+
+            if (forzaAttaccoCasaFinale === null || forzaDifesaOspiteFinale === null || forzaAttaccoOspiteFinale === null || forzaDifesaCasaFinale === null) return null;
+
+            const lambdaCasa = limita(sc.mediaGolCasa * forzaAttaccoCasaFinale * forzaDifesaOspiteFinale * kScala, 0.1, 6);
+            const lambdaOspite = limita(sc.mediaGolTrasferta * forzaAttaccoOspiteFinale * forzaDifesaCasaFinale * kScala, 0.1, 6);
+            return { lambdaCasa, lambdaOspite };
+        }
+        function probabilitaImpliciteNormalizzate(quoteMap) {
+            const raw = {};
+            let somma = 0;
+            Object.keys(quoteMap).forEach(k => {
+                const q = quoteMap[k];
+                if (q && q > 0) {
+                    raw[k] = 1 / q;
+                    somma += raw[k];
+                }
+            });
+            if (somma === 0) return null;
+            const normalizzate = {};
+            Object.keys(raw).forEach(k => { normalizzate[k] = raw[k] / somma; });
+            return normalizzate;
+        }
+        function pevGeneratoreCasuale(seme) {
+            let a = seme >>> 0;
+            return function () {
+                a = (a + 0x6D2B79F5) >>> 0;
+                let t = a;
+                t = Math.imul(t ^ (t >>> 15), t | 1);
+                t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+        // ===== FINE FUNZIONI DEL MODELLO =====
+
+        // ============================================================
+        // STUDIO PARALLELO — 1X2 e Over/Under 2.5
+        // Pagina separata: LEGGE l'Archivio e il Palinsesto, SCRIVE solo in
+        // raccolte il cui nome inizia con "studio_". Non tocca l'app principale.
+        // ============================================================
+
+        const STUDIO = {
+            bootstrap: 500,        // ripetizioni per gli intervalli al 95%
+            blocco: 15,            // partite per blocco nella verifica "in avanti" sui dati d'Archivio
+            minIniziale: 80,       // partite minime per la prima calibrazione
+            minPerPeso: 60,        // sotto questo numero di partite con quote il peso non si calcola
+            eps: 1e-6,
+            seme: 20261101,
+            raccoltaRegistro: "studio_registro"
+        };
+        const STUDIO_LAMBDA = [];
+        for (let i = 0; i <= 20; i++) STUDIO_LAMBDA.push(i / 20);
+        const STUDIO_TAU = [];
+        for (let t = 0.30; t <= 1.3001; t += 0.05) STUDIO_TAU.push(+t.toFixed(2));
+        const STUDIO_PESI = [];
+        for (let i = 0; i <= 20; i++) STUDIO_PESI.push(i / 20);
+        const STUDIO_CAND = [
+            { id: "mod", nome: "Modello attuale" },
+            { id: "rid", nome: "Riduzione verso la frequenza" },
+            { id: "tem", nome: "Temperatura" },
+            { id: "ban", nome: "Livello banale" }
+        ];
+
+        let studioParametri = { rho: -0.1, kScala: 1, wForma: 0 };
+        let studioArchivio = [];
+        let studioUltimiRisultati = null;
+
+        function studioEsc(s) {
+            return String(s === null || s === undefined ? "" : s)
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+        function studioNum(x, d, conSegno) {
+            if (x === null || x === undefined || !isFinite(x)) return "—";
+            const t = Math.abs(x).toFixed(d).replace(".", ",");
+            if (!conSegno) return (x < 0 ? "−" : "") + t;
+            return (x > 0.5 * Math.pow(10, -d) ? "+" : (x < -0.5 * Math.pow(10, -d) ? "−" : "")) + t;
+        }
+        function studioPct(x, d) { return (x === null || x === undefined || !isFinite(x)) ? "—" : (x * 100).toFixed(d === undefined ? 1 : d).replace(".", ",") + "%"; }
+        function studioClamp(p) { return Math.min(1 - STUDIO.eps, Math.max(STUDIO.eps, p)); }
+
+        // ---------- Dati: dall'Archivio / dal Palinsesto ai record dello studio ----------
+        function studioParsaRisultato(s) {
+            if (!s) return null;
+            const parti = String(s).split("-");
+            if (parti.length !== 2) return null;
+            const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+            if (isNaN(gc) || isNaN(go)) return null;
+            return { gc: gc, go: go };
+        }
+
+        function studioProbDaMatrice(m) {
+            let p1 = 0, pX = 0, p2 = 0, pOver = 0;
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) {
+                for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
+                    const v = m[i][j];
+                    if (i > j) p1 += v; else if (i === j) pX += v; else p2 += v;
+                    if (i + j > 2.5) pOver += v;
+                }
+            }
+            return { x12: [p1, pX, p2], over: pOver };
+        }
+
+        // Probabilita' del bookmaker (margine tolto) dalle quote salvate.
+        function studioMercatoDaQuote(q) {
+            const out = { x12: null, over: null };
+            if (!q) return out;
+            try {
+                const a = q.mercato1x2;
+                if (a && a.casa > 0 && a.pareggio > 0 && a.ospite > 0) {
+                    const n = probabilitaImpliciteNormalizzate({ "1": a.casa, "X": a.pareggio, "2": a.ospite });
+                    if (n) out.x12 = [n["1"], n["X"], n["2"]];
+                }
+                const ou = q.overUnder ? q.overUnder["2.5"] : null;
+                if (ou && ou.over > 0 && ou.under > 0) {
+                    const n = probabilitaImpliciteNormalizzate({ Over: ou.over, Under: ou.under });
+                    if (n) out.over = n.Over;
+                }
+            } catch (e) { /* quote non utilizzabili */ }
+            return out;
+        }
+
+        // Ricalcola dai dati grezzi salvati le probabilita' del modello con i parametri indicati.
+        function studioProbModello(rec, params) {
+            const l = ricalcolaLambdaConForma(rec, params.wForma, params.kScala);
+            if (!l) return null;
+            return studioProbDaMatrice(costruisciMatriceJS(l.lambdaCasa, l.lambdaOspite, params.rho));
+        }
+
+        function studioPreparaArchivio(archivio, params) {
+            const out = [];
+            (archivio || []).forEach(rec => {
+                if (!rec) return;
+                const r = studioParsaRisultato(rec.risultatoReale);
+                if (!r) return;
+                const pr = studioProbModello(rec, params);
+                if (!pr) return;
+                const mk = studioMercatoDaQuote(rec.quote);
+                out.push({
+                    id: rec.matchId, t: new Date(rec.dataOraUTC || rec.utcDate || 0).getTime(),
+                    k: r.gc > r.go ? 0 : (r.gc === r.go ? 1 : 2), y: (r.gc + r.go) > 2.5 ? 1 : 0,
+                    p1: pr.x12, pO: pr.over, mk1: mk.x12, mkO: mk.over
+                });
+            });
+            out.sort((a, b) => a.t - b.t);
+            return out;
+        }
+
+        // ---------- Calibrazioni ----------
+        function studioRiduzione(p, b, lam) { return p.map((v, i) => (1 - lam) * v + lam * b[i]); }
+        function studioTemperatura(p, tau) {
+            const q = p.map(v => Math.pow(Math.max(v, 1e-9), tau));
+            const s = q.reduce((x, y) => x + y, 0);
+            return q.map(v => v / s);
+        }
+        function studioRiduzioneBin(p, b, lam) { return (1 - lam) * p + lam * b; }
+        function studioTemperaturaBin(p, tau) {
+            const a = Math.pow(Math.max(p, 1e-9), tau), c = Math.pow(Math.max(1 - p, 1e-9), tau);
+            return a / (a + c);
+        }
+        function studioPerdita1(p, k) { return -Math.log(studioClamp(p[k])); }
+        function studioPerditaO(p, y) { return y ? -Math.log(studioClamp(p)) : -Math.log(studioClamp(1 - p)); }
+
+        function studioFreq1(recs) {
+            const c = [0, 0, 0];
+            recs.forEach(r => { c[r.k]++; });
+            return c.map(v => (v + 1) / (recs.length + 3));
+        }
+        function studioFreqO(recs) {
+            let c = 0;
+            recs.forEach(r => { c += r.y; });
+            return (c + 1) / (recs.length + 2);
+        }
+
+        // Cerca il parametro che minimizza l'errore sulle partite date (parte dal valore neutro).
+        function studioAdatta(recs, famiglia, mercato, base) {
+            const neutro = famiglia === "rid" ? 0 : 1;
+            const griglia = famiglia === "rid" ? STUDIO_LAMBDA : STUDIO_TAU;
+            function errore(par) {
+                let s = 0;
+                for (let i = 0; i < recs.length; i++) {
+                    const r = recs[i];
+                    if (mercato === "x12") {
+                        const q = famiglia === "rid" ? studioRiduzione(r.p1, base, par) : studioTemperatura(r.p1, par);
+                        s += studioPerdita1(q, r.k);
+                    } else {
+                        const q = famiglia === "rid" ? studioRiduzioneBin(r.pO, base, par) : studioTemperaturaBin(r.pO, par);
+                        s += studioPerditaO(q, r.y);
+                    }
+                }
+                return s / recs.length;
+            }
+            let best = neutro, bestE = errore(neutro);
+            griglia.forEach(par => {
+                const e = errore(par);
+                if (e < bestE - 1e-12) { bestE = e; best = par; }
+            });
+            return best;
+        }
+
+        function studioAdattaTutto(recs) {
+            const b1 = studioFreq1(recs), bo = studioFreqO(recs);
+            return {
+                n: recs.length, base1: b1, baseO: bo,
+                lam1: studioAdatta(recs, "rid", "x12", b1), tau1: studioAdatta(recs, "tem", "x12", null),
+                lamO: studioAdatta(recs, "rid", "over", bo), tauO: studioAdatta(recs, "tem", "over", null)
+            };
+        }
+
+        function studioApplica(cal, p1, pO) {
+            return {
+                mod: { x12: p1, o: pO },
+                rid: { x12: studioRiduzione(p1, cal.base1, cal.lam1), o: studioRiduzioneBin(pO, cal.baseO, cal.lamO) },
+                tem: { x12: studioTemperatura(p1, cal.tau1), o: studioTemperaturaBin(pO, cal.tauO) },
+                ban: { x12: cal.base1.slice(), o: cal.baseO }
+            };
+        }
+
+        // Verifica "in avanti" sui dati d'Archivio: ogni blocco di partite e' previsto con una
+        // calibrazione stimata SOLO sulle partite precedenti (mai sulle stesse).
+        function studioWalkForward(recs) {
+            const n = recs.length;
+            const n0 = Math.max(STUDIO.minIniziale, Math.floor(n * 0.3));
+            const oos = [];
+            for (let i = n0; i < n; i += STUDIO.blocco) {
+                const cal = studioAdattaTutto(recs.slice(0, i));
+                recs.slice(i, Math.min(n, i + STUDIO.blocco)).forEach(r => {
+                    oos.push({ r: { k: r.k, y: r.y, mk1: r.mk1, mkO: r.mkO, t: r.t }, cand: studioApplica(cal, r.p1, r.pO), par: cal });
+                });
+            }
+            return { oos: oos, n0: n0 };
+        }
+
+        // ---------- Valutazione (stessa per Archivio e per Registro in avanti) ----------
+        function studioRipesca(n, B, rng) {
+            const a = new Int32Array(n * B);
+            for (let i = 0; i < a.length; i++) a[i] = Math.floor(rng() * n);
+            return a;
+        }
+        function studioMediaBoot(d, boot, B) {
+            const n = d.length, m = new Float64Array(B);
+            for (let b = 0; b < B; b++) { let s = 0; for (let i = 0; i < n; i++) s += d[boot[b * n + i]]; m[b] = s / n; }
+            return m;
+        }
+        function studioIntervallo(medie) {
+            const s = Array.from(medie).sort((x, y) => x - y);
+            return { lo: s[Math.floor(0.025 * s.length)], hi: s[Math.ceil(0.975 * s.length) - 1] };
+        }
+        const studioMedia = a => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i]; return s / (a.length || 1); };
+
+        function studioPerditeCand(oos, mercato) {
+            const out = {};
+            STUDIO_CAND.forEach(c => { out[c.id] = new Float64Array(oos.length); });
+            oos.forEach((e, i) => {
+                STUDIO_CAND.forEach(c => {
+                    out[c.id][i] = mercato === "x12" ? studioPerdita1(e.cand[c.id].x12, e.r.k) : studioPerditaO(e.cand[c.id].o, e.r.y);
+                });
+            });
+            return out;
+        }
+
+        function studioAccuratezza(oos, mercato, cid) {
+            let h = 0;
+            oos.forEach(e => {
+                if (mercato === "x12") {
+                    const p = e.cand[cid].x12;
+                    let b = 0; for (let k = 1; k < 3; k++) if (p[k] > p[b]) b = k;
+                    if (b === e.r.k) h++;
+                } else {
+                    if ((e.cand[cid].o > 0.5 ? 1 : 0) === e.r.y) h++;
+                }
+            });
+            return oos.length ? h / oos.length : null;
+        }
+
+        // Peso del modello (0-100%) contro il mercato: errore piu' basso e intervallo al 95%.
+        function studioPesoOttimo(oosQ, mercato, cid, boot, B) {
+            const n = oosQ.length, m = STUDIO_PESI.length;
+            const col = STUDIO_PESI.map(() => new Float64Array(n));
+            oosQ.forEach((e, i) => {
+                STUDIO_PESI.forEach((w, j) => {
+                    let p;
+                    if (mercato === "x12") {
+                        const pm = e.cand[cid].x12[e.r.k], pk = e.r.mk1[e.r.k];
+                        p = w * pm + (1 - w) * pk;
+                    } else {
+                        const pm = e.cand[cid].o, pk = e.r.mkO;
+                        const q = w * pm + (1 - w) * pk;
+                        p = e.r.y ? q : 1 - q;
+                    }
+                    col[j][i] = -Math.log(studioClamp(p));
+                });
+            });
+            const medie = col.map(c => studioMedia(c));
+            let best = 0; for (let j = 1; j < m; j++) if (medie[j] < medie[best]) best = j;
+            const bw = new Float64Array(B);
+            for (let b = 0; b < B; b++) {
+                let bj = 0, bv = Infinity;
+                for (let j = 0; j < m; j++) {
+                    let s = 0; const c = col[j];
+                    for (let i = 0; i < n; i++) s += c[boot[b * n + i]];
+                    if (s < bv) { bv = s; bj = j; }
+                }
+                bw[b] = STUDIO_PESI[bj];
+            }
+            const iv = studioIntervallo(bw);
+            return { best: STUDIO_PESI[best], lo: iv.lo, hi: iv.hi, perdite: medie };
+        }
+
+        function studioValuta(oos, parFinale) {
+            const n = oos.length;
+            const res = { n: n, mercati: {}, par: parFinale || null };
+            if (n === 0) return res;
+            const rng = pevGeneratoreCasuale(STUDIO.seme);
+            const B = STUDIO.bootstrap;
+            const boot = studioRipesca(n, B, rng);
+            ["x12", "over"].forEach(mercato => {
+                const L = studioPerditeCand(oos, mercato);
+                const modMedia = studioMedia(L.mod);
+                const righe = STUDIO_CAND.map(c => {
+                    const riga = { id: c.id, nome: c.nome, perdita: studioMedia(L[c.id]), acc: studioAccuratezza(oos, mercato, c.id), diff: null };
+                    if (c.id !== "mod") {
+                        const d = new Float64Array(n);
+                        for (let i = 0; i < n; i++) d[i] = L.mod[i] - L[c.id][i];   // positivo = la riga sbaglia meno del modello attuale
+                        const iv = studioIntervallo(studioMediaBoot(d, boot, B));
+                        riga.diff = { media: modMedia - riga.perdita, lo: iv.lo, hi: iv.hi };
+                    }
+                    return riga;
+                });
+                const m = { nome: mercato === "x12" ? "1X2" : "Over/Under 2.5", righe: righe, quote: null };
+
+                // Partite con quote del bookmaker
+                const oosQ = oos.filter(e => mercato === "x12" ? !!e.r.mk1 : (e.r.mkO !== null && e.r.mkO !== undefined));
+                if (oosQ.length > 0) {
+                    const q = { n: oosQ.length, mercato: 0, righe: [], pesi: null };
+                    let sm = 0;
+                    oosQ.forEach(e => { sm += mercato === "x12" ? studioPerdita1(e.r.mk1, e.r.k) : studioPerditaO(e.r.mkO, e.r.y); });
+                    q.mercato = sm / oosQ.length;
+                    const LQ = studioPerditeCand(oosQ, mercato);
+                    q.righe = STUDIO_CAND.filter(c => c.id !== "ban").map(c => ({ id: c.id, nome: c.nome, perdita: studioMedia(LQ[c.id]) }));
+                    if (oosQ.length >= STUDIO.minPerPeso) {
+                        const bootQ = studioRipesca(oosQ.length, B, pevGeneratoreCasuale(STUDIO.seme + 1));
+                        q.pesi = {};
+                        ["mod", "rid", "tem"].forEach(cid => { q.pesi[cid] = studioPesoOttimo(oosQ, mercato, cid, bootQ, B); });
+                    }
+                    m.quote = q;
+                }
+                res.mercati[mercato] = m;
+            });
+            return res;
+        }
+
+        // ---------- Presentazione ----------
+        function studioBadge(diff, tipo) {
+            if (!diff) return "";
+            if (diff.lo > 0) return `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700/60 whitespace-nowrap">${tipo === "ban" ? "Banale meglio del modello" : "Meglio del modello"}</span>`;
+            if (diff.hi < 0) return `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-900/50 text-rose-300 border border-rose-700/60 whitespace-nowrap">${tipo === "ban" ? "Modello meglio del banale" : "Peggio del modello"}</span>`;
+            return `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">Nel rumore</span>`;
+        }
+
+        function studioHtmlRisultati(res, opz) {
+            opz = opz || {};
+            if (!res || res.n === 0) return `<div class="text-slate-400">Nessuna partita valutabile.</div>`;
+            let h = `<div class="text-slate-400 mb-2">Valutate <b class="text-slate-200">${res.n}</b> partite${opz.testoPartite ? " " + opz.testoPartite : ""}. Errore medio per partita: <b>più basso = meglio</b>.</div>`;
+            if (res.n < 100) h += `<div class="text-amber-400 mb-2">Campione ancora piccolo (meno di 100 partite): gli intervalli sono molto larghi e i verdetti poco affidabili.</div>`;
+            ["x12", "over"].forEach(mercato => {
+                const m = res.mercati[mercato];
+                if (!m) return;
+                h += `<div class="mt-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
+                    <div class="font-bold text-slate-100 text-sm mb-1">${studioEsc(m.nome)}</div>`;
+                const par = res.par;
+                m.righe.forEach(r => {
+                    let nome = r.nome;
+                    if (par && r.id === "rid") nome += ` (λ ${studioNum(mercato === "x12" ? par.lam1 : par.lamO, 2)})`;
+                    if (par && r.id === "tem") nome += ` (τ ${studioNum(mercato === "x12" ? par.tau1 : par.tauO, 2)})`;
+                    h += `<div class="py-2 border-t border-slate-800/60">
+                        <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                            <div class="font-semibold text-slate-200">${studioEsc(nome)}</div>
+                            ${studioBadge(r.diff, r.id)}
+                        </div>
+                        <div class="text-slate-400">errore <b class="text-slate-200">${studioNum(r.perdita, 3)}</b> · accuratezza ${studioPct(r.acc)}</div>
+                        ${r.diff ? `<div class="text-[10px] text-slate-500 break-words">${r.id === "ban" ? "vantaggio del banale sul modello" : "vantaggio sul modello attuale"} ${studioNum(r.diff.media, 3, true)} (da ${studioNum(r.diff.lo, 3, true)} a ${studioNum(r.diff.hi, 3, true)})</div>` : ""}
+                    </div>`;
+                });
+                if (m.quote) {
+                    const q = m.quote;
+                    h += `<div class="mt-2 pt-2 border-t border-slate-700">
+                        <div class="font-semibold text-slate-200">Contro il mercato (solo partite con quote: ${q.n})</div>
+                        <div class="text-slate-400 break-words">bookmaker <b class="text-slate-200">${studioNum(q.mercato, 3)}</b> · ${q.righe.map(r => `${studioEsc(r.nome.toLowerCase())} <b class="text-slate-200">${studioNum(r.perdita, 3)}</b>`).join(" · ")}</div>`;
+                    if (q.pesi) {
+                        h += `<div class="mt-1 text-slate-300">Peso ottimo del modello nel mix con il mercato (95%):</div>`;
+                        ["mod", "rid", "tem"].forEach(cid => {
+                            const p = q.pesi[cid];
+                            const nomeC = STUDIO_CAND.find(c => c.id === cid).nome;
+                            h += `<div class="text-slate-400">${studioEsc(nomeC)}: <b class="text-slate-100">${Math.round(p.best * 100)}%</b> <span class="text-[10px] text-slate-500">(da ${Math.round(p.lo * 100)}% a ${Math.round(p.hi * 100)}%)</span></div>`;
+                        });
+                    } else {
+                        h += `<div class="mt-1 text-amber-400">Servono almeno ${STUDIO.minPerPeso} partite con quote per stimare il peso (ora ${q.n}).</div>`;
+                    }
+                    h += `</div>`;
+                } else {
+                    h += `<div class="mt-2 pt-2 border-t border-slate-700 text-slate-500">Nessuna partita con quote del bookmaker in questo campione.</div>`;
+                }
+                h += `</div>`;
+            });
+            h += `<div class="mt-3 text-[10px] text-slate-500 leading-relaxed">Come si legge: la differenza è "errore del modello attuale meno errore della riga": positiva = la riga sbaglia meno. L'intervallo al 95% viene da ${STUDIO.bootstrap} ripetizioni con partite ripescate a caso; se contiene lo zero la differenza è "nel rumore". Livello banale = frequenze osservate nelle partite precedenti usate come probabilità fisse.</div>`;
+            return h;
+        }
+
+        // ---------- 1) Studio sui dati d'Archivio ----------
+        async function studioCaricaBase() {
+            try {
+                const d = await db.collection("config").doc("algoritmo").get();
+                if (d.exists) {
+                    const x = d.data();
+                    studioParametri = {
+                        rho: typeof x.rho === "number" ? x.rho : -0.1,
+                        kScala: typeof x.kScala === "number" ? x.kScala : 1,
+                        wForma: typeof x.wForma === "number" ? x.wForma : 0
+                    };
+                }
+            } catch (e) { console.error(e); }
+            const arch = [];
+            const snap = await db.collection("archivio_storico").get();
+            snap.forEach(doc => arch.push(doc.data()));
+            studioArchivio = arch;
+            return arch;
+        }
+
+        async function studioEsegui() {
+            const btn = document.getElementById("btnStudio");
+            const out = document.getElementById("studioRisultato");
+            btn.disabled = true; btn.textContent = "Studio in corso…";
+            try {
+                const arch = await studioCaricaBase();
+                const recs = studioPreparaArchivio(arch, studioParametri);
+                if (recs.length < STUDIO.minIniziale + 3 * STUDIO.blocco) {
+                    out.innerHTML = `<div class="text-amber-400">Partite utilizzabili troppo poche (${recs.length}): ne servono almeno ${STUDIO.minIniziale + 3 * STUDIO.blocco}.</div>`;
+                    return;
+                }
+                await new Promise(r => setTimeout(r, 0));
+                const wf = studioWalkForward(recs);
+                const parFinale = studioAdattaTutto(recs);
+                const res = studioValuta(wf.oos, parFinale);
+                studioUltimiRisultati = res;
+                const d0 = new Date(wf.oos[0].r.t), d1 = new Date(wf.oos[wf.oos.length - 1].r.t);
+                const f = d => d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit" });
+                out.innerHTML = `<div class="text-slate-500 mb-2 text-[10px]">Parametri del modello in uso (sola lettura): ρ=${studioNum(studioParametri.rho, 2)}, k=${studioNum(studioParametri.kScala, 2)}, w=${studioNum(studioParametri.wForma, 2)}. Partite utilizzabili: ${recs.length} su ${arch.length} in Archivio. Le prime ${wf.n0} servono solo a stimare la prima calibrazione.</div>` +
+                    studioHtmlRisultati(res, { testoPartite: `previste "in avanti" (${f(d0)} – ${f(d1)}): ogni gruppo di ${STUDIO.blocco} partite con una calibrazione stimata solo sulle partite precedenti` }) +
+                    `<div class="mt-3 text-[10px] text-slate-500 leading-relaxed">Parametri di calibrazione stimati su tutte le ${recs.length} partite (quelli che userebbe il registro in avanti): 1X2 λ ${studioNum(parFinale.lam1, 2)}, τ ${studioNum(parFinale.tau1, 2)} · Over/Under 2.5 λ ${studioNum(parFinale.lamO, 2)}, τ ${studioNum(parFinale.tauO, 2)}. λ=0 e τ=1 significano nessuna correzione.</div>`;
+            } catch (err) {
+                console.error(err);
+                out.textContent = "Errore durante lo studio: " + (err && err.message ? err.message : err);
+            } finally {
+                btn.disabled = false; btn.textContent = "Esegui lo studio";
+            }
+        }
+
+        // ---------- 2) Registro in avanti ----------
+        function studioProbCongelate(p) {
+            let x12 = null, o = null;
+            try {
+                const a = p.pronostici && p.pronostici.mercato1X2 ? p.pronostici.mercato1X2.probabilita : null;
+                if (a) x12 = [a["1"] / 100, a["X"] / 100, a["2"] / 100];
+                const b = p.pronostici && p.pronostici.over25 ? p.pronostici.over25.probabilita : null;
+                if (b) o = b.over / 100;
+            } catch (e) { /* niente */ }
+            return { x12: x12, o: o };
+        }
+
+        function studioMercatoPerDoc(p) {
+            const mk = studioMercatoDaQuote(p.quote);
+            if (!mk.x12 && mk.over === null) return null;
+            return { x12: mk.x12, over: mk.over, bookmaker: (p.quote && (p.quote.bookmaker || p.quote.nomeBookmaker)) || null, aggiornatoIl: new Date().toISOString() };
+        }
+
+        async function studioRegistra() {
+            const btn = document.getElementById("btnRegistra");
+            const out = document.getElementById("registroStato");
+            btn.disabled = true; btn.textContent = "Registrazione in corso…";
+            try {
+                const arch = await studioCaricaBase();
+                const recs = studioPreparaArchivio(arch, studioParametri);
+                if (recs.length < STUDIO.minIniziale) {
+                    out.innerHTML = `<div class="text-amber-400">Archivio troppo piccolo per stimare la calibrazione (${recs.length} partite utilizzabili, ne servono ${STUDIO.minIniziale}).</div>`;
+                    return;
+                }
+                const cal = studioAdattaTutto(recs);
+                const pal = await db.collection("palinsesto").doc("corrente").get();
+                const partite = (pal.exists && pal.data().partite) ? pal.data().partite : [];
+                const esistenti = {};
+                const snap = await db.collection(STUDIO.raccoltaRegistro).get();
+                snap.forEach(d => { esistenti[d.id] = d.data(); });
+
+                const ora = new Date();
+                let nuove = 0, quoteAggiunte = 0, giaPresenti = 0, nonRegistrabili = 0, passate = 0;
+                const operazioni = [];
+                partite.forEach(p => {
+                    if (["TIMED", "SCHEDULED"].indexOf(p.stato) === -1) return;
+                    const dt = new Date(p.dataOraUTC || p.utcDate);
+                    if (isNaN(dt.getTime()) || dt <= ora) { passate++; return; }
+                    const id = String(p.matchId || p.id);
+                    const ex = esistenti[id];
+                    const mkt = studioMercatoPerDoc(p);
+                    if (ex) {
+                        giaPresenti++;
+                        if (!ex.mercato && mkt) { operazioni.push({ id: id, dati: { mercato: mkt }, merge: true }); quoteAggiunte++; }
+                        return;
+                    }
+                    const pr = studioProbModello(p, studioParametri);
+                    if (!pr) { nonRegistrabili++; return; }
+                    const c = studioApplica(cal, pr.x12, pr.over);
+                    const app = studioProbCongelate(p);
+                    operazioni.push({ id: id, merge: false, dati: {
+                        matchId: p.matchId || p.id, campionato: p.campionato || null, campionatoCode: p.campionatoCode || null,
+                        squadraCasa: p.squadraCasa || null, squadraOspite: p.squadraOspite || null, dataOraUTC: p.dataOraUTC || p.utcDate,
+                        registratoIl: ora.toISOString(), registratoIlTs: ora.getTime(),
+                        parametri: { rho: studioParametri.rho, kScala: studioParametri.kScala, wForma: studioParametri.wForma },
+                        calibrazione: { n: cal.n, lam1: cal.lam1, tau1: cal.tau1, lamO: cal.lamO, tauO: cal.tauO, base1: cal.base1, baseO: cal.baseO },
+                        x12: { mod: c.mod.x12, rid: c.rid.x12, tem: c.tem.x12, ban: c.ban.x12, app: app.x12 },
+                        over25: { mod: c.mod.o, rid: c.rid.o, tem: c.tem.o, ban: c.ban.o, app: app.o },
+                        mercato: mkt, risultato: null, conclusaIl: null
+                    } });
+                    nuove++;
+                });
+                for (let i = 0; i < operazioni.length; i += 400) {
+                    const batch = db.batch();
+                    operazioni.slice(i, i + 400).forEach(op => {
+                        const ref = db.collection(STUDIO.raccoltaRegistro).doc(op.id);
+                        if (op.merge) batch.set(ref, op.dati, { merge: true }); else batch.set(ref, op.dati);
+                    });
+                    await batch.commit();
+                }
+                out.innerHTML = `<div class="text-emerald-300">Registrate <b>${nuove}</b> nuove partite (pronostici congelati ora).` +
+                    (quoteAggiunte ? ` Aggiunte le quote a ${quoteAggiunte} già registrate.` : "") +
+                    ` Già presenti: ${giaPresenti}. Non registrabili (dati grezzi mancanti): ${nonRegistrabili}. Già iniziate o passate, ignorate: ${passate}.</div>`;
+            } catch (err) {
+                console.error(err);
+                out.textContent = "Errore durante la registrazione: " + (err && err.message ? err.message : err);
+            } finally {
+                btn.disabled = false; btn.textContent = "Registra i pronostici delle partite future";
+            }
+        }
+
+        function studioOosDaRegistro(docs) {
+            const oos = [];
+            docs.forEach(d => {
+                const r = studioParsaRisultato(d.risultato);
+                if (!r || !d.x12 || !d.over25) return;
+                const mk = d.mercato || {};
+                oos.push({
+                    r: { k: r.gc > r.go ? 0 : (r.gc === r.go ? 1 : 2), y: (r.gc + r.go) > 2.5 ? 1 : 0, mk1: mk.x12 || null, mkO: (mk.over === undefined ? null : mk.over), t: new Date(d.dataOraUTC || 0).getTime() },
+                    cand: {
+                        mod: { x12: d.x12.mod, o: d.over25.mod }, rid: { x12: d.x12.rid, o: d.over25.rid },
+                        tem: { x12: d.x12.tem, o: d.over25.tem }, ban: { x12: d.x12.ban, o: d.over25.ban }
+                    }
+                });
+            });
+            oos.sort((a, b) => a.r.t - b.r.t);
+            return oos;
+        }
+
+        async function studioAggiornaRegistro() {
+            const btn = document.getElementById("btnAggiornaRegistro");
+            const out = document.getElementById("registroRisultato");
+            btn.disabled = true; btn.textContent = "Aggiornamento in corso…";
+            try {
+                const arch = [];
+                const sa = await db.collection("archivio_storico").get();
+                sa.forEach(doc => arch.push(doc.data()));
+                const perId = {};
+                arch.forEach(r => { if (r && r.matchId !== undefined && r.risultatoReale) perId[String(r.matchId)] = r.risultatoReale; });
+
+                const docs = [];
+                const snap = await db.collection(STUDIO.raccoltaRegistro).get();
+                snap.forEach(d => docs.push({ id: d.id, dati: d.data() }));
+                let aggiornati = 0;
+                const daScrivere = [];
+                docs.forEach(d => {
+                    if (!d.dati.risultato && perId[d.id]) {
+                        d.dati.risultato = perId[d.id];
+                        d.dati.conclusaIl = new Date().toISOString();
+                        daScrivere.push(d);
+                        aggiornati++;
+                    }
+                });
+                for (let i = 0; i < daScrivere.length; i += 400) {
+                    const batch = db.batch();
+                    daScrivere.slice(i, i + 400).forEach(d => {
+                        batch.set(db.collection(STUDIO.raccoltaRegistro).doc(d.id), { risultato: d.dati.risultato, conclusaIl: d.dati.conclusaIl }, { merge: true });
+                    });
+                    await batch.commit();
+                }
+                const concluse = docs.filter(d => d.dati.risultato);
+                const inAttesa = docs.length - concluse.length;
+                let h = `<div class="text-slate-300 mb-2">Registro: <b>${docs.length}</b> partite · concluse <b>${concluse.length}</b> · in attesa del risultato <b>${inAttesa}</b>${aggiornati ? ` · appena aggiornate ${aggiornati}` : ""}.</div>`;
+                if (concluse.length === 0) {
+                    h += `<div class="text-slate-500">Nessuna partita registrata è ancora conclusa e validata. Valida le partite nell'app principale (scheda Valida), poi premi di nuovo questo pulsante.</div>`;
+                } else {
+                    const oos = studioOosDaRegistro(concluse.map(d => d.dati));
+                    h += studioHtmlRisultati(studioValuta(oos, null), { testoPartite: "del registro in avanti (pronostici congelati prima della partita)" });
+                }
+                out.innerHTML = h;
+            } catch (err) {
+                console.error(err);
+                out.textContent = "Errore durante l'aggiornamento: " + (err && err.message ? err.message : err);
+            } finally {
+                btn.disabled = false; btn.textContent = "Aggiorna risultati e valuta il registro";
+            }
+        }
+
+        async function studioRiepilogoIniziale() {
+            const el = document.getElementById("studioStatoBase");
+            try {
+                const arch = await studioCaricaBase();
+                const recs = studioPreparaArchivio(arch, studioParametri);
+                const q1 = recs.filter(r => r.mk1).length, qo = recs.filter(r => r.mkO !== null).length;
+                el.innerHTML = `Modello in uso (sola lettura): ρ=${studioNum(studioParametri.rho, 2)}, k=${studioNum(studioParametri.kScala, 2)}, w=${studioNum(studioParametri.wForma, 2)}.<br>Partite in Archivio: <b>${arch.length}</b> · utilizzabili per lo studio: <b>${recs.length}</b> · con quote 1X2: <b>${q1}</b> · con quote Over/Under 2.5: <b>${qo}</b>.`;
+            } catch (err) {
+                console.error(err);
+                el.textContent = "Impossibile leggere l'Archivio: " + (err && err.message ? err.message : err);
+            }
+        }
+
+
+        window.addEventListener("load", studioRiepilogoIniziale);
+</script>
+</body>
+</html>
