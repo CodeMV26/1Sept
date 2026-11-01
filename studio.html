@@ -55,6 +55,14 @@
         <div id="labRisultato" class="mt-3 text-xs"></div>
     </section>
 
+    <section class="p-4 rounded-3xl bg-slate-900/60 border border-slate-800/80">
+        <h2 class="text-xs font-bold tracking-widest text-lime-300 uppercase mb-2">5 · Dati già in Archivio ma non usati dal modello</h2>
+        <p class="text-xs text-slate-400 mb-3">Si parte da una regressione semplice (differenza e somma dei gol attesi) e si aggiunge un gruppo di dati alla volta: dati del campionato, ultime 10 partite, classifica, motivazionale. Si vede quale gruppo, se c'è, migliora davvero la previsione su partite mai viste. In fondo a ogni mercato trovi anche l'accuratezza dei <b>favoriti del bookmaker</b> sulle stesse partite con quote. Non scrive niente. Richiede qualche decina di secondi.</p>
+        <button id="btnExtra" type="button" onclick="studioEseguiExtra()" class="w-full bg-gradient-to-r from-lime-600 to-emerald-600 text-white font-semibold py-3.5 rounded-xl text-sm cursor-pointer disabled:opacity-60">Esegui la prova sui dati non usati</button>
+        <div id="extraProgresso" class="mt-2 text-[11px] text-slate-500"></div>
+        <div id="extraRisultato" class="mt-3 text-xs"></div>
+    </section>
+
     <footer class="text-[10px] text-slate-600 text-center pb-6">Studio parallelo · nessuna modifica all'app principale</footer>
 </div>
 
@@ -260,6 +268,26 @@
             return studioProbDaMatrice(costruisciMatriceJS(l.lambdaCasa, l.lambdaOspite, params.rho));
         }
 
+        // Dati gia' salvati in Archivio ma non usati dal modello, in 4 gruppi. Valore mancante = NaN.
+        function studioNumero(x) {
+            if (typeof x === "number" && isFinite(x)) return x;
+            if (typeof x === "string") { const v = parseFloat(x.replace(",", ".")); return isFinite(v) ? v : NaN; }
+            return NaN;
+        }
+        function studioExtra(rec) {
+            const n = studioNumero;
+            const sc = rec.statCampionato || {}, sac = rec.statAvanzateCasa || {}, sao = rec.statAvanzateOspite || {};
+            const mot = rec.motivazionale || {}, mc = mot.casa || {}, mo = mot.ospite || {};
+            return {
+                camp: [n(sc.percentualeVittorieCasa), n(sc.percentualePareggi), n(sc.percentualeVittorieTrasferta), n(sc.percentualeOver25)],
+                u10: [n(sac.over25Ultime10), n(sao.over25Ultime10), n(sac.over15Ultime10), n(sao.over15Ultime10), n(sac.over35Ultime10), n(sao.over35Ultime10),
+                    n(sac.percentualeSegnaUltime10), n(sao.percentualeSegnaUltime10), n(sac.percentualeCleanSheetUltime10), n(sao.percentualeCleanSheetUltime10),
+                    n(sac.trendPunti), n(sao.trendPunti)],
+                cls: [n(rec.puntiCasa) - n(rec.puntiOspite), n(rec.posizioneCasa) - n(rec.posizioneOspite)],
+                mot: [n(mc.indiceDistanzaObiettivo), n(mo.indiceDistanzaObiettivo), n(mc.coefficienteUrgenza), n(mo.coefficienteUrgenza)]
+            };
+        }
+
         // Forze di attacco/difesa gia' combinate con la forma recente (come fa l'app), prima di moltiplicare.
         function studioForze(p, wForma) {
             const sc = p.statCampionato || {}, sac = p.statAvanzateCasa || {}, sao = p.statAvanzateOspite || {};
@@ -306,7 +334,7 @@
                     id: rec.matchId, t: new Date(rec.dataOraUTC || rec.utcDate || 0).getTime(),
                     k: r.gc > r.go ? 0 : (r.gc === r.go ? 1 : 2), y: (r.gc + r.go) > 2.5 ? 1 : 0,
                     p1: pr.x12, pO: pr.over, mk1: mk.x12, mkO: mk.over,
-                    f: studioCaratteristiche(rec, params), st: studioForze(rec, params.wForma)
+                    f: studioCaratteristiche(rec, params), st: studioForze(rec, params.wForma), ex: studioExtra(rec)
                 });
             });
             out.sort((a, b) => a.t - b.t);
@@ -954,14 +982,15 @@
         }
 
         function studioStandardizza(rows) {
-            const d = rows[0].length, m = new Array(d).fill(0), s = new Array(d).fill(0);
-            rows.forEach(r => r.forEach((v, j) => { m[j] += v; }));
-            for (let j = 0; j < d; j++) m[j] /= rows.length;
-            rows.forEach(r => r.forEach((v, j) => { s[j] += (v - m[j]) * (v - m[j]); }));
-            for (let j = 0; j < d; j++) s[j] = Math.sqrt(s[j] / rows.length) || 1;
+            const d = rows[0].length, m = new Array(d).fill(0), s = new Array(d).fill(1), c = new Array(d).fill(0);
+            rows.forEach(r => r.forEach((v, j) => { if (isFinite(v)) { m[j] += v; c[j]++; } }));
+            for (let j = 0; j < d; j++) m[j] = c[j] ? m[j] / c[j] : 0;
+            const q = new Array(d).fill(0);
+            rows.forEach(r => r.forEach((v, j) => { if (isFinite(v)) q[j] += (v - m[j]) * (v - m[j]); }));
+            for (let j = 0; j < d; j++) s[j] = c[j] ? (Math.sqrt(q[j] / c[j]) || 1) : 1;
             return { m: m, s: s };
         }
-        function studioApplicaStd(r, st) { return r.map((v, j) => (v - st.m[j]) / st.s[j]); }
+        function studioApplicaStd(r, st) { return r.map((v, j) => isFinite(v) ? (v - st.m[j]) / st.s[j] : 0); }
 
         // Regressione logistica (softmax) con freno sui pesi. Restituisce una funzione che prevede.
         function studioRegressione(Xraw, y, nCl, reg, iter, rate) {
@@ -1076,18 +1105,19 @@
             return mercato === "x12" ? studioPerdita1(e.cand[cid].x12, e.r.k) : studioPerditaO(e.cand[cid].o, e.r.y);
         }
 
-        function studioLabValuta(oos) {
+        function studioLabValuta(oos, lista) {
+            lista = lista || LAB_CAND;
             const n = oos.length, B = STUDIO.bootstrap;
             const res = { n: n, mercati: [] };
             if (!n) return res;
             const boot = studioRipesca(n, B, pevGeneratoreCasuale(STUDIO.seme + 7));
             [["x12", "1X2"], ["over", "Over/Under 2.5"]].forEach(([mercato, nome]) => {
                 const L = {}, H = {};
-                LAB_CAND.forEach(c => {
+                lista.forEach(c => {
                     L[c.id] = new Float64Array(n); H[c.id] = new Float64Array(n);
                     for (let i = 0; i < n; i++) { L[c.id][i] = studioLabPerdita(oos[i], mercato, c.id); H[c.id][i] = studioLabHit(oos[i], mercato, c.id); }
                 });
-                const righe = LAB_CAND.map(c => {
+                const righe = lista.map(c => {
                     const riga = { id: c.id, nome: c.nome, perdita: studioMedia(L[c.id]), acc: studioMedia(H[c.id]), diff: null, diffAcc: null };
                     if (c.id !== "mod") {
                         const d = new Float64Array(n), da = new Float64Array(n);
@@ -1101,11 +1131,23 @@
                 const oosQ = oos.filter(e => mercato === "x12" ? !!e.r.mk1 : (e.r.mkO !== null && e.r.mkO !== undefined));
                 let quote = null;
                 if (oosQ.length > 0) {
+                    const nq = oosQ.length;
+                    const hitBook = oosQ.map(e => {
+                        if (mercato === "x12") { let b = 0; for (let k = 1; k < 3; k++) if (e.r.mk1[k] > e.r.mk1[b]) b = k; return b === e.r.k ? 1 : 0; }
+                        return ((e.r.mkO > 0.5 ? 1 : 0) === e.r.y) ? 1 : 0;
+                    });
                     let sm = 0; oosQ.forEach(e => { sm += mercato === "x12" ? studioPerdita1(e.r.mk1, e.r.k) : studioPerditaO(e.r.mkO, e.r.y); });
-                    quote = { n: oosQ.length, mercato: sm / oosQ.length, righe: LAB_CAND.filter(c => c.id !== "ban").map(c => {
-                        let s = 0; oosQ.forEach(e => { s += studioLabPerdita(e, mercato, c.id); });
-                        return { id: c.id, nome: c.nome, perdita: s / oosQ.length };
+                    const hitMod = oosQ.map(e => studioLabHit(e, mercato, "mod"));
+                    quote = { n: nq, mercato: sm / nq, accBook: studioMedia(hitBook), diffBook: null, righe: lista.map(c => {
+                        let s = 0, h = 0; oosQ.forEach(e => { s += studioLabPerdita(e, mercato, c.id); h += studioLabHit(e, mercato, c.id); });
+                        return { id: c.id, nome: c.nome, perdita: s / nq, acc: h / nq };
                     }) };
+                    if (nq >= 20) {
+                        const bq = studioRipesca(nq, B, pevGeneratoreCasuale(STUDIO.seme + 9));
+                        const d = new Float64Array(nq); for (let i = 0; i < nq; i++) d[i] = hitBook[i] - hitMod[i];
+                        const iv = studioIntervallo(studioMediaBoot(d, bq, B));
+                        quote.diffBook = { media: studioMedia(d), lo: iv.lo, hi: iv.hi };
+                    }
                 }
                 res.mercati.push({ nome: nome, righe: righe, quote: quote });
             });
@@ -1127,8 +1169,11 @@
                         ${r.diff ? `<div class="text-[10px] text-slate-500 break-words">errore: vantaggio sul modello attuale ${studioNum(r.diff.media, 3, true)} (da ${studioNum(r.diff.lo, 3, true)} a ${studioNum(r.diff.hi, 3, true)})<br>accuratezza: ${studioNum(r.diffAcc.media * 100, 1, true)} punti (da ${studioNum(r.diffAcc.lo * 100, 1, true)} a ${studioNum(r.diffAcc.hi * 100, 1, true)})</div>` : ""}</div>`;
                 });
                 if (m.quote) {
-                    h += `<div class="mt-2 pt-2 border-t border-slate-700"><div class="font-semibold text-slate-200">Contro il mercato (solo partite con quote: ${m.quote.n})</div>
-                        <div class="text-slate-400 break-words">bookmaker <b class="text-slate-200">${studioNum(m.quote.mercato, 3)}</b> · ${m.quote.righe.map(r => `${studioEsc(r.nome.split(" (")[0].toLowerCase())} <b class="text-slate-200">${studioNum(r.perdita, 3)}</b>`).join(" · ")}</div></div>`;
+                    const q = m.quote, corto = r => studioEsc(r.nome.split(" (")[0].toLowerCase());
+                    h += `<div class="mt-2 pt-2 border-t border-slate-700"><div class="font-semibold text-slate-200">Contro il mercato (solo partite con quote: ${q.n})</div>
+                        <div class="text-slate-400 break-words"><b class="text-slate-300">Errore:</b> bookmaker <b class="text-slate-200">${studioNum(q.mercato, 3)}</b> · ${q.righe.map(r => `${corto(r)} <b class="text-slate-200">${studioNum(r.perdita, 3)}</b>`).join(" · ")}</div>
+                        <div class="text-slate-400 break-words mt-1"><b class="text-slate-300">Accuratezza:</b> favorito del bookmaker <b class="text-amber-300">${studioPct(q.accBook)}</b> · ${q.righe.map(r => `${corto(r)} <b class="text-slate-200">${studioPct(r.acc)}</b>`).join(" · ")}</div>
+                        ${q.diffBook ? `<div class="text-[10px] text-slate-500 break-words mt-1">bookmaker meno modello attuale: ${studioNum(q.diffBook.media * 100, 1, true)} punti (da ${studioNum(q.diffBook.lo * 100, 1, true)} a ${studioNum(q.diffBook.hi * 100, 1, true)})</div>` : ""}</div>`;
                 }
                 h += `</div>`;
             });
@@ -1156,6 +1201,106 @@
                 out.textContent = "Errore durante il laboratorio: " + (err && err.message ? err.message : err);
             } finally {
                 btn.disabled = false; btn.textContent = "Esegui il laboratorio";
+            }
+        }
+
+
+        // ============================================================
+        // 5) DATI GIA' SALVATI MA NON USATI DAL MODELLO
+        // ============================================================
+        const EXTRA_GRUPPI = [
+            { id: "camp", nome: "Dati del campionato (% vittorie casa/pareggi/trasferta, % Over 2.5)" },
+            { id: "u10", nome: "Ultime 10 partite (Over, gol segnato, porta inviolata, trend punti)" },
+            { id: "cls", nome: "Classifica (differenza di punti e di posizione)" },
+            { id: "mot", nome: "Motivazionale (distanza dall'obiettivo e urgenza)" }
+        ];
+        const EXTRA_CAND = [
+            { id: "mod", nome: "Modello attuale" },
+            { id: "rid", nome: "Modello attuale + riduzione verso la frequenza" },
+            { id: "reg2", nome: "Regressione su 2 dati (punto di partenza)" }
+        ].concat(EXTRA_GRUPPI.map(g => ({ id: g.id, nome: "Punto di partenza + " + g.nome })))
+         .concat([{ id: "tutti", nome: "Punto di partenza + tutti i gruppi" }, { id: "ban", nome: "Livello banale" }]);
+
+        function studioXExtra(r, gruppi) {
+            let x = labF2(r.f);
+            gruppi.forEach(g => { x = x.concat(r.ex[g]); });
+            return x;
+        }
+        const EXTRA_VARIANTI = EXTRA_GRUPPI.map(g => ({ id: g.id, gruppi: [g.id] })).concat([{ id: "tutti", gruppi: EXTRA_GRUPPI.map(g => g.id) }]);
+
+        function studioExtraAdatta(train) {
+            const cal = studioAdattaTutto(train);
+            const k3 = train.map(r => r.k), y2 = train.map(r => r.y);
+            const m = { cal: cal, reg: {} };
+            const X0 = train.map(r => labF2(r.f));
+            m.reg.reg2 = { x: studioRegressione(X0, k3, 3, LAB_REG, LAB_ITER, LAB_RATE), o: studioRegressione(X0, y2, 2, LAB_REG, LAB_ITER, LAB_RATE) };
+            EXTRA_VARIANTI.forEach(v => {
+                const X = train.map(r => studioXExtra(r, v.gruppi));
+                m.reg[v.id] = { x: studioRegressione(X, k3, 3, LAB_REG, LAB_ITER, LAB_RATE), o: studioRegressione(X, y2, 2, LAB_REG, LAB_ITER, LAB_RATE) };
+            });
+            return m;
+        }
+        function studioExtraPrevedi(m, r) {
+            const cal = m.cal;
+            const out = {
+                mod: { x12: r.p1, o: r.pO },
+                rid: { x12: studioRiduzione(r.p1, cal.base1, cal.lam1), o: studioRiduzioneBin(r.pO, cal.baseO, cal.lamO) },
+                reg2: { x12: m.reg.reg2.x(labF2(r.f)), o: m.reg.reg2.o(labF2(r.f))[1] },
+                ban: { x12: cal.base1.slice(), o: cal.baseO }
+            };
+            EXTRA_VARIANTI.forEach(v => {
+                const x = studioXExtra(r, v.gruppi);
+                out[v.id] = { x12: m.reg[v.id].x(x), o: m.reg[v.id].o(x)[1] };
+            });
+            return out;
+        }
+        async function studioExtraWalkForward(recs, avanzamento) {
+            const n = recs.length, n0 = Math.max(STUDIO.minIniziale, Math.floor(n * 0.3));
+            const oos = [], blocchi = Math.ceil((n - n0) / STUDIO.blocco);
+            let fatti = 0;
+            for (let i = n0; i < n; i += STUDIO.blocco) {
+                const m = studioExtraAdatta(recs.slice(0, i));
+                recs.slice(i, Math.min(n, i + STUDIO.blocco)).forEach(r => {
+                    oos.push({ r: { k: r.k, y: r.y, mk1: r.mk1, mkO: r.mkO, t: r.t }, cand: studioExtraPrevedi(m, r) });
+                });
+                fatti++;
+                if (avanzamento) avanzamento(fatti, blocchi);
+                await new Promise(res => setTimeout(res, 0));
+            }
+            return { oos: oos, n0: n0 };
+        }
+        function studioCopertura(recs) {
+            return EXTRA_GRUPPI.map(g => ({
+                id: g.id, nome: g.nome,
+                quota: recs.length ? recs.filter(r => r.ex[g.id].every(v => isFinite(v))).length / recs.length : 0,
+                parziale: recs.length ? recs.filter(r => r.ex[g.id].some(v => isFinite(v))).length / recs.length : 0
+            }));
+        }
+
+        async function studioEseguiExtra() {
+            const btn = document.getElementById("btnExtra");
+            const out = document.getElementById("extraRisultato");
+            const prog = document.getElementById("extraProgresso");
+            btn.disabled = true; btn.textContent = "Prova in corso…";
+            try {
+                const arch = await studioCaricaBase();
+                const recs = studioPreparaArchivio(arch, studioParametri).filter(r => r.f && r.st);
+                if (recs.length < STUDIO.minIniziale + 3 * STUDIO.blocco) {
+                    out.innerHTML = `<div class="text-amber-400">Partite utilizzabili troppo poche (${recs.length}).</div>`;
+                    return;
+                }
+                const cop = studioCopertura(recs);
+                const wf = await studioExtraWalkForward(recs, (a, b) => { prog.textContent = "Avanzamento: " + a + " di " + b + " gruppi di partite…"; });
+                prog.textContent = "";
+                let h = `<div class="text-slate-400 mb-2">Quante partite hanno i dati di ogni gruppo (tutti i valori presenti): ` +
+                    cop.map(c => `${studioEsc(c.nome.split(" (")[0])} <b class="text-slate-200">${Math.round(c.quota * 100)}%</b>`).join(" · ") +
+                    `. Dove un valore manca, la regressione lo tratta come "nella media".</div>`;
+                out.innerHTML = h + studioHtmlLab(studioLabValuta(wf.oos, EXTRA_CAND), null);
+            } catch (err) {
+                console.error(err);
+                out.textContent = "Errore durante la prova: " + (err && err.message ? err.message : err);
+            } finally {
+                btn.disabled = false; btn.textContent = "Esegui la prova sui dati non usati";
             }
         }
 
