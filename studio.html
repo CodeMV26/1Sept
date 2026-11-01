@@ -1698,12 +1698,12 @@
 
         // Selezioni candidate: per ogni partita futura con quote, l'esito piu' probabile se supera la soglia.
         function studioSelezioniCandidate(partite, params, cal, itemsStorici, opz) {
-            const out = { legs: [], senzaQuote: 0, sotto: 0, nonCalcolabili: 0, valutate: 0 };
+            const out = { legs: [], senzaQuote: 0, sotto: 0, nonCalcolabili: 0, valutate: 0, totale: partite.length, nonProgrammate: 0, giaIniziate: 0 };
             const ora = new Date();
             partite.forEach(p => {
-                if (["TIMED", "SCHEDULED"].indexOf(p.stato) === -1) return;
+                if (["TIMED", "SCHEDULED"].indexOf(p.stato) === -1) { out.nonProgrammate++; return; }
                 const dt = new Date(p.dataOraUTC || p.utcDate);
-                if (isNaN(dt.getTime()) || dt <= ora) return;
+                if (isNaN(dt.getTime()) || dt <= ora) { out.giaIniziate++; return; }
                 out.valutate++;
                 const mk = studioMercatoDaQuote(p.quote), q = studioQuoteGrezze(p.quote);
                 if (!mk.x12 || !q.q1) { out.senzaQuote++; return; }
@@ -1786,14 +1786,43 @@
             return out;
         }
 
+        // Soglia piu' alta che permette di costruire le schedine richieste (in punti percentuali interi).
+        function studioSuggerisciSoglia(tutte, opz) {
+            const out = { perUna: null, perN: null };
+            for (let t = 70; t >= 30; t--) {
+                const legs = tutte.filter(l => l.p >= t / 100);
+                if (legs.length < opz.k) continue;
+                const n = studioCostruisciSchedine(legs, opz.k, opz.N, opz.maxUsi).length;
+                if (n >= 1 && out.perUna === null) out.perUna = t;
+                if (n >= opz.N && out.perN === null) { out.perN = t; break; }
+            }
+            return out;
+        }
+
         function studioHtmlSchedine(res) {
             let h = "";
+            const c0 = res.cand;
+            h += `<div class="mb-2 text-slate-400">Nel Palinsesto: <b class="text-slate-200">${c0.totale}</b> partite · già iniziate o passate: <b class="text-slate-200">${c0.giaIniziate}</b> · con stato diverso da "in programma" (finite, rinviate…): <b class="text-slate-200">${c0.nonProgrammate}</b> · <b class="text-slate-200">non ancora iniziate: ${c0.valutate}</b>.</div>`;
             (res.pesi || []).forEach(x => {
                 h += `<div class="mb-1 text-slate-400">${studioEsc(x.nome)}: peso del modello <b class="text-amber-300">${Math.round(x.peso * 100)}%</b> (${studioEsc(x.origine)})</div>`;
             });
             (res.avvisi || []).forEach(a => { h += `<div class="mb-1 text-amber-400">${studioEsc(a)}</div>`; });
             h += `<div class="text-slate-400 mb-2 mt-2">Partite future valutate: <b class="text-slate-200">${res.cand.valutate}</b> · senza quote: ${res.cand.senzaQuote} · sotto la soglia del ${Math.round(res.opz.soglia * 100)}%: ${res.cand.sotto} · selezioni candidate: <b class="text-slate-200">${res.cand.legs.length}</b>.</div>`;
-            if (!res.schedine.length) return h + `<div class="text-amber-400">Non ci sono abbastanza selezioni per costruire schedine da ${res.opz.k} partite con questi criteri. Abbassa la soglia, riduci le selezioni per schedina o aggiorna le quote nell'app e riestrai il Palinsesto.</div>`;
+            const favoriti = (res.tutte || []).slice().sort((a, b) => b.p - a.p);
+            const elenco = favoriti.length ? `<details class="mt-2"><summary class="cursor-pointer text-slate-400">Tutte le partite con quote e la loro selezione più probabile (${favoriti.length})</summary>` +
+                favoriti.map(l => `<div class="py-1 border-t border-slate-800/60 text-slate-400"><span class="text-slate-200">${studioEsc(l.casa)} – ${studioEsc(l.ospite)}</span> · ${studioEsc(l.mercato)} <b class="text-amber-300">${studioEsc(l.esito)}</b> · ${studioPct(l.p, 0)} · quota ${studioNum(l.quota, 2)}</div>`).join("") + `</details>` : "";
+            const s = res.sugg || {};
+            let suggerimento = "";
+            if (res.schedine.length < res.opz.N) {
+                const bottone = t => `<button type="button" onclick="document.getElementById('schedSoglia').value=${t};studioGeneraSchedine()" class="mt-1 px-3 py-2 rounded-xl bg-orange-700 text-white text-xs font-semibold cursor-pointer">Riprova con ${t}%</button>`;
+                suggerimento = `<div class="mt-3 p-3 rounded-2xl bg-slate-950/60 border border-amber-800/50 text-slate-300"><div class="font-semibold text-amber-300 mb-1">Quale soglia servirebbe</div>`;
+                if (s.perN !== null && s.perN !== undefined) suggerimento += `<div>Per costruire tutte le <b>${res.opz.N}</b> schedine da ${res.opz.k} selezioni servirebbe una soglia al massimo del <b>${s.perN}%</b>. ${bottone(s.perN)}</div>`;
+                else if (s.perUna !== null && s.perUna !== undefined) suggerimento += `<div>Con le partite attuali si riesce a costruire qualche schedina (ma non ${res.opz.N}) con una soglia al massimo del <b>${s.perUna}%</b>. ${bottone(s.perUna)}</div>`;
+                else suggerimento += `<div>Anche con soglia del 30% non si riesce a costruire nemmeno una schedina da ${res.opz.k} selezioni: le partite future con quote sono troppo poche (o riduci le selezioni per schedina / consenti la stessa partita in più schedine).</div>`;
+                if ((s.perN !== null && s.perN !== undefined ? s.perN : s.perUna) !== null && (s.perN !== null && s.perN !== undefined ? s.perN : s.perUna) < 50) suggerimento += `<div class="text-[11px] text-amber-400 mt-1">Attenzione: sotto il 50% la selezione più probabile non è nemmeno "più probabile che no": è una scelta molto rischiosa.</div>`;
+                suggerimento += `</div>`;
+            }
+            if (!res.schedine.length) return h + `<div class="text-amber-400">Non ci sono abbastanza selezioni per costruire schedine da ${res.opz.k} partite con questi criteri.</div>` + suggerimento + elenco;
             res.schedine.forEach((s, i) => {
                 h += `<div class="mt-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800"><div class="font-bold text-slate-100 text-sm mb-1">Schedina ${i + 1} · ${s.legs.length} selezioni</div>`;
                 s.legs.forEach(l => {
@@ -1803,6 +1832,7 @@
                 });
                 h += `<div class="mt-2 pt-2 border-t border-slate-700 text-slate-300">Probabilità che vinca: <b class="text-amber-300">${studioPct(s.p)}</b> · quota totale <b class="text-slate-100">${studioNum(s.quota, 2)}</b> · valore atteso <b class="${s.ev >= 0 ? "text-emerald-300" : "text-rose-300"}">${studioNum(s.ev * 100, 1, true)}%</b></div></div>`;
             });
+            h += suggerimento + elenco;
             h += `<div class="mt-3 text-[10px] text-slate-500 leading-relaxed">Come sono scelte: per ogni partita non ancora iniziata e con quote si prende l'esito più probabile secondo la stima dello Studio (90% probabilità del bookmaker senza margine + 10% modello corretto con la riduzione: è il mix che le sezioni 6 e 7 hanno mostrato migliore). Sopra la soglia scelta, si combinano partite diverse e si ordinano le schedine per probabilità che vincano (prodotto delle probabilità, partite considerate indipendenti). Il "valore atteso" è quanto si guadagna in media per unità giocata se la stima è giusta: con le quote vere è quasi sempre sotto zero, perché le quote includono il margine del bookmaker. Nessuna schedina è sicura: più selezioni, meno probabilità.</div>`;
             return h;
         }
@@ -1861,7 +1891,9 @@
                 const partite = (pal.exists && pal.data().partite) ? pal.data().partite : [];
                 const cand = studioSelezioniCandidate(partite, studioParametri, cal, itemsStorici, opz);
                 const schedine = studioCostruisciSchedine(cand.legs, opz.k, opz.N, opz.maxUsi);
-                studioSchedineGenerate = { opz: opz, cand: cand, schedine: schedine, pesi: pesi, avvisi: avvisi, creataIl: new Date().toISOString() };
+                const tutte = studioSelezioniCandidate(partite, studioParametri, cal, itemsStorici, Object.assign({}, opz, { soglia: 0 })).legs;
+                const sugg = studioSuggerisciSoglia(tutte, opz);
+                studioSchedineGenerate = { opz: opz, tutte: tutte, sugg: sugg, cand: cand, schedine: schedine, pesi: pesi, avvisi: avvisi, creataIl: new Date().toISOString() };
                 out.innerHTML = studioHtmlSchedine(studioSchedineGenerate);
                 if (st) st.innerHTML = "";
                 const bs = document.getElementById("btnSalvaSched"); if (bs) bs.disabled = !schedine.length;
