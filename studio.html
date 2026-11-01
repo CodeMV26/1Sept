@@ -17,9 +17,9 @@
 
     <header class="p-4 rounded-3xl bg-slate-900/60 border border-slate-800/80">
         <h1 class="text-sm font-bold tracking-widest text-emerald-400 uppercase">🔬 Studio parallelo</h1>
-        <p class="text-xs text-slate-400 mt-1">Mercati: <b class="text-slate-200">1X2</b> e <b class="text-slate-200">Over/Under 2.5</b>. Pagina separata dall'app: <a href="index.html" class="text-emerald-400 underline">torna all'app</a>.</p>
+        <p class="text-xs text-slate-400 mt-1">Mercati: <b class="text-slate-200">1X2</b> e <b class="text-slate-200">Over/Under 2.5</b>. Pagina separata dall'app: <a href="index.html" class="text-emerald-400 underline">torna all'app</a> · <a href="schedine.html" class="text-orange-300 underline">pagina Schedine</a>.</p>
         <div class="mt-3 p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/50 text-[11px] text-emerald-200 leading-relaxed">
-            <b>Garanzia di separazione.</b> Questa pagina <b>legge soltanto</b> Archivio, Palinsesto e parametri dell'app. Scrive <b>solo</b> nella raccolta <code>studio_registro</code>. Non cambia il modello, i pronostici congelati, le proposte, le quote né i pesi dell'app.
+            <b>Garanzia di separazione.</b> Questa pagina <b>legge soltanto</b> Archivio, Palinsesto e parametri dell'app. Scrive <b>solo</b> in raccolte il cui nome inizia per <code>studio_</code>. Non cambia il modello, i pronostici congelati, le proposte, le quote né i pesi dell'app.
         </div>
         <div id="studioStatoBase" class="mt-3 text-[11px] text-slate-400">Lettura dell'Archivio in corso…</div>
     </header>
@@ -78,25 +78,8 @@
     </section>
 
     <section class="p-4 rounded-3xl bg-slate-900/60 border border-slate-800/80">
-        <h2 class="text-xs font-bold tracking-widest text-orange-300 uppercase mb-2">8 · Schedine proposte dallo Studio</h2>
-        <p class="text-xs text-slate-400 mb-3">Legge le partite <b>non ancora iniziate</b> del Palinsesto dell'app e propone schedine con le selezioni che lo Studio ritiene più probabili, usando quanto emerso nelle sezioni precedenti: sul 1X2 il mercato è il miglior stimatore, il modello (corretto) pesa al massimo il 10%, e le fasce di probabilità sono calibrate. Servono le <b>quote</b> nel Palinsesto (aggiornale nell'app). Non modifica niente nell'app. Nessuna schedina è sicura e, con le quote vere, il valore atteso è quasi sempre negativo: sono proposte di studio, non consigli di gioco.</p>
-        <div class="grid grid-cols-2 gap-3 mb-3">
-            <label class="block text-[11px] text-slate-400">Quante schedine
-                <input id="schedN" type="number" min="1" max="20" value="5" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"></label>
-            <label class="block text-[11px] text-slate-400">Selezioni per schedina
-                <select id="schedK" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select></label>
-            <label class="block text-[11px] text-slate-400">Probabilità minima per selezione
-                <select id="schedSoglia" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"><option value="50">50%</option><option value="55" selected>55%</option><option value="60">60%</option><option value="65">65%</option></select></label>
-            <label class="block text-[11px] text-slate-400">Stessa partita al massimo in
-                <select id="schedUsi" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"><option value="1">1 schedina</option><option value="2" selected>2 schedine</option><option value="3">3 schedine</option></select></label>
-        </div>
-        <label class="flex items-start gap-2 text-[11px] text-slate-400 mb-3"><input id="schedOU" type="checkbox" class="mt-0.5 shrink-0"><span>Includi anche Over/Under 2.5 (lo studio non ha trovato un vantaggio su questo mercato: se ne trova, di rado supera la soglia)</span></label>
-        <button id="btnSched" type="button" onclick="studioGeneraSchedine()" class="w-full bg-gradient-to-r from-orange-600 to-amber-600 text-white font-semibold py-3.5 rounded-xl text-sm cursor-pointer disabled:opacity-60">Proponi le schedine</button>
-        <div id="schedRisultato" class="mt-4 text-xs"></div>
-        <button id="btnSalvaSched" type="button" disabled onclick="studioSalvaSchedine()" class="w-full mt-4 bg-slate-800 border border-slate-700 text-slate-100 font-semibold py-3 rounded-xl text-sm cursor-pointer disabled:opacity-40">Salva queste schedine nel registro dello Studio</button>
-        <div id="schedStato" class="mt-2 text-xs"></div>
-        <button id="btnValutaSched" type="button" onclick="studioValutaSchedine()" class="w-full mt-4 bg-slate-800 border border-slate-700 text-slate-100 font-semibold py-3 rounded-xl text-sm cursor-pointer disabled:opacity-60">Valuta le schedine salvate</button>
-        <div id="schedValutazione" class="mt-3 text-xs"></div>
+        <h2 class="text-xs font-bold tracking-widest text-orange-300 uppercase mb-2">8 · Schedine proposte</h2>
+        <p class="text-xs text-slate-400 mb-3">Le schedine sono ora in una pagina a parte: <a href="schedine.html" class="text-orange-300 underline">apri la pagina Schedine</a>.</p>
     </section>
 
     <footer class="text-[10px] text-slate-600 text-center pb-6">Studio parallelo · nessuna modifica all'app principale</footer>
@@ -854,6 +837,7 @@
 
         async function studioRiepilogoIniziale() {
             const el = document.getElementById("studioStatoBase");
+            if (!el) return;
             try {
                 const arch = await studioCaricaBase();
                 const recs = studioPreparaArchivio(arch, studioParametri);
@@ -1726,16 +1710,18 @@
                 const pr = studioProbModello(p, params);
                 if (!pr) { out.nonCalcolabili++; return; }
                 const rid = studioRiduzione(pr.x12, cal.base1, cal.lam1);
-                const pf = [0, 1, 2].map(i => (1 - SCHED.pesoModello) * mk.x12[i] + SCHED.pesoModello * rid[i]);
+                const pw = opz.pesoX12 !== undefined ? opz.pesoX12 : SCHED.pesoModello;
+                const pf = [0, 1, 2].map(i => (1 - pw) * mk.x12[i] + pw * rid[i]);
                 const base = { matchId: String(p.matchId || p.id), campionato: p.campionato || "", casa: p.squadraCasa || "", ospite: p.squadraOspite || "", dataOraUTC: p.dataOraUTC || p.utcDate };
                 const idx = studioArgmax(pf);
-                if (pf[idx] >= opz.soglia) {
+                if (opz.conX12 !== false && pf[idx] >= opz.soglia) {
                     const fasciaDef = AFF_BANDE.find(b => pf[idx] >= b[0] && pf[idx] < b[1]);
                     const st = fasciaDef ? studioStatGruppo(itemsStorici.filter(x => x.pf >= fasciaDef[0] && x.pf < fasciaDef[1])) : null;
                     out.legs.push(Object.assign({}, base, { mercato: "1X2", esito: ["1", "X", "2"][idx], p: pf[idx], quota: q.q1[idx], storico: st && st.n ? { n: st.n, hit: st.hit } : null }));
-                } else out.sotto++;
+                } else if (opz.conX12 !== false) out.sotto++;
                 if (opz.conOU && mk.over !== null && q.qo) {
-                    const po = (1 - SCHED.pesoModello) * mk.over + SCHED.pesoModello * studioRiduzioneBin(pr.over, cal.baseO, cal.lamO);
+                    const pwo = opz.pesoOU !== undefined ? opz.pesoOU : SCHED.pesoModello;
+                    const po = (1 - pwo) * mk.over + pwo * studioRiduzioneBin(pr.over, cal.baseO, cal.lamO);
                     const over = po >= 0.5, pp = over ? po : 1 - po;
                     if (pp >= opz.soglia) out.legs.push(Object.assign({}, base, { mercato: "Over/Under 2.5", esito: over ? "Over 2.5" : "Under 2.5", p: pp, quota: over ? q.qo.over : q.qo.under, storico: null }));
                 }
@@ -1772,8 +1758,41 @@
             return scelte;
         }
 
+        // Peso ottimale del modello (con riduzione) nel mix col mercato, trovato "in avanti" sull'Archivio aggiornato.
+        // Come la sezione 6, ma solo il peso che minimizza l'errore (log-loss). Con poche partite resta il valore predefinito.
+        const SCHED_PESI = (function () { const a = []; for (let i = 0; i <= 20; i++) a.push(i / 20); return a; })();
+        const SCHED_MIN_QUOTE = 60;
+        function studioPesoOttimale(oos) {
+            const out = {};
+            [["x12", "1X2"], ["ou", "Over/Under 2.5"]].forEach(([m, nome]) => {
+                const q = oos.filter(e => m === "x12" ? !!e.r.mk1 : (e.r.mkO !== null && e.r.mkO !== undefined));
+                const r = { nome: nome, n: q.length, peso: SCHED.pesoModello, auto: false, errScelto: null, errMercato: null };
+                if (q.length >= SCHED_MIN_QUOTE) {
+                    let best = null, bestL = Infinity, l0 = null;
+                    SCHED_PESI.forEach(w => {
+                        let s = 0;
+                        q.forEach(e => {
+                            if (m === "x12") s += studioPerdita1([0, 1, 2].map(c => w * e.cand.rid.x12[c] + (1 - w) * e.r.mk1[c]), e.r.k);
+                            else s += studioPerditaO(w * e.cand.rid.o + (1 - w) * e.r.mkO, e.r.y);
+                        });
+                        s /= q.length;
+                        if (w === 0) l0 = s;
+                        if (s < bestL - 1e-12) { bestL = s; best = w; }
+                    });
+                    r.peso = best; r.auto = true; r.errScelto = bestL; r.errMercato = l0;
+                }
+                out[m] = r;
+            });
+            return out;
+        }
+
         function studioHtmlSchedine(res) {
-            let h = `<div class="text-slate-400 mb-2">Partite future valutate: <b class="text-slate-200">${res.cand.valutate}</b> · senza quote: ${res.cand.senzaQuote} · sotto la soglia del ${Math.round(res.opz.soglia * 100)}%: ${res.cand.sotto} · selezioni candidate: <b class="text-slate-200">${res.cand.legs.length}</b>.</div>`;
+            let h = "";
+            (res.pesi || []).forEach(x => {
+                h += `<div class="mb-1 text-slate-400">${studioEsc(x.nome)}: peso del modello <b class="text-amber-300">${Math.round(x.peso * 100)}%</b> (${studioEsc(x.origine)})</div>`;
+            });
+            (res.avvisi || []).forEach(a => { h += `<div class="mb-1 text-amber-400">${studioEsc(a)}</div>`; });
+            h += `<div class="text-slate-400 mb-2 mt-2">Partite future valutate: <b class="text-slate-200">${res.cand.valutate}</b> · senza quote: ${res.cand.senzaQuote} · sotto la soglia del ${Math.round(res.opz.soglia * 100)}%: ${res.cand.sotto} · selezioni candidate: <b class="text-slate-200">${res.cand.legs.length}</b>.</div>`;
             if (!res.schedine.length) return h + `<div class="text-amber-400">Non ci sono abbastanza selezioni per costruire schedine da ${res.opz.k} partite con questi criteri. Abbassa la soglia, riduci le selezioni per schedina o aggiorna le quote nell'app e riestrai il Palinsesto.</div>`;
             res.schedine.forEach((s, i) => {
                 h += `<div class="mt-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800"><div class="font-bold text-slate-100 text-sm mb-1">Schedina ${i + 1} · ${s.legs.length} selezioni</div>`;
@@ -1797,18 +1816,52 @@
                     k: Math.max(3, Math.min(5, parseInt(studioLeggi("schedK", "3"), 10) || 3)),
                     soglia: (parseFloat(studioLeggi("schedSoglia", "55")) || 55) / 100,
                     maxUsi: Math.max(1, Math.min(3, parseInt(studioLeggi("schedUsi", "2"), 10) || 2)),
-                    conOU: !!(document.getElementById("schedOU") && document.getElementById("schedOU").checked)
+                    conX12: ["x12", "entrambi"].indexOf(studioLeggi("schedMercato", "x12")) !== -1,
+                    conOU: ["ou", "entrambi"].indexOf(studioLeggi("schedMercato", "x12")) !== -1,
+                    pesoManuale: Math.max(0, Math.min(100, parseFloat(studioLeggi("schedPeso", "10")))) / 100
                 };
+                if (isNaN(opz.pesoManuale)) opz.pesoManuale = SCHED.pesoModello;
                 const arch = await studioCaricaBase();
                 const recs = studioPreparaArchivio(arch, studioParametri);
                 if (recs.length < STUDIO.minIniziale) { out.innerHTML = `<div class="text-amber-400">Archivio troppo piccolo (${recs.length} partite utilizzabili).</div>`; return; }
                 const cal = studioAdattaTutto(recs);
+                const prog = document.getElementById("schedProgresso");
+                const pesi = [], avvisi = [];
+                const pesoAuto = studioLeggi("schedPesoModo", "auto") !== "manuale";
+                if (opz.conX12) opz.pesoX12 = opz.pesoManuale;
+                if (opz.conOU) opz.pesoOU = opz.pesoManuale;
+                if (pesoAuto) {
+                    if (prog) prog.textContent = "Ricalcolo del peso ottimale sull'Archivio aggiornato… (alcuni secondi)";
+                    await new Promise(r => setTimeout(r, 30));
+                    if (recs.length >= STUDIO.minIniziale + 3 * STUDIO.blocco) {
+                        const po = studioPesoOttimale(studioWalkForward(recs).oos);
+                        [["x12", "conX12", "pesoX12"], ["ou", "conOU", "pesoOU"]].forEach(([m, flag, campo]) => {
+                            if (!opz[flag]) return;
+                            const x = po[m];
+                            opz[campo] = x.peso;
+                            if (x.auto) {
+                                pesi.push({ nome: x.nome, peso: x.peso, origine: "calcolato su " + x.n + " partite con quote, in avanti; errore " + studioNum(x.errScelto, 3) + " contro " + studioNum(x.errMercato, 3) + " del solo mercato" });
+                                if (Math.abs(x.peso - SCHED.pesoModello) > 0.2) avvisi.push("Attenzione: per " + x.nome + " il peso ottimale (" + Math.round(x.peso * 100) + "%) è molto diverso dal 10% usato finora. Con pochi dati può essere dovuto al caso: controlla la sezione 6 dello Studio.");
+                            } else {
+                                pesi.push({ nome: x.nome, peso: x.peso, origine: "automatico non possibile: solo " + x.n + " partite con quote, ne servono " + SCHED_MIN_QUOTE + "; uso il valore predefinito" });
+                            }
+                        });
+                    } else {
+                        avvisi.push("Archivio troppo piccolo per il calcolo automatico: uso il peso predefinito del 10%.");
+                        if (opz.conX12) { opz.pesoX12 = SCHED.pesoModello; pesi.push({ nome: "1X2", peso: SCHED.pesoModello, origine: "predefinito" }); }
+                        if (opz.conOU) { opz.pesoOU = SCHED.pesoModello; pesi.push({ nome: "Over/Under 2.5", peso: SCHED.pesoModello, origine: "predefinito" }); }
+                    }
+                    if (prog) prog.textContent = "";
+                } else {
+                    if (opz.conX12) pesi.push({ nome: "1X2", peso: opz.pesoX12, origine: "scelto da te" });
+                    if (opz.conOU) pesi.push({ nome: "Over/Under 2.5", peso: opz.pesoOU, origine: "scelto da te" });
+                }
                 const itemsStorici = recs.filter(r => r.q1 && r.mk1).map(r => { const i = studioArgmax(r.mk1); return { pf: r.mk1[i], hit: i === r.k ? 1 : 0 }; });
                 const pal = await db.collection("palinsesto").doc("corrente").get();
                 const partite = (pal.exists && pal.data().partite) ? pal.data().partite : [];
                 const cand = studioSelezioniCandidate(partite, studioParametri, cal, itemsStorici, opz);
                 const schedine = studioCostruisciSchedine(cand.legs, opz.k, opz.N, opz.maxUsi);
-                studioSchedineGenerate = { opz: opz, cand: cand, schedine: schedine, creataIl: new Date().toISOString() };
+                studioSchedineGenerate = { opz: opz, cand: cand, schedine: schedine, pesi: pesi, avvisi: avvisi, creataIl: new Date().toISOString() };
                 out.innerHTML = studioHtmlSchedine(studioSchedineGenerate);
                 if (st) st.innerHTML = "";
                 const bs = document.getElementById("btnSalvaSched"); if (bs) bs.disabled = !schedine.length;
@@ -1830,7 +1883,7 @@
                 const batch = db.batch();
                 g.schedine.forEach((s, i) => {
                     batch.set(db.collection(SCHED.raccolta).doc("s_" + base + "_" + (i + 1)), {
-                        creataIl: g.creataIl, creataIlTs: base, soglia: g.opz.soglia, selezioni: s.legs.length,
+                        creataIl: g.creataIl, creataIlTs: base, soglia: g.opz.soglia, selezioni: s.legs.length, pesiModello: g.pesi.map(x => ({ mercato: x.nome, peso: x.peso })),
                         probabilita: s.p, quota: s.quota, valoreAtteso: s.ev,
                         legs: s.legs.map(l => ({ matchId: l.matchId, casa: l.casa, ospite: l.ospite, campionato: l.campionato, dataOraUTC: l.dataOraUTC, mercato: l.mercato, esito: l.esito, p: l.p, quota: l.quota })),
                         esito: null, valutataIl: null
