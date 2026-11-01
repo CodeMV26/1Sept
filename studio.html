@@ -70,6 +70,13 @@
         <div id="mixRisultato" class="mt-4 text-xs"></div>
     </section>
 
+    <section class="p-4 rounded-3xl bg-slate-900/60 border border-slate-800/80">
+        <h2 class="text-xs font-bold tracking-widest text-teal-300 uppercase mb-2">7 · Affidabilità dei favoriti</h2>
+        <p class="text-xs text-slate-400 mb-3">Quanto è affidabile il favorito a seconda di quanto è "forte"? <b>A)</b> favorito del bookmaker per fascia di probabilità (sotto 40% … oltre 65%), con accuratezza, probabilità prevista, quota media e ROI; e cosa succede scegliendo solo i favoriti sopra una soglia. <b>B)</b> altre caratteristiche decise prima (accordo modello-mercato, favorito netto, partita da pareggio, favorito di casa, margine basso, modello molto sicuro), verificate su partite più vecchie e più recenti. <b>C)</b> per campionato. <b>D)</b> la stessa analisi per fasce con le probabilità del modello. Non scrive niente e dura pochi secondi.</p>
+        <button id="btnAff" type="button" onclick="studioEseguiAffidabilita()" class="w-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold py-3.5 rounded-xl text-sm cursor-pointer disabled:opacity-60">Esegui l'analisi per fasce</button>
+        <div id="affRisultato" class="mt-4 text-xs"></div>
+    </section>
+
     <footer class="text-[10px] text-slate-600 text-center pb-6">Studio parallelo · nessuna modifica all'app principale</footer>
 </div>
 
@@ -352,7 +359,8 @@
                     id: rec.matchId, t: new Date(rec.dataOraUTC || rec.utcDate || 0).getTime(),
                     k: r.gc > r.go ? 0 : (r.gc === r.go ? 1 : 2), y: (r.gc + r.go) > 2.5 ? 1 : 0,
                     p1: pr.x12, pO: pr.over, mk1: mk.x12, mkO: mk.over,
-                    f: studioCaratteristiche(rec, params), st: studioForze(rec, params.wForma), ex: studioExtra(rec), q1: studioQuoteGrezze(rec.quote).q1, qo: studioQuoteGrezze(rec.quote).qo
+                    f: studioCaratteristiche(rec, params), st: studioForze(rec, params.wForma), ex: studioExtra(rec), q1: studioQuoteGrezze(rec.quote).q1, qo: studioQuoteGrezze(rec.quote).qo,
+                    lega: String(rec.campionato || rec.campionatoCode || "N/D")
                 });
             });
             out.sort((a, b) => a.t - b.t);
@@ -1505,6 +1513,162 @@
                 out.textContent = "Errore durante la prova: " + (err && err.message ? err.message : err);
             } finally {
                 btn.disabled = false; btn.textContent = "Esegui mix e prova economica";
+            }
+        }
+
+
+        // ============================================================
+        // 7) AFFIDABILITA' DEI FAVORITI: per fascia di probabilita' e per caratteristiche
+        // Solo analisi (nessun modello adattato): le fasce e le regole sono decise prima.
+        // ============================================================
+        const AFF_BANDE = [[0, 0.40, "sotto 40%"], [0.40, 0.45, "40-45%"], [0.45, 0.50, "45-50%"], [0.50, 0.55, "50-55%"], [0.55, 0.60, "55-60%"], [0.60, 0.65, "60-65%"], [0.65, 1.01, "oltre 65%"]];
+        const AFF_SOGLIE = [0.40, 0.45, 0.50, 0.55, 0.60, 0.65];
+
+        function studioWilson(h, n) {
+            if (!n) return null;
+            const z = 1.96, p = h / n, d = 1 + z * z / n;
+            const c = (p + z * z / (2 * n)) / d, m = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d;
+            return { p: p, lo: Math.max(0, c - m), hi: Math.min(1, c + m) };
+        }
+        function studioArgmax(a) { let b = 0; for (let i = 1; i < a.length; i++) if (a[i] > a[b]) b = i; return b; }
+
+        // items: { pf: probabilita' dell'esito scelto, hit: 0/1, q: quota (opzionale) }
+        function studioStatGruppo(items) {
+            const n = items.length;
+            const out = { n: n, hit: null, lo: null, hi: null, att: null, qMedia: null, roi: null, roiLo: null, roiHi: null };
+            if (!n) return out;
+            let h = 0, sp = 0, sq = 0, conQ = 0;
+            items.forEach(x => { h += x.hit; sp += x.pf; });
+            const w = studioWilson(h, n);
+            out.hit = w.p; out.lo = w.lo; out.hi = w.hi; out.att = sp / n;
+            const conQuota = items.filter(x => x.q > 0);
+            if (conQuota.length === n) {
+                const prof = new Float64Array(n);
+                items.forEach((x, i) => { prof[i] = x.hit ? x.q - 1 : -1; sq += x.q; });
+                out.qMedia = sq / n; out.roi = studioMedia(prof);
+                if (n >= 20) {
+                    const iv = studioIntervallo(studioMediaBoot(prof, studioRipesca(n, STUDIO.bootstrap, pevGeneratoreCasuale(STUDIO.seme + 21)), STUDIO.bootstrap));
+                    out.roiLo = iv.lo; out.roiHi = iv.hi;
+                }
+            }
+            return out;
+        }
+        function studioFasceSoglie(items) {
+            return {
+                fasce: AFF_BANDE.map(b => Object.assign({ nome: b[2] }, studioStatGruppo(items.filter(x => x.pf >= b[0] && x.pf < b[1])))),
+                soglie: AFF_SOGLIE.map(s => { const g = items.filter(x => x.pf >= s); return Object.assign({ x: s, copertura: items.length ? g.length / items.length : 0 }, studioStatGruppo(g)); })
+            };
+        }
+
+        const AFF_CARATTERISTICHE = [
+            { id: "accordo", nome: "Modello e mercato scelgono lo stesso esito", f: x => studioArgmax(x.r.p1) === x.idx },
+            { id: "netto", nome: "Favorito netto: distacco tra primo e secondo esito del mercato di almeno 15 punti", f: x => { const s = x.r.mk1.slice().sort((a, b) => b - a); return s[0] - s[1] >= 0.15; } },
+            { id: "pareggio", nome: "Partita da pareggio: probabilità del pareggio nel mercato di almeno 27%", f: x => x.r.mk1[1] >= 0.27 },
+            { id: "casa", nome: "Il favorito è la squadra di casa", f: x => x.idx === 0 },
+            { id: "margine", nome: "Margine del bookmaker basso (somma delle probabilità implicite sotto 1,06)", f: x => (1 / x.r.q1[0] + 1 / x.r.q1[1] + 1 / x.r.q1[2]) < 1.06 },
+            { id: "modelloSicuro", nome: "Modello molto sicuro: probabilità massima del modello di almeno 55%", f: x => Math.max.apply(null, x.r.p1) >= 0.55 }
+        ];
+
+        function studioDiffProporzioni(a, b) {
+            if (!a.n || !b.n) return null;
+            const d = a.hit - b.hit, se = Math.sqrt(a.hit * (1 - a.hit) / a.n + b.hit * (1 - b.hit) / b.n);
+            return { d: d, lo: d - 1.96 * se, hi: d + 1.96 * se };
+        }
+        function studioVerdettoCar(vecchia, nuova) {
+            if (!vecchia || !nuova) return "pochi";
+            if (vecchia.nA < 15 || vecchia.nB < 15 || nuova.nA < 15 || nuova.nB < 15) return "pochi";
+            const dv = vecchia.diff, dn = nuova.diff;
+            if (dn.lo > 0 && dv.d > 0 || dn.hi < 0 && dv.d < 0) return "confermata";
+            if ((dv.lo > 0 || dv.hi < 0) && !(dn.lo > 0 || dn.hi < 0)) return "nonConfermata";
+            return "rumore";
+        }
+
+        function studioAffidabilita(recs) {
+            const quotati = recs.filter(r => r.q1 && r.mk1);
+            const itemsM = quotati.map(r => { const idx = studioArgmax(r.mk1); return { r: r, idx: idx, pf: r.mk1[idx], hit: idx === r.k ? 1 : 0, q: r.q1[idx] }; });
+            const itemsMod = recs.map(r => { const idx = studioArgmax(r.p1); return { pf: r.p1[idx], hit: idx === r.k ? 1 : 0 }; });
+            const res = { nQuot: quotati.length, nTutte: recs.length, mercato: studioFasceSoglie(itemsM), modello: studioFasceSoglie(itemsMod), caratteristiche: [], leghe: [] };
+            const cut = Math.floor(itemsM.length * 0.6);
+            const parti = { vecchia: itemsM.slice(0, cut), nuova: itemsM.slice(cut) };
+            AFF_CARATTERISTICHE.forEach(c => {
+                const o = { id: c.id, nome: c.nome };
+                ["vecchia", "nuova"].forEach(k => {
+                    const A = studioStatGruppo(parti[k].filter(x => c.f(x))), B = studioStatGruppo(parti[k].filter(x => !c.f(x)));
+                    o[k] = { A: A, B: B, nA: A.n, nB: B.n, diff: studioDiffProporzioni(A, B) };
+                });
+                o.verdetto = studioVerdettoCar(o.vecchia.diff ? o.vecchia : null, o.nuova.diff ? o.nuova : null);
+                res.caratteristiche.push(o);
+            });
+            const perLega = {};
+            itemsM.forEach(x => { (perLega[x.r.lega] = perLega[x.r.lega] || []).push(x); });
+            Object.keys(perLega).forEach(l => { if (perLega[l].length >= 25) res.leghe.push(Object.assign({ nome: l }, studioStatGruppo(perLega[l]))); });
+            res.leghe.sort((a, b) => b.n - a.n);
+            res.nVecchia = parti.vecchia.length; res.nNuova = parti.nuova.length;
+            return res;
+        }
+
+        function studioHtmlFasce(titolo, nota, fs, conRoi) {
+            const flag = r => {
+                if (r.n < 15) return `<span class="text-[9px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">pochi dati</span>`;
+                if (r.att < r.lo) return `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700/60">sopra l'atteso</span>`;
+                if (r.att > r.hi) return `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-900/50 text-rose-300 border border-rose-700/60">sotto l'atteso</span>`;
+                return `<span class="text-[9px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">in linea</span>`;
+            };
+            const roi = r => (conRoi && r.roi !== null) ? ` · quota media <b class="text-slate-200">${studioNum(r.qMedia, 2)}</b> · ROI <b class="${r.roi >= 0 ? "text-emerald-300" : "text-rose-300"}">${studioNum(r.roi * 100, 1, true)}%</b>${r.roiLo !== null ? ` <span class="text-[10px] text-slate-500">(da ${studioNum(r.roiLo * 100, 1, true)}% a ${studioNum(r.roiHi * 100, 1, true)}%)</span>` : ""}` : "";
+            let h = `<div class="mt-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800"><div class="font-bold text-slate-100 text-sm mb-1">${studioEsc(titolo)}</div><div class="text-slate-500 text-[11px] mb-2">${nota}</div>`;
+            fs.fasce.forEach(r => {
+                h += `<div class="py-2 border-t border-slate-800/60"><div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1"><div class="font-semibold text-slate-200">Probabilità ${studioEsc(r.nome)}</div>${r.n ? flag(r) : ""}</div>`;
+                h += r.n ? `<div class="text-slate-400">${r.n} partite · indovinato <b class="text-slate-200">${studioPct(r.hit)}</b> <span class="text-[10px] text-slate-500">(da ${studioPct(r.lo, 0)} a ${studioPct(r.hi, 0)})</span> · previsto <b class="text-slate-200">${studioPct(r.att)}</b>${roi(r)}</div>` : `<div class="text-slate-500">nessuna partita</div>`;
+                h += `</div>`;
+            });
+            h += `<div class="mt-2 pt-2 border-t border-slate-700 font-semibold text-slate-200">Solo i favoriti sopra una soglia</div>`;
+            fs.soglie.forEach(r => {
+                h += `<div class="py-1.5 border-t border-slate-800/60"><div class="text-slate-300">Probabilità almeno <b class="text-slate-100">${Math.round(r.x * 100)}%</b>: <b class="text-slate-100">${studioPct(r.copertura, 0)}</b> delle partite (${r.n})</div>` +
+                    (r.n ? `<div class="text-slate-400">indovinato <b class="text-amber-300">${studioPct(r.hit)}</b> <span class="text-[10px] text-slate-500">(da ${studioPct(r.lo, 0)} a ${studioPct(r.hi, 0)})</span> · previsto ${studioPct(r.att)}${roi(r)}</div>` : "") + `</div>`;
+            });
+            return h + `</div>`;
+        }
+
+        function studioHtmlAffidabilita(res) {
+            if (!res || res.nQuot < 60) return `<div class="text-amber-400">Partite con quote troppo poche per l'analisi (${res ? res.nQuot : 0}).</div>`;
+            let h = `<div class="text-slate-400 mb-2">Partite 1X2 con quote: <b class="text-slate-200">${res.nQuot}</b> (analisi A, B, C) · partite utilizzabili per il modello: <b class="text-slate-200">${res.nTutte}</b> (analisi D). Le fasce e le regole sono decise prima di guardare i dati: nulla viene "adattato". "Previsto" è la probabilità che il mercato (o il modello) assegnava all'esito scelto.</div>`;
+            h += `<div class="font-bold text-slate-100 text-sm mt-3">A · Favorito del bookmaker, per fascia di probabilità</div>` +
+                studioHtmlFasce("Favorito del bookmaker", "Il favorito è l'esito con la probabilità più alta (margine tolto). ROI = puntando 1 unità con la quota vera.", res.mercato, true);
+            h += `<div class="font-bold text-slate-100 text-sm mt-5">B · Altre caratteristiche del favorito</div><div class="text-slate-500 text-[11px] mb-1">Regole scelte prima. Si guardano le ${res.nVecchia} partite più vecchie e le ${res.nNuova} più recenti: una caratteristica vale solo se la differenza si conferma anche sulle recenti. Tra parentesi la probabilità che il mercato assegnava al favorito: serve a vedere se la differenza è solo dovuta al favorito più o meno forte.</div>`;
+            const badge = v => ({ confermata: `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700/60">confermata sulle recenti</span>`, nonConfermata: `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-900/50 text-rose-300 border border-rose-700/60">non confermata</span>`, rumore: `<span class="text-[9px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">nel rumore</span>`, pochi: `<span class="text-[9px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">pochi dati</span>` }[v]);
+            const g = s => s.n ? `${s.n} partite · <b class="text-slate-200">${studioPct(s.hit)}</b> (previsto ${studioPct(s.att)})` : "nessuna partita";
+            res.caratteristiche.forEach(c => {
+                h += `<div class="mt-2 p-3 rounded-2xl bg-slate-950/60 border border-slate-800"><div class="flex flex-wrap items-start justify-between gap-x-2 gap-y-1"><div class="font-semibold text-slate-200 min-w-0 break-words">${studioEsc(c.nome)}</div>${badge(c.verdetto)}</div>`;
+                [["vecchia", "Partite più vecchie"], ["nuova", "Partite più recenti"]].forEach(([k, nome]) => {
+                    const p = c[k];
+                    h += `<div class="mt-1.5 text-slate-400"><span class="text-slate-300">${nome}</span><br>sì: ${g(p.A)}<br>no: ${g(p.B)}${p.diff ? `<br><span class="text-[10px] text-slate-500">differenza ${studioNum(p.diff.d * 100, 1, true)} punti (da ${studioNum(p.diff.lo * 100, 1, true)} a ${studioNum(p.diff.hi * 100, 1, true)})</span>` : ""}</div>`;
+                });
+                h += `</div>`;
+            });
+            h += `<div class="font-bold text-slate-100 text-sm mt-5">C · Per campionato</div><div class="text-slate-500 text-[11px] mb-1">Solo campionati con almeno 25 partite con quote. Informativo: con tanti campionati qualcuno risulta "diverso" per caso.</div>`;
+            if (!res.leghe.length) h += `<div class="text-slate-500">Nessun campionato con almeno 25 partite con quote.</div>`;
+            res.leghe.forEach(l => {
+                h += `<div class="py-2 border-t border-slate-800/60"><div class="font-semibold text-slate-200 break-words">${studioEsc(l.nome)}</div><div class="text-slate-400">${l.n} partite · indovinato <b class="text-slate-200">${studioPct(l.hit)}</b> <span class="text-[10px] text-slate-500">(da ${studioPct(l.lo, 0)} a ${studioPct(l.hi, 0)})</span> · previsto ${studioPct(l.att)}${l.roi !== null ? ` · ROI <b class="${l.roi >= 0 ? "text-emerald-300" : "text-rose-300"}">${studioNum(l.roi * 100, 1, true)}%</b>` : ""}</div></div>`;
+            });
+            h += `<div class="font-bold text-slate-100 text-sm mt-5">D · Lo stesso, con le probabilità del modello</div>` +
+                studioHtmlFasce("Esito più probabile secondo il modello attuale", "Quando il modello è molto sicuro, ha ragione più spesso? \"Previsto\" è la probabilità che il modello assegnava.", res.modello, false);
+            h += `<div class="mt-3 text-[10px] text-slate-500 leading-relaxed">Come si legge: "sopra l'atteso" = l'esito si verifica più spesso di quanto previsto (se il favorito è del mercato, lì c'è valore); "sotto l'atteso" = meno spesso. Con poche decine di partite per fascia gli intervalli sono larghi: guarda l'andamento complessivo più che i singoli numeri.</div>`;
+            return h;
+        }
+
+        async function studioEseguiAffidabilita() {
+            const btn = document.getElementById("btnAff");
+            const out = document.getElementById("affRisultato");
+            btn.disabled = true; btn.textContent = "Analisi in corso…";
+            try {
+                const arch = await studioCaricaBase();
+                const recs = studioPreparaArchivio(arch, studioParametri);
+                out.innerHTML = studioHtmlAffidabilita(studioAffidabilita(recs));
+            } catch (err) {
+                console.error(err);
+                out.textContent = "Errore durante l'analisi: " + (err && err.message ? err.message : err);
+            } finally {
+                btn.disabled = false; btn.textContent = "Esegui l'analisi per fasce";
             }
         }
 
