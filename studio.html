@@ -77,6 +77,28 @@
         <div id="affRisultato" class="mt-4 text-xs"></div>
     </section>
 
+    <section class="p-4 rounded-3xl bg-slate-900/60 border border-slate-800/80">
+        <h2 class="text-xs font-bold tracking-widest text-orange-300 uppercase mb-2">8 · Schedine proposte dallo Studio</h2>
+        <p class="text-xs text-slate-400 mb-3">Legge le partite <b>non ancora iniziate</b> del Palinsesto dell'app e propone schedine con le selezioni che lo Studio ritiene più probabili, usando quanto emerso nelle sezioni precedenti: sul 1X2 il mercato è il miglior stimatore, il modello (corretto) pesa al massimo il 10%, e le fasce di probabilità sono calibrate. Servono le <b>quote</b> nel Palinsesto (aggiornale nell'app). Non modifica niente nell'app. Nessuna schedina è sicura e, con le quote vere, il valore atteso è quasi sempre negativo: sono proposte di studio, non consigli di gioco.</p>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+            <label class="block text-[11px] text-slate-400">Quante schedine
+                <input id="schedN" type="number" min="1" max="20" value="5" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"></label>
+            <label class="block text-[11px] text-slate-400">Selezioni per schedina
+                <select id="schedK" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select></label>
+            <label class="block text-[11px] text-slate-400">Probabilità minima per selezione
+                <select id="schedSoglia" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"><option value="50">50%</option><option value="55" selected>55%</option><option value="60">60%</option><option value="65">65%</option></select></label>
+            <label class="block text-[11px] text-slate-400">Stessa partita al massimo in
+                <select id="schedUsi" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"><option value="1">1 schedina</option><option value="2" selected>2 schedine</option><option value="3">3 schedine</option></select></label>
+        </div>
+        <label class="flex items-start gap-2 text-[11px] text-slate-400 mb-3"><input id="schedOU" type="checkbox" class="mt-0.5 shrink-0"><span>Includi anche Over/Under 2.5 (lo studio non ha trovato un vantaggio su questo mercato: se ne trova, di rado supera la soglia)</span></label>
+        <button id="btnSched" type="button" onclick="studioGeneraSchedine()" class="w-full bg-gradient-to-r from-orange-600 to-amber-600 text-white font-semibold py-3.5 rounded-xl text-sm cursor-pointer disabled:opacity-60">Proponi le schedine</button>
+        <div id="schedRisultato" class="mt-4 text-xs"></div>
+        <button id="btnSalvaSched" type="button" disabled onclick="studioSalvaSchedine()" class="w-full mt-4 bg-slate-800 border border-slate-700 text-slate-100 font-semibold py-3 rounded-xl text-sm cursor-pointer disabled:opacity-40">Salva queste schedine nel registro dello Studio</button>
+        <div id="schedStato" class="mt-2 text-xs"></div>
+        <button id="btnValutaSched" type="button" onclick="studioValutaSchedine()" class="w-full mt-4 bg-slate-800 border border-slate-700 text-slate-100 font-semibold py-3 rounded-xl text-sm cursor-pointer disabled:opacity-60">Valuta le schedine salvate</button>
+        <div id="schedValutazione" class="mt-3 text-xs"></div>
+    </section>
+
     <footer class="text-[10px] text-slate-600 text-center pb-6">Studio parallelo · nessuna modifica all'app principale</footer>
 </div>
 
@@ -1669,6 +1691,211 @@
                 out.textContent = "Errore durante l'analisi: " + (err && err.message ? err.message : err);
             } finally {
                 btn.disabled = false; btn.textContent = "Esegui l'analisi per fasce";
+            }
+        }
+
+
+        // ============================================================
+        // 8) SCHEDINE PROPOSTE DALLO STUDIO
+        // Usa solo cio' che lo studio ha mostrato: sul 1X2 il mercato e' il miglior stimatore,
+        // il modello (corretto con la riduzione) pesa al piu' 10%. Nessuna scrittura nell'app.
+        // ============================================================
+        const SCHED = { pesoModello: 0.10, raccolta: "studio_schedine" };
+        let studioSchedineGenerate = null;
+
+        function studioLeggi(id, def) {
+            const e = document.getElementById(id);
+            return (e && e.value !== undefined && e.value !== "") ? e.value : def;
+        }
+        function studioFormattaData(s) {
+            const d = new Date(s);
+            return isNaN(d.getTime()) ? "" : d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        }
+
+        // Selezioni candidate: per ogni partita futura con quote, l'esito piu' probabile se supera la soglia.
+        function studioSelezioniCandidate(partite, params, cal, itemsStorici, opz) {
+            const out = { legs: [], senzaQuote: 0, sotto: 0, nonCalcolabili: 0, valutate: 0 };
+            const ora = new Date();
+            partite.forEach(p => {
+                if (["TIMED", "SCHEDULED"].indexOf(p.stato) === -1) return;
+                const dt = new Date(p.dataOraUTC || p.utcDate);
+                if (isNaN(dt.getTime()) || dt <= ora) return;
+                out.valutate++;
+                const mk = studioMercatoDaQuote(p.quote), q = studioQuoteGrezze(p.quote);
+                if (!mk.x12 || !q.q1) { out.senzaQuote++; return; }
+                const pr = studioProbModello(p, params);
+                if (!pr) { out.nonCalcolabili++; return; }
+                const rid = studioRiduzione(pr.x12, cal.base1, cal.lam1);
+                const pf = [0, 1, 2].map(i => (1 - SCHED.pesoModello) * mk.x12[i] + SCHED.pesoModello * rid[i]);
+                const base = { matchId: String(p.matchId || p.id), campionato: p.campionato || "", casa: p.squadraCasa || "", ospite: p.squadraOspite || "", dataOraUTC: p.dataOraUTC || p.utcDate };
+                const idx = studioArgmax(pf);
+                if (pf[idx] >= opz.soglia) {
+                    const fasciaDef = AFF_BANDE.find(b => pf[idx] >= b[0] && pf[idx] < b[1]);
+                    const st = fasciaDef ? studioStatGruppo(itemsStorici.filter(x => x.pf >= fasciaDef[0] && x.pf < fasciaDef[1])) : null;
+                    out.legs.push(Object.assign({}, base, { mercato: "1X2", esito: ["1", "X", "2"][idx], p: pf[idx], quota: q.q1[idx], storico: st && st.n ? { n: st.n, hit: st.hit } : null }));
+                } else out.sotto++;
+                if (opz.conOU && mk.over !== null && q.qo) {
+                    const po = (1 - SCHED.pesoModello) * mk.over + SCHED.pesoModello * studioRiduzioneBin(pr.over, cal.baseO, cal.lamO);
+                    const over = po >= 0.5, pp = over ? po : 1 - po;
+                    if (pp >= opz.soglia) out.legs.push(Object.assign({}, base, { mercato: "Over/Under 2.5", esito: over ? "Over 2.5" : "Under 2.5", p: pp, quota: over ? q.qo.over : q.qo.under, storico: null }));
+                }
+            });
+            return out;
+        }
+
+        // Combinazioni di k selezioni da partite diverse, ordinate per probabilita' congiunta; ogni partita e' usata al massimo maxUsi volte.
+        function studioCostruisciSchedine(legs, k, N, maxUsi) {
+            const pool = legs.slice().sort((a, b) => b.p - a.p).slice(0, k <= 3 ? 36 : (k === 4 ? 28 : 22));
+            const tutte = [];
+            const idx = [];
+            (function rec(start) {
+                if (idx.length === k) {
+                    const set = new Set(idx.map(i => pool[i].matchId));
+                    if (set.size === k) {
+                        let pj = 1, q = 1;
+                        idx.forEach(i => { pj *= pool[i].p; q *= pool[i].quota; });
+                        tutte.push({ legs: idx.map(i => pool[i]), p: pj, quota: q });
+                    }
+                    return;
+                }
+                for (let i = start; i < pool.length; i++) { idx.push(i); rec(i + 1); idx.pop(); }
+            })(0);
+            tutte.sort((a, b) => b.p - a.p);
+            const usi = {}, scelte = [];
+            for (let i = 0; i < tutte.length && scelte.length < N; i++) {
+                const s = tutte[i];
+                if (s.legs.some(l => (usi[l.matchId] || 0) >= maxUsi)) continue;
+                s.legs.forEach(l => { usi[l.matchId] = (usi[l.matchId] || 0) + 1; });
+                s.ev = s.p * s.quota - 1;
+                scelte.push(s);
+            }
+            return scelte;
+        }
+
+        function studioHtmlSchedine(res) {
+            let h = `<div class="text-slate-400 mb-2">Partite future valutate: <b class="text-slate-200">${res.cand.valutate}</b> · senza quote: ${res.cand.senzaQuote} · sotto la soglia del ${Math.round(res.opz.soglia * 100)}%: ${res.cand.sotto} · selezioni candidate: <b class="text-slate-200">${res.cand.legs.length}</b>.</div>`;
+            if (!res.schedine.length) return h + `<div class="text-amber-400">Non ci sono abbastanza selezioni per costruire schedine da ${res.opz.k} partite con questi criteri. Abbassa la soglia, riduci le selezioni per schedina o aggiorna le quote nell'app e riestrai il Palinsesto.</div>`;
+            res.schedine.forEach((s, i) => {
+                h += `<div class="mt-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800"><div class="font-bold text-slate-100 text-sm mb-1">Schedina ${i + 1} · ${s.legs.length} selezioni</div>`;
+                s.legs.forEach(l => {
+                    h += `<div class="py-2 border-t border-slate-800/60"><div class="font-semibold text-slate-200 break-words">${studioEsc(l.casa)} – ${studioEsc(l.ospite)}</div>
+                        <div class="text-[10px] text-slate-500 break-words">${studioEsc(l.campionato)} · ${studioEsc(studioFormattaData(l.dataOraUTC))}</div>
+                        <div class="text-slate-400">${studioEsc(l.mercato)}: <b class="text-amber-300">${studioEsc(l.esito)}</b> · quota <b class="text-slate-200">${studioNum(l.quota, 2)}</b> · probabilità stimata <b class="text-slate-200">${studioPct(l.p, 0)}</b>${l.storico ? `<br><span class="text-[10px] text-slate-500">storico: in questa fascia il favorito ha vinto il ${studioPct(l.storico.hit, 0)} su ${l.storico.n} partite</span>` : ""}</div></div>`;
+                });
+                h += `<div class="mt-2 pt-2 border-t border-slate-700 text-slate-300">Probabilità che vinca: <b class="text-amber-300">${studioPct(s.p)}</b> · quota totale <b class="text-slate-100">${studioNum(s.quota, 2)}</b> · valore atteso <b class="${s.ev >= 0 ? "text-emerald-300" : "text-rose-300"}">${studioNum(s.ev * 100, 1, true)}%</b></div></div>`;
+            });
+            h += `<div class="mt-3 text-[10px] text-slate-500 leading-relaxed">Come sono scelte: per ogni partita non ancora iniziata e con quote si prende l'esito più probabile secondo la stima dello Studio (90% probabilità del bookmaker senza margine + 10% modello corretto con la riduzione: è il mix che le sezioni 6 e 7 hanno mostrato migliore). Sopra la soglia scelta, si combinano partite diverse e si ordinano le schedine per probabilità che vincano (prodotto delle probabilità, partite considerate indipendenti). Il "valore atteso" è quanto si guadagna in media per unità giocata se la stima è giusta: con le quote vere è quasi sempre sotto zero, perché le quote includono il margine del bookmaker. Nessuna schedina è sicura: più selezioni, meno probabilità.</div>`;
+            return h;
+        }
+
+        async function studioGeneraSchedine() {
+            const btn = document.getElementById("btnSched"), out = document.getElementById("schedRisultato"), st = document.getElementById("schedStato");
+            btn.disabled = true; btn.textContent = "Calcolo in corso…";
+            try {
+                const opz = {
+                    N: Math.max(1, Math.min(20, parseInt(studioLeggi("schedN", "5"), 10) || 5)),
+                    k: Math.max(3, Math.min(5, parseInt(studioLeggi("schedK", "3"), 10) || 3)),
+                    soglia: (parseFloat(studioLeggi("schedSoglia", "55")) || 55) / 100,
+                    maxUsi: Math.max(1, Math.min(3, parseInt(studioLeggi("schedUsi", "2"), 10) || 2)),
+                    conOU: !!(document.getElementById("schedOU") && document.getElementById("schedOU").checked)
+                };
+                const arch = await studioCaricaBase();
+                const recs = studioPreparaArchivio(arch, studioParametri);
+                if (recs.length < STUDIO.minIniziale) { out.innerHTML = `<div class="text-amber-400">Archivio troppo piccolo (${recs.length} partite utilizzabili).</div>`; return; }
+                const cal = studioAdattaTutto(recs);
+                const itemsStorici = recs.filter(r => r.q1 && r.mk1).map(r => { const i = studioArgmax(r.mk1); return { pf: r.mk1[i], hit: i === r.k ? 1 : 0 }; });
+                const pal = await db.collection("palinsesto").doc("corrente").get();
+                const partite = (pal.exists && pal.data().partite) ? pal.data().partite : [];
+                const cand = studioSelezioniCandidate(partite, studioParametri, cal, itemsStorici, opz);
+                const schedine = studioCostruisciSchedine(cand.legs, opz.k, opz.N, opz.maxUsi);
+                studioSchedineGenerate = { opz: opz, cand: cand, schedine: schedine, creataIl: new Date().toISOString() };
+                out.innerHTML = studioHtmlSchedine(studioSchedineGenerate);
+                if (st) st.innerHTML = "";
+                const bs = document.getElementById("btnSalvaSched"); if (bs) bs.disabled = !schedine.length;
+            } catch (err) {
+                console.error(err);
+                out.textContent = "Errore durante il calcolo: " + (err && err.message ? err.message : err);
+            } finally {
+                btn.disabled = false; btn.textContent = "Proponi le schedine";
+            }
+        }
+
+        // Salvataggio facoltativo, solo nella raccolta studio_schedine, per verificarle dopo le partite.
+        async function studioSalvaSchedine() {
+            const btn = document.getElementById("btnSalvaSched"), st = document.getElementById("schedStato");
+            if (!studioSchedineGenerate || !studioSchedineGenerate.schedine.length) { st.innerHTML = `<div class="text-amber-400">Prima proponi le schedine.</div>`; return; }
+            btn.disabled = true;
+            try {
+                const g = studioSchedineGenerate, base = Date.now();
+                const batch = db.batch();
+                g.schedine.forEach((s, i) => {
+                    batch.set(db.collection(SCHED.raccolta).doc("s_" + base + "_" + (i + 1)), {
+                        creataIl: g.creataIl, creataIlTs: base, soglia: g.opz.soglia, selezioni: s.legs.length,
+                        probabilita: s.p, quota: s.quota, valoreAtteso: s.ev,
+                        legs: s.legs.map(l => ({ matchId: l.matchId, casa: l.casa, ospite: l.ospite, campionato: l.campionato, dataOraUTC: l.dataOraUTC, mercato: l.mercato, esito: l.esito, p: l.p, quota: l.quota })),
+                        esito: null, valutataIl: null
+                    });
+                });
+                await batch.commit();
+                st.innerHTML = `<div class="text-emerald-300">Salvate <b>${g.schedine.length}</b> schedine nel registro dello Studio. Dopo le partite usa "Valuta le schedine salvate".</div>`;
+                studioSchedineGenerate = Object.assign({}, g, { schedine: [] });
+            } catch (err) {
+                console.error(err);
+                st.textContent = "Errore nel salvataggio: " + (err && err.message ? err.message : err);
+                btn.disabled = false;
+            }
+        }
+
+        function studioEsitoLeg(leg, risultato) {
+            const r = studioParsaRisultato(risultato);
+            if (!r) return null;
+            if (leg.mercato === "1X2") return (r.gc > r.go ? "1" : (r.gc === r.go ? "X" : "2")) === leg.esito;
+            return ((r.gc + r.go) > 2.5 ? "Over 2.5" : "Under 2.5") === leg.esito;
+        }
+        function studioValutaListaSchedine(docs, perId) {
+            const out = { tot: docs.length, chiuse: 0, vinte: 0, inAttesa: 0, attesaProb: 0, profitto: 0, perSel: {}, da: [] };
+            docs.forEach(d => {
+                const esiti = d.legs.map(l => perId[l.matchId] ? studioEsitoLeg(l, perId[l.matchId]) : null);
+                const perse = esiti.some(e => e === false), complete = esiti.every(e => e !== null);
+                if (!(perse || complete)) { out.inAttesa++; return; }
+                const vinta = !perse;
+                out.chiuse++; out.attesaProb += d.probabilita; if (vinta) out.vinte++;
+                out.profitto += vinta ? d.quota - 1 : -1;
+                const k = String(d.legs.length); const s = out.perSel[k] = out.perSel[k] || { n: 0, vinte: 0, att: 0 };
+                s.n++; s.att += d.probabilita; if (vinta) s.vinte++;
+                if (d.id) out.da.push({ id: d.id, esito: vinta ? "vinta" : "persa" });
+            });
+            return out;
+        }
+
+        async function studioValutaSchedine() {
+            const btn = document.getElementById("btnValutaSched"), out = document.getElementById("schedValutazione");
+            btn.disabled = true; btn.textContent = "Valutazione in corso…";
+            try {
+                const arch = [];
+                (await db.collection("archivio_storico").get()).forEach(d => arch.push(d.data()));
+                const perId = {}; arch.forEach(r => { if (r && r.matchId !== undefined && r.risultatoReale) perId[String(r.matchId)] = r.risultatoReale; });
+                const docs = [];
+                (await db.collection(SCHED.raccolta).get()).forEach(d => docs.push(Object.assign({ id: d.id }, d.data())));
+                if (!docs.length) { out.innerHTML = `<div class="text-slate-500">Nessuna schedina salvata.</div>`; return; }
+                const v = studioValutaListaSchedine(docs, perId);
+                const batch = db.batch(); let nb = 0;
+                v.da.forEach(x => { const d = docs.find(y => y.id === x.id); if (d && !d.esito) { batch.set(db.collection(SCHED.raccolta).doc(x.id), { esito: x.esito, valutataIl: new Date().toISOString() }, { merge: true }); nb++; } });
+                if (nb) await batch.commit();
+                let h = `<div class="text-slate-300">Schedine salvate: <b>${v.tot}</b> · concluse <b>${v.chiuse}</b> · ancora in attesa <b>${v.inAttesa}</b>.</div>`;
+                if (v.chiuse) {
+                    const att = v.attesaProb / v.chiuse, vin = v.vinte / v.chiuse, w = studioWilson(v.vinte, v.chiuse);
+                    h += `<div class="mt-2 text-slate-400">Vinte <b class="text-slate-200">${v.vinte}</b> su ${v.chiuse} (<b class="text-amber-300">${studioPct(vin)}</b>, da ${studioPct(w.lo, 0)} a ${studioPct(w.hi, 0)}) · probabilità stimata in media <b class="text-slate-200">${studioPct(att)}</b>.</div>
+                        <div class="text-slate-400">Giocando 1 unità a schedina: risultato <b class="${v.profitto >= 0 ? "text-emerald-300" : "text-rose-300"}">${studioNum(v.profitto, 1, true)}</b> unità · ROI <b class="${v.profitto >= 0 ? "text-emerald-300" : "text-rose-300"}">${studioNum(v.profitto / v.chiuse * 100, 1, true)}%</b>.</div>`;
+                    Object.keys(v.perSel).sort().forEach(k => { const s = v.perSel[k]; h += `<div class="text-[11px] text-slate-500">${k} selezioni: vinte ${s.vinte} su ${s.n} (stimato ${studioPct(s.att / s.n)})</div>`; });
+                    if (v.chiuse < 30) h += `<div class="mt-2 text-amber-400">Poche schedine concluse (meno di 30): i numeri non dicono ancora nulla di affidabile.</div>`;
+                }
+                out.innerHTML = h;
+            } catch (err) {
+                console.error(err);
+                out.textContent = "Errore nella valutazione: " + (err && err.message ? err.message : err);
+            } finally {
+                btn.disabled = false; btn.textContent = "Valuta le schedine salvate";
             }
         }
 
