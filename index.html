@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-28">
+<body class="overflow-x-hidden bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans antialiased pb-28">
 
     <header class="p-4 border-b border-slate-800/80 bg-slate-900/50 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
@@ -260,14 +260,25 @@
                 <div id="notaTabellaML" class="text-[11px] text-slate-400 mb-3 leading-relaxed"></div>
                 <table class="w-full text-xs">
                     <thead>
-                        <tr class="text-slate-400 uppercase text-[10px] border-b border-slate-800">
-                            <th class="text-left py-2 pr-2">Mercato</th>
-                            <th id="thCorrente" class="text-center py-2 px-2">Accuratezza Corrente</th>
-                            <th id="thNuovo" class="text-center py-2 pl-2">Accuratezza Nuovo Algoritmo</th>
+                        <tr class="text-slate-400 uppercase text-[9px] leading-tight border-b border-slate-800">
+                            <th class="text-left py-2 pr-1">Mercato</th>
+                            <th id="thCorrente" class="text-center py-2 px-1">Accuratezza Corrente</th>
+                            <th id="thNuovo" class="text-center py-2 px-1">Accuratezza Nuovo Algoritmo</th>
+                            <th id="thBanale" class="text-center py-2 pl-1">Livello banale</th>
                         </tr>
                     </thead>
                     <tbody id="tabellaAccuratezzeBody"></tbody>
                 </table>
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto">
+                <h2 class="text-xs font-bold tracking-widest text-fuchsia-400 uppercase mb-2">
+                    📐 ERRORE SULLE PROBABILITÀ — CORRENTI vs PROPOSTI
+                </h2>
+                <p class="text-xs text-slate-400 mb-3">
+                    L'accuratezza conta solo se il pronostico è uscito. Qui si misura quanto sono buone le probabilità: chi era sicuro e sbaglia viene punito di più. Ogni mercato ha l'errore dei parametri correnti, dei proposti e del livello banale, con l'intervallo al 95% della differenza.
+                </p>
+                <div id="errProbRisultato" class="text-[11px] text-slate-300 leading-relaxed"></div>
             </div>
 
             <div class="bg-slate-900/60 border border-slate-800/80 p-4 sm:p-5 rounded-3xl shadow-2xl backdrop-blur-xl max-w-3xl mx-auto">
@@ -1267,18 +1278,18 @@
             const puntiOspiteInTrasfertaDisplay = (p.giocateOspiteInTrasferta ?? 0) > 0 ? p.puntiOspiteInTrasferta : "N/D";
 
             const checkboxHtml = mostraCheckbox
-                ? `<input type="checkbox" class="archivio-checkbox w-4 h-4 rounded border-slate-600 text-rose-600 focus:ring-0 bg-slate-950 mr-2 align-middle" data-matchid="${matchIdDisplay}" title="Seleziona per eliminare">`
+                ? `<input type="checkbox" class="archivio-checkbox shrink-0 w-4 h-4 rounded border-slate-600 text-rose-600 focus:ring-0 bg-slate-950 mr-2 align-middle" data-matchid="${matchIdDisplay}" title="Seleziona per eliminare">`
                 : "";
 
             return `
                 <div class="min-w-0">
-                    <div class="flex justify-between items-center text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5">
-                        <span class="flex items-center">
+                    <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2.5 min-w-0 max-w-full">
+                        <span class="flex items-center min-w-0 max-w-full">
                             ${checkboxHtml}
-                            <span class="font-bold text-slate-200 uppercase tracking-wider truncate max-w-[45%] sm:max-w-[55%] bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
+                            <span class="min-w-0 max-w-full break-words font-bold text-slate-200 uppercase tracking-wide text-[11px] leading-tight bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/50">${p.campionato} ${p.giornata ? `(G.${p.giornata})` : ''}</span>
                         </span>
-                        <div class="flex items-center gap-2">
-                            <span class="font-mono text-slate-300 text-[10px] sm:text-[11px] shrink-0"> ${formattaData(dataDisplay)}</span>
+                        <div class="flex items-center gap-2 shrink-0 ml-auto">
+                            <span class="font-mono text-slate-300 text-[10px] sm:text-[11px] whitespace-nowrap">${formattaData(dataDisplay)}</span>
                             ${formattaStatoApi(p.stato)}
                         </div>
                     </div>
@@ -1982,19 +1993,320 @@
             return risultato;
         }
 
-        function disegnaTabellaAccuratezze(archivio, nuoveAccuratezze, correntiOverride) {
+        // ===== ML ENG.: LIVELLO BANALE E ERRORE SULLE PROBABILITA': INIZIO =====
+        // "Livello banale" = cosa si otterrebbe dicendo SEMPRE l'esito piu' frequente.
+        // Serve a capire dove il modello aggiunge davvero valore (un 92% su Over 0.5 vale poco).
+        const BANALE_CANDIDATI = {
+            mercato1X2: ["1", "X", "2"],
+            doppiaChance: ["1X", "12", "X2"],
+            over05: ["Over", "Under"], over15: ["Over", "Under"], over25: ["Over", "Under"],
+            over35: ["Over", "Under"], over45: ["Over", "Under"],
+            goalNoGoal: ["Goal", "No Goal"],
+            comboDcOver25: ["1X-Over", "1X-Under", "12-Over", "12-Under", "X2-Over", "X2-Under"],
+            multigolCasa: ["0-1", "2-3", "4+"],
+            multigolTrasferta: ["0-1", "2-3", "4+"],
+            multigolCombo: ["0-1|0-1", "0-1|2-3", "0-1|4+", "2-3|0-1", "2-3|2-3", "2-3|4+", "4+|0-1", "4+|2-3", "4+|4+"]
+        };
+
+        function banaleParsaRisultato(p) {
+            if (!p || !p.risultatoReale) return null;
+            const parti = String(p.risultatoReale).split("-");
+            if (parti.length !== 2) return null;
+            const gc = parseInt(parti[0], 10), go = parseInt(parti[1], 10);
+            if (isNaN(gc) || isNaN(go)) return null;
+            return { gc: gc, go: go };
+        }
+
+        function banaleColpisce(chiave, pick, gc, go) {
+            const compatti = {};
+            MERCATI_LISTA.forEach(m => { compatti[m.chiave] = ""; });
+            compatti[chiave] = pick;
+            return !!verificaAzzeccati(compatti, gc, go)[chiave];
+        }
+
+        // Sceglie, per ogni mercato, l'esito piu' frequente sulle partite "scelta"
+        // e ne misura l'accuratezza sulle partite "valutazione".
+        function calcolaLivelloBanale(scelta, valutazione) {
+            const S = (scelta || []).map(banaleParsaRisultato).filter(x => x);
+            const V = (valutazione || []).map(banaleParsaRisultato).filter(x => x);
+            const out = {};
+            MERCATI_LISTA.forEach(m => {
+                let cand = BANALE_CANDIDATI[m.chiave];
+                if (m.chiave === "risultatoEsatto") {
+                    const viste = {};
+                    S.forEach(r => { viste[`${r.gc}-${r.go}`] = true; });
+                    cand = Object.keys(viste);
+                }
+                if (!cand || !cand.length || !S.length || !V.length) { out[m.chiave] = null; return; }
+                let best = null, bestHit = -1;
+                cand.forEach(c => {
+                    let h = 0;
+                    S.forEach(r => { if (banaleColpisce(m.chiave, c, r.gc, r.go)) h++; });
+                    if (h > bestHit) { bestHit = h; best = c; }
+                });
+                let hv = 0;
+                V.forEach(r => { if (banaleColpisce(m.chiave, best, r.gc, r.go)) hv++; });
+                out[m.chiave] = { pick: best, acc: +((hv / V.length) * 100).toFixed(1) };
+            });
+            return out;
+        }
+
+        function disegnaTabellaAccuratezze(archivio, nuoveAccuratezze, correntiOverride, banaleOverride) {
             const accCorrente = correntiOverride || calcolaAccuratezzePerArchivio(archivio);
+            let banale = banaleOverride;
+            if (!banale) {
+                const usabili = (archivio || []).filter(p => p && p.pronostici && banaleParsaRisultato(p));
+                banale = calcolaLivelloBanale(usabili, usabili);
+            }
             const tbody = document.getElementById("tabellaAccuratezzeBody");
             tbody.innerHTML = MERCATI_LISTA.map(m => {
                 const corrente = accCorrente[m.chiave];
                 const nuova = nuoveAccuratezze ? nuoveAccuratezze[m.chiave] : null;
+                const b = banale ? banale[m.chiave] : null;
+                const sotto = (b && corrente !== null && corrente !== undefined && corrente <= b.acc);
                 return `<tr class="border-t border-slate-800/60">
-                    <td class="py-1.5 text-slate-300">${m.nome}</td>
-                    <td class="py-1.5 text-center font-semibold text-slate-200">${corrente !== null ? corrente + '%' : 'N/D'}</td>
-                    <td class="py-1.5 text-center font-semibold ${nuova !== null ? 'text-emerald-400' : 'text-slate-600'}">${nuova !== null ? nuova + '%' : '—'}</td>
+                    <td class="py-1.5 pr-1 text-slate-300 break-words">${m.nome}</td>
+                    <td class="py-1.5 px-1 text-center font-semibold text-slate-200">${corrente !== null && corrente !== undefined ? corrente + '%' : 'N/D'}</td>
+                    <td class="py-1.5 px-1 text-center font-semibold ${nuova !== null && nuova !== undefined ? 'text-emerald-400' : 'text-slate-600'}">${nuova !== null && nuova !== undefined ? nuova + '%' : '—'}</td>
+                    <td class="py-1.5 pl-1 text-center ${sotto ? 'text-amber-400' : 'text-slate-400'}" title="${sotto ? 'Il modello non fa meglio del livello banale' : ''}">
+                        <div class="font-semibold">${b ? b.acc + '%' : '—'}</div>
+                        <div class="text-[9px] text-slate-500 break-words">${b ? 'sempre ' + propEsc(b.pick) : ''}</div>
+                    </td>
                 </tr>`;
             }).join("");
         }
+
+        // ---------- Errore sulle probabilita' (log-loss) con intervallo ----------
+        const ERRP_MERCATI = ["mercato1X2", "doppiaChance", "over05", "over15", "over25", "over35", "over45", "goalNoGoal", "comboDcOver25", "multigolCasa", "multigolTrasferta", "multigolCombo"];
+        const ERRP_K = { mercato1X2: 3, doppiaChance: 3, over05: 2, over15: 2, over25: 2, over35: 2, over45: 2, goalNoGoal: 2, comboDcOver25: 6, multigolCasa: 3, multigolTrasferta: 3, multigolCombo: 9 };
+        const ERRP_LINEE = [0.5, 1.5, 2.5, 3.5, 4.5];
+        const ERRP_BOOTSTRAP = 500;
+        const ERRP_EPS = 1e-6;
+        const ERRP_MIN_TEST = 100; // sotto questo numero di partite di verifica: avviso "campione piccolo"
+
+        function errpFascia(g) { return g <= 1 ? 0 : (g <= 3 ? 1 : 2); }
+
+        // Esito reale per ogni mercato: "escl" = un solo esito vero (indice), "ev" = piu' eventi si/no.
+        function errpVero(gc, go) {
+            const tot = gc + go;
+            const s = gc > go ? 0 : (gc === go ? 1 : 2);
+            const dc = [s !== 2 ? 1 : 0, s !== 1 ? 1 : 0, s !== 0 ? 1 : 0]; // 1X, 12, X2
+            const ou25 = tot > 2.5 ? 0 : 1;                                   // 0 = Over, 1 = Under
+            const combo = [];
+            for (let d = 0; d < 3; d++) for (let o = 0; o < 2; o++) combo.push((dc[d] && ou25 === o) ? 1 : 0);
+            const v = {
+                mercato1X2: { k: "escl", idx: s },
+                doppiaChance: { k: "ev", occ: dc },
+                goalNoGoal: { k: "escl", idx: (gc > 0 && go > 0) ? 0 : 1 },
+                comboDcOver25: { k: "ev", occ: combo },
+                multigolCasa: { k: "escl", idx: errpFascia(gc) },
+                multigolTrasferta: { k: "escl", idx: errpFascia(go) },
+                multigolCombo: { k: "escl", idx: errpFascia(gc) * 3 + errpFascia(go) }
+            };
+            ["over05", "over15", "over25", "over35", "over45"].forEach((c, n) => { v[c] = { k: "escl", idx: tot > ERRP_LINEE[n] ? 0 : 1 }; });
+            return v;
+        }
+
+        // Probabilita' del modello per ogni mercato, dalla matrice dei punteggi.
+        function errpProb(matrice) {
+            let p1 = 0, pX = 0, p2 = 0, pGoal = 0;
+            const over = [0, 0, 0, 0, 0], fc = [0, 0, 0], ft = [0, 0, 0], cella = new Array(9).fill(0), combo = new Array(6).fill(0);
+            for (let i = 0; i <= MAX_GOL_MATRICE_JS; i++) {
+                for (let j = 0; j <= MAX_GOL_MATRICE_JS; j++) {
+                    const v = matrice[i][j], tot = i + j;
+                    if (i > j) p1 += v; else if (i === j) pX += v; else p2 += v;
+                    for (let n = 0; n < 5; n++) if (tot > ERRP_LINEE[n]) over[n] += v;
+                    if (i > 0 && j > 0) pGoal += v;
+                    const a = errpFascia(i), b = errpFascia(j);
+                    fc[a] += v; ft[b] += v; cella[a * 3 + b] += v;
+                    const o = tot > 2.5 ? 0 : 1;
+                    if (i >= j) combo[0 + o] += v;
+                    if (i !== j) combo[2 + o] += v;
+                    if (i <= j) combo[4 + o] += v;
+                }
+            }
+            return {
+                mercato1X2: [p1, pX, p2],
+                doppiaChance: [p1 + pX, p1 + p2, pX + p2],
+                over05: [over[0], 1 - over[0]], over15: [over[1], 1 - over[1]], over25: [over[2], 1 - over[2]],
+                over35: [over[3], 1 - over[3]], over45: [over[4], 1 - over[4]],
+                goalNoGoal: [pGoal, 1 - pGoal],
+                comboDcOver25: combo,
+                multigolCasa: fc, multigolTrasferta: ft, multigolCombo: cella
+            };
+        }
+
+        function errpPerdita(vero, probs) {
+            if (vero.k === "escl") return -Math.log(Math.max(ERRP_EPS, Math.min(1, probs[vero.idx])));
+            let s = 0;
+            for (let k = 0; k < probs.length; k++) {
+                const p = Math.max(ERRP_EPS, Math.min(1 - ERRP_EPS, probs[k]));
+                s += vero.occ[k] ? -Math.log(p) : -Math.log(1 - p);
+            }
+            return s / probs.length;
+        }
+
+        // Probabilita' "banali": frequenze osservate nelle partite di allenamento (con +1 per non avere zeri).
+        function errpProbBanali(veriTrain) {
+            const out = {};
+            ERRP_MERCATI.forEach(ch => {
+                const K = ERRP_K[ch];
+                const n = veriTrain.length;
+                const cont = new Array(K).fill(0);
+                veriTrain.forEach(v => {
+                    const x = v[ch];
+                    if (x.k === "escl") cont[x.idx]++;
+                    else for (let k = 0; k < K; k++) cont[k] += x.occ[k];
+                });
+                const esclusivo = veriTrain.length ? veriTrain[0][ch].k === "escl" : true;
+                out[ch] = cont.map(c => esclusivo ? (c + 1) / (n + K) : (c + 1) / (n + 2));
+            });
+            return out;
+        }
+
+        function errpCalcola(train, test, correnti, proposta) {
+            const veriTrain = [];
+            (train || []).forEach(p => { const r = banaleParsaRisultato(p); if (r) veriTrain.push(errpVero(r.gc, r.go)); });
+            const banali = errpProbBanali(veriTrain);
+
+            const L = { corr: {}, prop: {}, ban: {} };
+            ERRP_MERCATI.forEach(ch => { L.corr[ch] = []; L.prop[ch] = []; L.ban[ch] = []; });
+            let n = 0;
+            (test || []).forEach(p => {
+                const r = banaleParsaRisultato(p);
+                if (!r) return;
+                const lc = ricalcolaLambdaConForma(p, correnti.wForma, correnti.kScala);
+                const lp = proposta ? ricalcolaLambdaConForma(p, proposta.wForma, proposta.kScala) : lc;
+                if (!lc || !lp) return;
+                const vero = errpVero(r.gc, r.go);
+                const pc = errpProb(costruisciMatriceJS(lc.lambdaCasa, lc.lambdaOspite, correnti.rho));
+                const pp = proposta ? errpProb(costruisciMatriceJS(lp.lambdaCasa, lp.lambdaOspite, proposta.rho)) : pc;
+                ERRP_MERCATI.forEach(ch => {
+                    L.corr[ch].push(errpPerdita(vero[ch], pc[ch]));
+                    L.prop[ch].push(errpPerdita(vero[ch], pp[ch]));
+                    L.ban[ch].push(errpPerdita(vero[ch], banali[ch]));
+                });
+                n++;
+            });
+
+            const media = a => a.reduce((x, y) => x + y, 0) / (a.length || 1);
+            const righe = {};
+            ERRP_MERCATI.forEach(ch => {
+                righe[ch] = { corr: media(L.corr[ch]), prop: media(L.prop[ch]), ban: media(L.ban[ch]) };
+            });
+
+            // Bootstrap: si ripesca a caso (con reinserimento) le partite di verifica,
+            // per vedere quanto cambierebbe la differenza con un altro campione.
+            const rng = pevGeneratoreCasuale(20261101);
+            const diffs = {};
+            ERRP_MERCATI.forEach(ch => { diffs[ch] = []; });
+            const complessivi = [];
+            if (proposta && n > 0) {
+                const idx = new Array(n);
+                for (let b = 0; b < ERRP_BOOTSTRAP; b++) {
+                    for (let i = 0; i < n; i++) idx[i] = Math.floor(rng() * n);
+                    let sommaRel = 0;
+                    ERRP_MERCATI.forEach(ch => {
+                        let sc = 0, sp = 0;
+                        const ac = L.corr[ch], ap = L.prop[ch];
+                        for (let i = 0; i < n; i++) { sc += ac[idx[i]]; sp += ap[idx[i]]; }
+                        diffs[ch].push((sc - sp) / n);
+                        sommaRel += (sc - sp) / sc;
+                    });
+                    complessivi.push(sommaRel / ERRP_MERCATI.length);
+                }
+            }
+            function intervallo(arr) {
+                if (!arr.length) return null;
+                const s = arr.slice().sort((x, y) => x - y);
+                return { lo: s[Math.floor(0.025 * s.length)], hi: s[Math.ceil(0.975 * s.length) - 1] };
+            }
+            ERRP_MERCATI.forEach(ch => {
+                const r = righe[ch];
+                r.diff = r.corr - r.prop;            // positivo = i proposti sbagliano meno
+                r.int = intervallo(diffs[ch]);
+            });
+            let relMedia = 0;
+            ERRP_MERCATI.forEach(ch => { relMedia += (righe[ch].corr - righe[ch].prop) / righe[ch].corr; });
+            relMedia /= ERRP_MERCATI.length;
+            return { n: n, righe: righe, complessivo: { valore: relMedia, int: intervallo(complessivi) }, confronto: !!proposta };
+        }
+
+        function errpNum(x, d, conSegno) {
+            const t = Math.abs(x).toFixed(d).replace(".", ",");
+            if (!conSegno) return (x < 0 ? "−" : "") + t;
+            return (x > 0.5 * Math.pow(10, -d) ? "+" : (x < -0.5 * Math.pow(10, -d) ? "−" : "")) + t;
+        }
+
+        function errpDisegna(ris) {
+            const cont = document.getElementById("errProbRisultato");
+            if (!cont) return;
+            const nomi = {};
+            MERCATI_LISTA.forEach(m => { nomi[m.chiave] = m.nome; });
+            let html = "";
+            if (ris.n === 0) { cont.innerHTML = `<div class="text-slate-400">Nessuna partita di verifica utilizzabile.</div>`; return; }
+
+            html += `<div class="text-slate-400 mb-2">Calcolato sulle stesse <b class="text-slate-200">${ris.n}</b> partite di verifica del confronto qui sopra. Errore medio per partita: <b>più basso = meglio</b>.</div>`;
+            if (ris.n < ERRP_MIN_TEST) html += `<div class="text-amber-400 mb-2">Campione ancora piccolo (meno di ${ERRP_MIN_TEST} partite di verifica): intervalli molto larghi.</div>`;
+
+            if (ris.confronto) {
+                const c = ris.complessivo;
+                const i = c.int;
+                let verdetto, colore;
+                if (i && i.lo > 0) { verdetto = "I parametri proposti sbagliano sicuramente meno sulle probabilità: questa misura giustifica il cambio."; colore = "text-emerald-300"; }
+                else if (i && i.hi < 0) { verdetto = "I parametri proposti sbagliano sicuramente di più sulle probabilità: cambiare non conviene."; colore = "text-rose-300"; }
+                else { verdetto = "La differenza è dentro il rumore statistico: con queste partite non si può dire quale dei due sia meglio. Questa misura non giustifica il cambio."; colore = "text-slate-200"; }
+                html += `<div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 mb-3">
+                    <div class="font-bold text-slate-100">Risultato complessivo (12 mercati)</div>
+                    <div class="mt-1">Variazione media dell'errore con i parametri proposti: <b>${errpNum(c.valore * 100, 1, true)}%</b>${i ? ` (intervallo al 95%: da ${errpNum(i.lo * 100, 1, true)}% a ${errpNum(i.hi * 100, 1, true)}%)` : ""}. Positivo = i proposti sbagliano meno.</div>
+                    <div class="mt-1 ${colore}">${verdetto}</div>
+                </div>`;
+            } else {
+                html += `<div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 mb-3 text-slate-300">I parametri proposti coincidono con quelli correnti: niente da confrontare. Qui sotto l'errore dei parametri correnti contro il livello banale.</div>`;
+            }
+
+            html += ERRP_MERCATI.map(ch => {
+                const r = ris.righe[ch];
+                let badge = "";
+                if (ris.confronto && r.int) {
+                    if (r.int.lo > 0) badge = `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700/60 whitespace-nowrap">Proposti meglio</span>`;
+                    else if (r.int.hi < 0) badge = `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-900/50 text-rose-300 border border-rose-700/60 whitespace-nowrap">Proposti peggio</span>`;
+                    else badge = `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">Nel rumore</span>`;
+                }
+                const sottoBanale = r.corr > r.ban;
+                return `<div class="py-2 border-t border-slate-800/60">
+                    <div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                        <div class="font-semibold text-slate-200">${propEsc(nomi[ch])}</div>
+                        ${badge}
+                    </div>
+                    <div class="mt-0.5 text-slate-400 break-words">correnti <b class="text-slate-200">${errpNum(r.corr, 3)}</b>${ris.confronto ? ` · proposti <b class="text-slate-200">${errpNum(r.prop, 3)}</b>` : ""} · banale <b class="${sottoBanale ? "text-amber-400" : "text-slate-200"}">${errpNum(r.ban, 3)}</b></div>
+                    ${ris.confronto && r.int ? `<div class="text-[10px] text-slate-500 break-words">differenza ${errpNum(r.diff, 3, true)} (da ${errpNum(r.int.lo, 3, true)} a ${errpNum(r.int.hi, 3, true)})</div>` : ""}
+                    ${sottoBanale ? `<div class="text-[10px] text-amber-400/90">I parametri correnti sbagliano più del livello banale su questo mercato.</div>` : ""}
+                </div>`;
+            }).join("");
+
+            html += `<div class="mt-3 text-[10px] text-slate-500 leading-relaxed">
+                Come si legge: l'errore premia chi dà probabilità alta a ciò che succede e punisce chi era sicuro e sbaglia. "Banale" = le frequenze osservate nelle partite di allenamento, usate come probabilità fisse. La differenza è "correnti meno proposti": positiva = i proposti sbagliano meno; l'intervallo al 95% viene da ${ERRP_BOOTSTRAP} ripetizioni con partite ripescate a caso. Il Risultato Esatto non è incluso (troppi esiti possibili). Per Doppia Chance (3 eventi) e Combo DC+O/U2.5 (6 eventi) l'errore è la media sui singoli eventi: i valori non sono confrontabili con gli altri mercati, ma lo sono tra correnti e proposti.
+            </div>`;
+            cont.innerHTML = html;
+        }
+
+        function errpAggiorna(train, test, correnti, proposta) {
+            const cont = document.getElementById("errProbRisultato");
+            if (!cont) return;
+            try {
+                errpDisegna(errpCalcola(train, test, correnti, proposta));
+            } catch (err) {
+                console.error(err);
+                cont.textContent = "Errore nel calcolo dell'errore sulle probabilità: " + (err && err.message ? err.message : err);
+            }
+        }
+
+        function errpReset() {
+            const cont = document.getElementById("errProbRisultato");
+            if (cont) cont.innerHTML = `<div class="text-slate-500">Premi "Ricalcola e Confronta" nel riquadro in alto: qui compare il confronto sull'errore delle probabilità, con intervallo al 95%.</div>`;
+        }
+        // ===== ML ENG.: LIVELLO BANALE E ERRORE SULLE PROBABILITA': FINE =====
 
         // ===== PANNELLO PESO MODELLO vs MERCATO (ML ENG.): INIZIO =====
         const PEV_TRAGUARDI = [150, 300, 500, 1100, 2500];
@@ -2522,7 +2834,8 @@
             document.getElementById("btnAffinaStorico").classList.add("hidden");
             document.getElementById("thCorrente").textContent = "Accuratezza Corrente";
             document.getElementById("thNuovo").textContent = "Accuratezza Nuovo Algoritmo";
-            document.getElementById("notaTabellaML").textContent = "Colonna \"corrente\": pronostici congelati di tutte le partite in Archivio. Premi \"Ricalcola e Confronta\" per il confronto alla pari sulle partite di verifica.";
+            document.getElementById("notaTabellaML").textContent = "Colonna \"corrente\": pronostici congelati di tutte le partite in Archivio. Colonna \"livello banale\": cosa si otterrebbe dicendo sempre l'esito più frequente (in arancione dove il modello non fa meglio). Premi \"Ricalcola e Confronta\" per il confronto alla pari sulle partite di verifica.";
+            errpReset();
         }
 
         function generaCandidatiGriglia() {
@@ -2659,7 +2972,8 @@
 
                 document.getElementById("thCorrente").textContent = "Parametri Correnti (sul test)";
                 document.getElementById("thNuovo").textContent = "Parametri Proposti (sul test)";
-                disegnaTabellaAccuratezze(archivio, accProp, accCorr);
+                const banale = calcolaLivelloBanale(train, test);
+                disegnaTabellaAccuratezze(archivio, accProp, accCorr, banale);
 
                 const dataTrain = `${formattaDataBreve(train[0].dataOraUTC || train[0].utcDate)} – ${formattaDataBreve(train[train.length - 1].dataOraUTC || train[train.length - 1].utcDate)}`;
                 const dataTest = `${formattaDataBreve(test[0].dataOraUTC || test[0].utcDate)} – ${formattaDataBreve(test[test.length - 1].dataOraUTC || test[test.length - 1].utcDate)}`;
@@ -2667,7 +2981,9 @@
                 document.getElementById("notaTabellaML").textContent =
                     `Entrambe le colonne sono calcolate sulle stesse ${test.length} partite di verifica (${dataTest}), le più recenti, mai usate per scegliere i parametri. ` +
                     `I parametri sono stati cercati su ${train.length} partite di allenamento (${dataTrain}).` +
-                    (escluse > 0 ? ` ${escluse} partite in Archivio non sono utilizzabili per il ricalcolo (dati grezzi incompleti) e restano escluse.` : "");
+                    (escluse > 0 ? ` ${escluse} partite in Archivio non sono utilizzabili per il ricalcolo (dati grezzi incompleti) e restano escluse.` : "") +
+                    ` Colonna "livello banale": cosa si otterrebbe dicendo sempre l'esito più frequente nelle partite di allenamento, misurato sulle stesse partite di verifica (in arancione dove il modello non fa meglio).`;
+                errpAggiorna(train, test, correnti, stessi ? null : proposta);
 
                 ultimoBacktestValidi = validi;
                 ultimoBacktestTrainCount = train.length;
