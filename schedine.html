@@ -19,7 +19,7 @@
         <h1 class="text-sm font-bold tracking-widest text-orange-300 uppercase">🎟️ Schedine dello Studio</h1>
         <p class="text-xs text-slate-400 mt-1">Pagina separata dall'app: <a href="index.html" class="text-emerald-400 underline">torna all'app</a> · <a href="studio.html" class="text-emerald-400 underline">pagina Studio</a>.</p>
         <div class="mt-3 p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/50 text-[11px] text-emerald-200 leading-relaxed">
-            <b>Garanzia di separazione.</b> Questa pagina <b>legge soltanto</b> Archivio, Palinsesto e parametri dell'app. Scrive <b>solo</b> nella raccolta <code>studio_schedine</code>. Non cambia nulla nell'app.
+            <b>Garanzia di separazione.</b> Questa pagina <b>legge soltanto</b> Archivio, Palinsesto e parametri dell'app. Scrive (e, solo se lo chiedi con conferma, cancella) <b>solo</b> nella raccolta <code>studio_schedine</code>. Non cambia nulla nell'app.
         </div>
     </header>
 
@@ -37,6 +37,13 @@
                 <select id="schedUsi" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"><option value="1">1 schedina</option><option value="2" selected>2 schedine</option><option value="3">3 schedine</option></select></label>
         </div>
         <div class="grid grid-cols-2 gap-3 mb-3">
+            <label class="block text-[11px] text-slate-400">Quota totale minima (facoltativa)
+                <input id="schedQMin" type="number" inputmode="decimal" min="1" step="0.5" placeholder="es. 10" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"></label>
+            <label class="block text-[11px] text-slate-400">Quota totale massima (facoltativa)
+                <input id="schedQMax" type="number" inputmode="decimal" min="1" step="0.5" placeholder="es. 20" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"></label>
+        </div>
+        <div class="text-[10px] text-slate-500 mb-3 leading-relaxed">Con le quote indicate la pagina cerca, tra le combinazioni di partite diverse, quelle con quota totale nell'intervallo e, tra queste, mette in cima le più probabili. Lascia vuoto per non limitare la quota. Più la quota è alta, meno la schedina è probabile.</div>
+        <div class="grid grid-cols-2 gap-3 mb-3">
             <label class="block text-[11px] text-slate-400">Mercato
                 <select id="schedMercato" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"><option value="x12" selected>1X2</option><option value="ou">Over/Under 2.5</option><option value="entrambi">Tutti e due</option></select></label>
             <label class="block text-[11px] text-slate-400">Peso del modello
@@ -45,6 +52,12 @@
         <div id="schedPesoBox" style="display:none" class="mb-3"><label class="block text-[11px] text-slate-400">Peso del modello in % (0 = solo mercato, 100 = solo modello)
             <input id="schedPeso" type="number" min="0" max="100" step="5" value="10" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"></label></div>
         <div class="text-[10px] text-slate-500 mb-3 leading-relaxed">Automatico: al clic la pagina ricalcola sull'Archivio aggiornato il peso che sbaglia meno "in avanti" (come la sezione 6). Serve un minimo di 60 partite con quote, altrimenti usa 10%. Over/Under 2.5: lo Studio finora non ha trovato un vantaggio su questo mercato.</div>
+        <div class="mb-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
+            <div class="text-[11px] text-slate-300 font-semibold mb-1">Scegli i campionati (facoltativo)</div>
+            <div class="text-[10px] text-slate-500 mb-2 leading-relaxed">Mostra, per il mercato scelto, quanto ha indovinato ogni campionato nell'Archivio, e ti lascia scegliere quali campionati usare. Se non la apri, vengono usati tutti i campionati.</div>
+            <button id="btnTabCamp" type="button" onclick="studioTabellaCampionati()" class="w-full bg-slate-800 border border-slate-700 text-slate-100 font-semibold py-2.5 rounded-xl text-xs cursor-pointer disabled:opacity-60">Mostra la tabella per campionato</button>
+            <div id="schedCampioni" class="mt-3 text-xs"></div>
+        </div>
         <button id="btnSched" type="button" onclick="studioGeneraSchedine()" class="w-full bg-gradient-to-r from-orange-600 to-amber-600 text-white font-semibold py-3.5 rounded-xl text-sm cursor-pointer disabled:opacity-60">Proponi le schedine</button>
         <div id="schedProgresso" class="mt-3 text-xs text-amber-300"></div>
         <div id="schedRisultato" class="mt-4 text-xs"></div>
@@ -52,6 +65,39 @@
         <div id="schedStato" class="mt-2 text-xs"></div>
         <button id="btnValutaSched" type="button" onclick="studioValutaSchedine()" class="w-full mt-4 bg-slate-800 border border-slate-700 text-slate-100 font-semibold py-3 rounded-xl text-sm cursor-pointer disabled:opacity-60">Valuta le schedine salvate</button>
         <div id="schedValutazione" class="mt-3 text-xs"></div>
+    </section>
+
+    <section id="sezFiltri" class="p-4 rounded-3xl bg-slate-900/60 border border-slate-800/80">
+        <h2 class="text-xs font-bold tracking-widest text-orange-300 uppercase mb-2">Schedine con filtri (seconda generazione)</h2>
+        <p class="text-xs text-slate-400 mb-3">Un secondo generatore, che si aggiunge a quello sopra senza modificarlo. Parte dai pronostici che l'app ha già calcolato per le partite non ancora iniziate e tiene solo le selezioni che passano i filtri qui sotto. L'accuratezza è quella della scheda <b>Analisi</b> dell'app (quante volte il pronostico del modello ha indovinato nell'Archivio). Nessuna schedina è sicura: sono proposte di studio, non consigli di gioco.</p>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+            <label class="block text-[11px] text-slate-400">Accuratezza minima del mercato (%)
+                <input id="fAccMerc" type="number" inputmode="decimal" min="0" max="100" step="1" value="55" oninput="studioFiltriAggiorna()" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"></label>
+            <label class="block text-[11px] text-slate-400">Accuratezza minima del campionato (%)
+                <input id="fAccCamp" type="number" inputmode="decimal" min="0" max="100" step="1" value="50" oninput="studioFiltriAggiorna()" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"></label>
+            <label class="block text-[11px] text-slate-400">n minimo per escludere un campionato
+                <input id="fNMin" type="number" inputmode="numeric" min="1" step="1" value="20" oninput="studioFiltriAggiorna()" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"></label>
+            <label class="block text-[11px] text-slate-400">Quota minima per selezione
+                <input id="fQuotaMin" type="number" inputmode="decimal" min="1" step="0.05" value="1.30" oninput="studioFiltriAggiorna()" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"></label>
+            <label class="block text-[11px] text-slate-400">Probabilità minima per selezione (%) · facoltativa
+                <input id="fProbMin" type="number" inputmode="decimal" min="0" max="100" step="1" value="0" oninput="studioFiltriAggiorna()" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"></label>
+            <label class="block text-[11px] text-slate-400">Quante schedine
+                <input id="fN" type="number" inputmode="numeric" min="1" max="20" value="5" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"></label>
+            <label class="block text-[11px] text-slate-400">Selezioni per schedina
+                <select id="fK" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select></label>
+            <label class="block text-[11px] text-slate-400">Stessa partita al massimo in
+                <select id="fUsi" class="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-base text-slate-100"><option value="1">1 schedina</option><option value="2" selected>2 schedine</option><option value="3">3 schedine</option></select></label>
+        </div>
+        <div class="text-[10px] text-slate-500 mb-3 leading-relaxed">Un campionato viene escluso (per quel mercato) solo se ha almeno "n minimo" partite e un'accuratezza sotto il valore scelto: con poche partite non si esclude, perché il numero direbbe poco. Con accuratezza 0 il filtro è spento.</div>
+        <div class="text-[11px] text-slate-400 mb-1">Mercati da considerare</div>
+        <div id="fMercati" class="grid grid-cols-1 gap-1 mb-1"></div>
+        <div class="text-[10px] text-slate-500 mb-3 leading-relaxed">Le caselle dicono quali mercati puoi usare; l'accuratezza minima toglie poi, tra questi, quelli che nell'Archivio hanno indovinato meno. I due filtri si sommano. Solo 1X2 e Over/Under hanno la quota vera del bookmaker: per gli altri mercati la quota è <b>stimata</b> (0,95 diviso la probabilità) e viene segnalata.</div>
+        <button id="btnFiltriCarica" type="button" onclick="studioFiltriCarica()" class="w-full bg-slate-800 border border-slate-700 text-slate-100 font-semibold py-3 rounded-xl text-sm cursor-pointer disabled:opacity-60">Carica i dati e aggiorna il contatore</button>
+        <div id="fContatore" class="mt-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400">Premi il pulsante qui sopra per leggere Archivio e Palinsesto. Poi il contatore si aggiorna da solo a ogni modifica dei filtri.</div>
+        <button id="btnFiltriGenera" type="button" onclick="studioFiltriGenera()" class="w-full mt-4 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-semibold py-3.5 rounded-xl text-sm cursor-pointer disabled:opacity-60">Proponi le schedine con filtri</button>
+        <div id="fRisultato" class="mt-4 text-xs"></div>
+        <button id="btnSalvaFiltri" type="button" disabled onclick="studioFiltriSalva()" class="w-full mt-4 bg-slate-800 border border-slate-700 text-slate-100 font-semibold py-3 rounded-xl text-sm cursor-pointer disabled:opacity-40">Salva queste schedine nel registro dello Studio</button>
+        <div id="fStato" class="mt-2 text-xs"></div>
     </section>
 
     <section class="p-4 rounded-3xl bg-slate-900/60 border border-slate-800/80">
@@ -1658,6 +1704,464 @@
         }
 
 
+        // ===== FUNZIONI COPIATE IDENTICHE DALL'APP (sola lettura, non modificarle) =====
+        function fasciaGolJS(g) {
+            if (g <= 1) return "0-1";
+            if (g <= 3) return "2-3";
+            return "4+";
+        }
+
+        function estraiPronosticiCompatti(pr) {
+            if (!pr) return null;
+            return {
+                mercato1X2: pr.mercato1X2.pronostico,
+                risultatoEsatto: pr.risultatoEsatto.pronostico,
+                doppiaChance: pr.doppiaChance.pronostico,
+                over05: pr.over05.pronostico,
+                over15: pr.over15.pronostico,
+                over25: pr.over25.pronostico,
+                over35: pr.over35.pronostico,
+                over45: pr.over45.pronostico,
+                goalNoGoal: pr.goalNoGoal.pronostico,
+                comboDcOver25: pr.comboDcOver25.pronostico,
+                multigolCasa: pr.multigolCasa.pronostico,
+                multigolTrasferta: pr.multigolTrasferta.pronostico,
+                multigolCombo: pr.multigolCombo.pronostico
+            };
+        }
+
+        function veritaMercati(gc, go) {
+            const mercato1X2 = gc > go ? "1" : (gc === go ? "X" : "2");
+            const risultatoEsatto = `${gc}-${go}`;
+            const totale = gc + go;
+            function ou(soglia) { return totale > soglia ? "Over" : "Under"; }
+            const goalNoGoal = (gc > 0 && go > 0) ? "Goal" : "No Goal";
+            return {
+                mercato1X2, risultatoEsatto,
+                over05: ou(0.5), over15: ou(1.5), over25: ou(2.5), over35: ou(3.5), over45: ou(4.5),
+                goalNoGoal, fasciaCasa: fasciaGolJS(gc), fasciaTrasferta: fasciaGolJS(go)
+            };
+        }
+
+        function verificaAzzeccati(compatti, gc, go) {
+            const v = veritaMercati(gc, go);
+            const esiti = {};
+
+            esiti.mercato1X2 = compatti.mercato1X2 === v.mercato1X2;
+            esiti.risultatoEsatto = compatti.risultatoEsatto === v.risultatoEsatto;
+
+            const dc = compatti.doppiaChance;
+            esiti.doppiaChance = (dc === "1X" && (v.mercato1X2 === "1" || v.mercato1X2 === "X"))
+                || (dc === "12" && (v.mercato1X2 === "1" || v.mercato1X2 === "2"))
+                || (dc === "X2" && (v.mercato1X2 === "X" || v.mercato1X2 === "2"));
+
+            esiti.over05 = compatti.over05 === v.over05;
+            esiti.over15 = compatti.over15 === v.over15;
+            esiti.over25 = compatti.over25 === v.over25;
+            esiti.over35 = compatti.over35 === v.over35;
+            esiti.over45 = compatti.over45 === v.over45;
+
+            esiti.goalNoGoal = compatti.goalNoGoal === v.goalNoGoal;
+
+            const partiCombo = (compatti.comboDcOver25 || "").split("-");
+            const dcCombo = partiCombo[0], ouCombo = partiCombo[1];
+            const dcOk = (dcCombo === "1X" && (v.mercato1X2 === "1" || v.mercato1X2 === "X"))
+                || (dcCombo === "12" && (v.mercato1X2 === "1" || v.mercato1X2 === "2"))
+                || (dcCombo === "X2" && (v.mercato1X2 === "X" || v.mercato1X2 === "2"));
+            esiti.comboDcOver25 = dcOk && (ouCombo === v.over25);
+
+            esiti.multigolCasa = compatti.multigolCasa === v.fasciaCasa;
+            esiti.multigolTrasferta = compatti.multigolTrasferta === v.fasciaTrasferta;
+
+            const partiMg = (compatti.multigolCombo || "").split("|");
+            esiti.multigolCombo = partiMg[0] === v.fasciaCasa && partiMg[1] === v.fasciaTrasferta;
+
+            return esiti;
+        }
+
+        function ottieniQuotaPerMercato(p, chiaveMercato) {
+            if (!p.pronostici || !p.quote) return null;
+            const pr = p.pronostici[chiaveMercato];
+            if (!pr) return null;
+
+            if (chiaveMercato === "mercato1X2") {
+                const m = p.quote.mercato1x2;
+                if (!m) return null;
+                if (pr.pronostico === "1") return m.casa;
+                if (pr.pronostico === "X") return m.pareggio;
+                if (pr.pronostico === "2") return m.ospite;
+                return null;
+            }
+
+            const mappaLinee = { over05: "0.5", over15: "1.5", over25: "2.5", over35: "3.5", over45: "4.5" };
+            if (mappaLinee[chiaveMercato]) {
+                const ou = p.quote.overUnder ? p.quote.overUnder[mappaLinee[chiaveMercato]] : null;
+                if (!ou) return null;
+                if (pr.pronostico === "Over") return ou.over;
+                if (pr.pronostico === "Under") return ou.under;
+                return null;
+            }
+
+            // Doppia Chance, Risultato Esatto, Goal/No Goal, Combo, Multigol:
+            // nessuna quota disponibile con le fonti gratuite in uso.
+            return null;
+        }
+
+        function propProbScelta(chiave, pr) {
+            if (!pr || !pr[chiave]) return null;
+            const m = pr[chiave];
+            const esito = m.pronostico;
+            const pb = m.probabilita;
+            if (pb === undefined || pb === null) return null;
+            let v = null;
+            if (typeof pb === "number") v = pb;
+            else if (chiave.indexOf("over") === 0) v = (esito === "Over") ? pb.over : pb.under;
+            else if (chiave === "goalNoGoal") v = (esito === "Goal") ? pb.goal : pb.noGoal;
+            else v = pb[esito];
+            return (typeof v === "number" && isFinite(v)) ? v / 100 : null;
+        }
+
+        function propImplicitaBookmaker(p, chiave) {
+            if (!p.quote || !p.pronostici || !p.pronostici[chiave]) return null;
+            const esito = p.pronostici[chiave].pronostico;
+            try {
+                if (chiave === "mercato1X2") {
+                    const q = p.quote.mercato1x2;
+                    if (!q) return null;
+                    const n = probabilitaImpliciteNormalizzate({ "1": q.casa, "X": q.pareggio, "2": q.ospite });
+                    return (n && n[esito] !== undefined) ? n[esito] : null;
+                }
+                const linee = { over05: "0.5", over15: "1.5", over25: "2.5", over35: "3.5", over45: "4.5" };
+                if (linee[chiave]) {
+                    const ou = p.quote.overUnder ? p.quote.overUnder[linee[chiave]] : null;
+                    if (!ou) return null;
+                    const n = probabilitaImpliciteNormalizzate({ Over: ou.over, Under: ou.under });
+                    return (n && n[esito] !== undefined) ? n[esito] : null;
+                }
+            } catch (e) { return null; }
+            return null;
+        }
+
+        const MERCATI_LISTA = [
+            { chiave: "mercato1X2", nome: "1X2" },
+            { chiave: "risultatoEsatto", nome: "Risultato Esatto" },
+            { chiave: "doppiaChance", nome: "Doppia Chance" },
+            { chiave: "over05", nome: "Over/Under 0.5" },
+            { chiave: "over15", nome: "Over/Under 1.5" },
+            { chiave: "over25", nome: "Over/Under 2.5" },
+            { chiave: "over35", nome: "Over/Under 3.5" },
+            { chiave: "over45", nome: "Over/Under 4.5" },
+            { chiave: "goalNoGoal", nome: "Goal/No Goal" },
+            { chiave: "comboDcOver25", nome: "Combo DC+O/U2.5" },
+            { chiave: "multigolCasa", nome: "Multigol Casa" },
+            { chiave: "multigolTrasferta", nome: "Multigol Trasferta" },
+            { chiave: "multigolCombo", nome: "MG Casa+Trasferta" }
+        ];
+
+        const COMPETIZIONI_ANALISI = [
+            { cod: "SA", nome: "Serie A" },
+            { cod: "PL", nome: "Premier League" },
+            { cod: "PD", nome: "La Liga" },
+            { cod: "BL1", nome: "Bundesliga" },
+            { cod: "FL1", nome: "Ligue 1" },
+            { cod: "CL", nome: "Champions Lg" },
+            { cod: "EC", nome: "Euro Champ." },
+            { cod: "DED", nome: "Eredivisie" },
+            { cod: "PPL", nome: "Liga Portugal" },
+            { cod: "BSA", nome: "Brasileirão" },
+            { cod: "ELC", nome: "Championship" },
+            { cod: "WC", nome: "World Cup" }
+        ];
+
+        // ============================================================
+        // 8-bis) TABELLA PER CAMPIONATO (generatore dello Studio) — sola lettura dell'Archivio
+        // ============================================================
+        const SOGLIA_N_GIALLO = 50;
+
+        // Campionati spuntati nella tabella; null = tabella non aperta, quindi si usano tutti i campionati.
+        function studioCampionatiSelezionati() {
+            const boxes = document.querySelectorAll(".sched-camp");
+            if (!boxes.length) return null;
+            return Array.from(boxes).filter(b => b.checked).map(b => b.value);
+        }
+        function studioCampiTutti(v) { document.querySelectorAll(".sched-camp").forEach(b => { b.checked = v; }); }
+
+        function studioBloccoAcc(titolo, h, n) {
+            if (!n) return `<div class="text-slate-600">${titolo}: nessun dato</div>`;
+            const w = studioWilson(h, n), giallo = n < SOGLIA_N_GIALLO;
+            return `<div class="${giallo ? "text-amber-300" : "text-slate-300"}">${titolo}: <b>${studioPct(h / n, 0)}</b> <span class="text-[10px] ${giallo ? "text-amber-400" : "text-slate-500"}">(da ${studioPct(w.lo, 0)} a ${studioPct(w.hi, 0)} · n=${n}${giallo ? " · pochi dati" : ""})</span></div>`;
+        }
+
+        // Per ogni campionato: accuratezza del modello (definizione di Analisi) e del favorito del bookmaker.
+        function studioCalcolaTabellaCampionati(arch, mercato) {
+            const righe = [];
+            COMPETIZIONI_ANALISI.forEach(c => {
+                const riga = { cod: c.cod, nome: c.nome, x12: { mn: 0, mh: 0, qn: 0, qm: 0, qb: 0 }, ou: { mn: 0, mh: 0, qn: 0, qm: 0, qb: 0 } };
+                arch.forEach(r => {
+                    if (r.campionatoCode !== c.cod || !r.risultatoReale) return;
+                    const ris = studioParsaRisultato(r.risultatoReale);
+                    if (!ris) return;
+                    let es = null;
+                    if (r.pronostici) { try { es = verificaAzzeccati(estraiPronosticiCompatti(r.pronostici), ris.gc, ris.go); } catch (e) { es = null; } }
+                    const mk = studioMercatoDaQuote(r.quote);
+                    if (mercato !== "ou") {
+                        if (es) { riga.x12.mn++; if (es.mercato1X2) riga.x12.mh++; }
+                        if (mk.x12) {
+                            riga.x12.qn++;
+                            const fav = studioArgmax(mk.x12), vero = ris.gc > ris.go ? 0 : (ris.gc === ris.go ? 1 : 2);
+                            if (fav === vero) riga.x12.qb++;
+                            if (es && es.mercato1X2) riga.x12.qm++;
+                        }
+                    }
+                    if (mercato !== "x12") {
+                        if (es) { riga.ou.mn++; if (es.over25) riga.ou.mh++; }
+                        if (mk.over !== null) {
+                            riga.ou.qn++;
+                            const over = mk.over >= 0.5, verOver = (ris.gc + ris.go) > 2.5;
+                            if (over === verOver) riga.ou.qb++;
+                            if (es && es.over25) riga.ou.qm++;
+                        }
+                    }
+                });
+                righe.push(riga);
+            });
+            return righe;
+        }
+
+        async function studioTabellaCampionati() {
+            const btn = document.getElementById("btnTabCamp"), out = document.getElementById("schedCampioni");
+            btn.disabled = true; btn.textContent = "Lettura dell'Archivio…";
+            try {
+                const arch = await studioCaricaBase();
+                const mercato = studioLeggi("schedMercato", "x12");
+                const righe = studioCalcolaTabellaCampionati(arch, mercato);
+                let h = `<div class="text-slate-400 mb-2">Archivio letto: <b class="text-slate-200">${arch.length}</b> partite. "Modello" = quante volte il pronostico del modello ha indovinato (come nella scheda Analisi, tutte le partite del campionato). "Favorito del bookmaker" = quante volte ha vinto l'esito con la quota più bassa (solo partite con quote salvate). In giallo i dati con meno di ${SOGLIA_N_GIALLO} partite: il numero dice poco.</div>`;
+                h += `<div class="flex gap-2 mb-2"><button type="button" onclick="studioCampiTutti(true)" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-[11px] text-slate-200 cursor-pointer">Seleziona tutti</button><button type="button" onclick="studioCampiTutti(false)" class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-[11px] text-slate-200 cursor-pointer">Nessuno</button></div>`;
+                righe.forEach(r => {
+                    const blocchi = [];
+                    if (mercato !== "ou") blocchi.push(["1X2", r.x12]);
+                    if (mercato !== "x12") blocchi.push(["Over/Under 2.5", r.ou]);
+                    h += `<label class="block py-2 border-t border-slate-800/60 cursor-pointer"><div class="flex items-center gap-2"><input type="checkbox" class="sched-camp" value="${studioEsc(r.cod)}" checked><span class="font-semibold text-slate-200">${studioEsc(r.nome)}</span></div>`;
+                    blocchi.forEach(([nome, b]) => {
+                        h += `<div class="ml-6 mt-1"><div class="text-[10px] text-slate-500">${nome}</div>${studioBloccoAcc("Modello", b.mh, b.mn)}${studioBloccoAcc("Favorito del bookmaker", b.qb, b.qn)}${b.qn ? studioBloccoAcc("Modello sulle stesse partite", b.qm, b.qn) : ""}</div>`;
+                    });
+                    h += `</label>`;
+                });
+                h += `<button type="button" onclick="studioGeneraSchedine()" class="w-full mt-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-semibold py-3 rounded-xl text-sm cursor-pointer">Conferma e genera</button>`;
+                h += `<div class="mt-2 text-[10px] text-slate-500">Se cambi il mercato (1X2 / Over-Under) qui sopra, premi di nuovo "Mostra la tabella". Chi toglie la spunta a un campionato lo esclude dalle schedine.</div>`;
+                out.innerHTML = h;
+            } catch (err) {
+                console.error(err);
+                out.textContent = "Errore nella lettura dell'Archivio: " + (err && err.message ? err.message : err);
+            } finally {
+                btn.disabled = false; btn.textContent = "Mostra la tabella per campionato";
+            }
+        }
+
+        // ============================================================
+        // 8-ter) SCHEDINE CON FILTRI (seconda generazione) — sola lettura di Archivio e Palinsesto
+        // ============================================================
+        let FILTRI_DATI = null;
+        let studioFiltriGenerate = null;
+        const FILTRI_MERCATI_SPENTI = ["risultatoEsatto", "over05"];
+
+        function studioFiltriPopolaMercati() {
+            const c = document.getElementById("fMercati");
+            if (!c || c.children.length) return;
+            c.innerHTML = MERCATI_LISTA.map(m => `<label class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-[12px] text-slate-200 cursor-pointer"><input type="checkbox" class="f-merc" value="${m.chiave}" ${FILTRI_MERCATI_SPENTI.indexOf(m.chiave) === -1 ? "checked" : ""} onchange="studioFiltriAggiorna()"><span>${studioEsc(m.nome)}</span></label>`).join("");
+        }
+
+        // Accuratezza come nella scheda Analisi: per mercato (tutto l'Archivio) e per mercato x campionato.
+        function studioAccuratezzaAnalisi(arch) {
+            const mer = {}, lega = {};
+            MERCATI_LISTA.forEach(m => { mer[m.chiave] = { c: 0, n: 0 }; lega[m.chiave] = {}; });
+            arch.forEach(p => {
+                if (!p.pronostici || !p.risultatoReale) return;
+                const ris = studioParsaRisultato(p.risultatoReale);
+                if (!ris) return;
+                let es = null;
+                try { es = verificaAzzeccati(estraiPronosticiCompatti(p.pronostici), ris.gc, ris.go); } catch (e) { es = null; }
+                if (!es) return;
+                MERCATI_LISTA.forEach(m => {
+                    mer[m.chiave].n++; if (es[m.chiave]) mer[m.chiave].c++;
+                    const cod = p.campionatoCode || "";
+                    const l = lega[m.chiave][cod] = lega[m.chiave][cod] || { c: 0, n: 0 };
+                    l.n++; if (es[m.chiave]) l.c++;
+                });
+            });
+            return { mer: mer, lega: lega };
+        }
+
+        function studioFiltriLeggi() {
+            const num = (id, def) => { const v = parseFloat(String(studioLeggi(id, "")).replace(",", ".")); return isNaN(v) ? def : v; };
+            return {
+                accMerc: num("fAccMerc", 0), accCamp: num("fAccCamp", 0), nMin: Math.max(1, num("fNMin", 20)),
+                quotaMin: num("fQuotaMin", 1), probMin: Math.max(0, num("fProbMin", 0)) / 100,
+                N: Math.max(1, Math.min(20, parseInt(studioLeggi("fN", "5"), 10) || 5)),
+                k: Math.max(2, Math.min(5, parseInt(studioLeggi("fK", "3"), 10) || 3)),
+                maxUsi: Math.max(1, Math.min(3, parseInt(studioLeggi("fUsi", "2"), 10) || 2)),
+                mercati: Array.from(document.querySelectorAll(".f-merc")).filter(b => b.checked).map(b => b.value)
+            };
+        }
+
+        // Selezioni candidate: per ogni partita futura e mercato ammesso, il pronostico congelato dell'app.
+        // Probabilita' di ordinamento: 90% bookmaker (senza margine) + 10% modello dove c'e' la quota vera, altrimenti solo modello.
+        function studioFiltriCandidate(partite, o, acc) {
+            const out = { legs: [], future: 0, mercatiAmmessi: [], mercatiScartati: [], scartLega: 0, scartQuota: 0, scartProb: 0, senzaDati: 0 };
+            const W = SCHED.pesoModello;
+            MERCATI_LISTA.forEach(m => {
+                if (o.mercati.indexOf(m.chiave) === -1) return;
+                const a = acc.mer[m.chiave];
+                const pct = a && a.n ? a.c / a.n * 100 : null;
+                const ok = o.accMerc <= 0 || (pct !== null && pct > o.accMerc);
+                (ok ? out.mercatiAmmessi : out.mercatiScartati).push({ chiave: m.chiave, nome: m.nome, pct: pct, n: a ? a.n : 0 });
+            });
+            const ammessi = out.mercatiAmmessi.map(x => x.chiave);
+            const ora = new Date();
+            (partite || []).forEach(p => {
+                if (["TIMED", "SCHEDULED"].indexOf(p.stato) === -1) return;
+                const dt = new Date(p.dataOraUTC || p.utcDate);
+                if (isNaN(dt.getTime()) || dt <= ora) return;
+                out.future++;
+                if (!p.pronostici) { out.senzaDati++; return; }
+                MERCATI_LISTA.forEach(m => {
+                    if (ammessi.indexOf(m.chiave) === -1 || !p.pronostici[m.chiave]) return;
+                    const cod = p.campionatoCode || "";
+                    const la = acc.lega[m.chiave][cod] || null;
+                    const lPct = la && la.n ? la.c / la.n * 100 : null;
+                    if (o.accCamp > 0 && la && la.n >= o.nMin && lPct < o.accCamp) { out.scartLega++; return; }
+                    const pm = propProbScelta(m.chiave, p.pronostici);
+                    if (!(pm > 0)) { out.senzaDati++; return; }
+                    const quotaVera = ottieniQuotaPerMercato(p, m.chiave);
+                    const haVera = !!(quotaVera && quotaVera > 0);
+                    const quota = haVera ? quotaVera : Math.round(0.95 / pm * 100) / 100;
+                    if (!(quota > o.quotaMin)) { out.scartQuota++; return; }
+                    const impl = haVera ? propImplicitaBookmaker(p, m.chiave) : null;
+                    const pMix = (impl !== null && impl !== undefined) ? (1 - W) * impl + W * pm : pm;
+                    if (o.probMin > 0 && pMix < o.probMin) { out.scartProb++; return; }
+                    const a = acc.mer[m.chiave];
+                    out.legs.push({
+                        matchId: String(p.matchId || p.id), campionato: p.campionato || "", campionatoCode: cod,
+                        casa: p.squadraCasa || "", ospite: p.squadraOspite || "", dataOraUTC: p.dataOraUTC || p.utcDate,
+                        chiaveMercato: m.chiave, mercato: m.nome, esito: p.pronostici[m.chiave].pronostico,
+                        p: pMix, pModello: pm, quota: quota, quotaStimata: !haVera,
+                        accMercato: a && a.n ? { pct: a.c / a.n * 100, n: a.n } : null,
+                        accLega: la && la.n ? { pct: lPct, n: la.n } : null
+                    });
+                });
+            });
+            return out;
+        }
+
+        async function studioFiltriCarica() {
+            const btn = document.getElementById("btnFiltriCarica"), box = document.getElementById("fContatore");
+            btn.disabled = true; btn.textContent = "Lettura di Archivio e Palinsesto…";
+            try {
+                const arch = await studioCaricaBase();
+                const pal = await db.collection("palinsesto").doc("corrente").get();
+                const partite = (pal.exists && pal.data().partite) ? pal.data().partite : [];
+                FILTRI_DATI = { arch: arch, partite: partite, acc: studioAccuratezzaAnalisi(arch) };
+                studioFiltriAggiorna();
+            } catch (err) {
+                console.error(err);
+                box.textContent = "Errore nella lettura dei dati: " + (err && err.message ? err.message : err);
+            } finally {
+                btn.disabled = false; btn.textContent = "Ricarica i dati e aggiorna il contatore";
+            }
+        }
+
+        // Contatore in diretta: quante selezioni passano i filtri attuali.
+        function studioFiltriAggiorna() {
+            const box = document.getElementById("fContatore");
+            if (!box || !FILTRI_DATI) return;
+            const o = studioFiltriLeggi();
+            const c = studioFiltriCandidate(FILTRI_DATI.partite, o, FILTRI_DATI.acc);
+            const distinte = new Set(c.legs.map(l => l.matchId)).size;
+            const stimate = c.legs.filter(l => l.quotaStimata).length;
+            let h = `<div class="text-slate-300 text-sm mb-1">Selezioni che passano i filtri: <b class="text-amber-300">${c.legs.length}</b> su <b>${distinte}</b> partite diverse (partite future nel Palinsesto: ${c.future}).</div>`;
+            if (c.legs.length && distinte < o.k) h += `<div class="text-amber-400 mb-1">Servono almeno ${o.k} partite diverse per una schedina da ${o.k} selezioni: con questi filtri non si riesce.</div>`;
+            h += `<div class="mb-1">Scartate: per campionato poco accurato <b>${c.scartLega}</b> · per quota troppo bassa <b>${c.scartQuota}</b> · per probabilità minima <b>${c.scartProb}</b>${c.senzaDati ? " · senza dati " + c.senzaDati : ""}. Con quota stimata: <b>${stimate}</b>.</div>`;
+            h += `<div class="mb-1 text-slate-300">Mercati ammessi (${c.mercatiAmmessi.length}):</div>`;
+            c.mercatiAmmessi.forEach(x => { h += `<div class="text-slate-400">✓ ${studioEsc(x.nome)}${x.pct !== null ? " · accuratezza " + studioNum(x.pct, 1) + "% (n=" + x.n + ")" : ""}</div>`; });
+            if (c.mercatiScartati.length) {
+                h += `<div class="mt-1 text-slate-300">Mercati scartati per accuratezza (${c.mercatiScartati.length}):</div>`;
+                c.mercatiScartati.forEach(x => { h += `<div class="text-slate-500">✗ ${studioEsc(x.nome)} · ${x.pct !== null ? studioNum(x.pct, 1) + "% (n=" + x.n + ")" : "nessun dato"}</div>`; });
+            }
+            h += `<div class="mt-1 text-[10px] text-slate-500">Dati letti dall'Archivio: ${FILTRI_DATI.arch.length} partite.</div>`;
+            box.innerHTML = h;
+        }
+
+        function studioFiltriHtml(res) {
+            const o = res.opz, c = res.cand;
+            let h = `<div class="mb-2 text-slate-400">Selezioni che passano i filtri: <b class="text-slate-200">${c.legs.length}</b> · mercati ammessi: <b class="text-slate-200">${c.mercatiAmmessi.map(x => studioEsc(x.nome)).join(", ") || "nessuno"}</b>.</div>`;
+            if (!res.schedine.length) return h + `<div class="text-amber-400">Non ci sono abbastanza selezioni su partite diverse per costruire schedine da ${o.k} selezioni con questi filtri. Allarga i filtri (accuratezza, quota minima, mercati) o riduci le selezioni per schedina.</div>`;
+            if (res.schedine.length < o.N) h += `<div class="mb-2 text-amber-400">Riesco a costruirne solo ${res.schedine.length} su ${o.N}: allarga i filtri per averne di più.</div>`;
+            res.schedine.forEach((s, i) => {
+                const tuttaVera = s.legs.every(l => !l.quotaStimata);
+                h += `<div class="mt-3 p-3 rounded-2xl bg-slate-950/60 border border-slate-800"><div class="font-bold text-slate-100 text-sm mb-1">Schedina ${i + 1} · ${s.legs.length} selezioni</div>`;
+                h += `<div class="mb-1 text-slate-300">Probabilità che vinca: <b class="text-amber-300">${studioPct(s.p)}</b> · quota totale <b class="text-slate-100">${studioNum(s.quota, 2)}</b>${tuttaVera ? "" : ' <span class="text-amber-400">(in parte stimata)</span>'}</div>`;
+                s.legs.forEach(l => {
+                    h += `<div class="py-2 border-t border-slate-800/60"><div class="font-semibold text-slate-200 break-words">${studioEsc(l.casa)} – ${studioEsc(l.ospite)}</div>
+                        <div class="text-[10px] text-slate-500 break-words">${studioEsc(l.campionato)} · ${studioEsc(studioFormattaData(l.dataOraUTC))}</div>
+                        <div class="text-slate-400">${studioEsc(l.mercato)}: <b class="text-amber-300">${studioEsc(l.esito)}</b> · quota <b class="text-slate-200">${studioNum(l.quota, 2)}</b>${l.quotaStimata ? ' <span class="text-amber-400">(stimata)</span>' : ""} · probabilità <b class="text-slate-200">${studioPct(l.p, 0)}</b>${l.quotaStimata ? " (solo modello)" : ""}
+                        <br><span class="text-[10px] text-slate-500">accuratezza del mercato ${l.accMercato ? studioNum(l.accMercato.pct, 1) + "% (n=" + l.accMercato.n + ")" : "—"} · del campionato ${l.accLega ? studioNum(l.accLega.pct, 1) + "% (n=" + l.accLega.n + ")" : "senza dati"}</span></div></div>`;
+                });
+                h += `<div class="mt-2 pt-2 border-t border-slate-700 text-slate-300">${tuttaVera ? `Valore atteso <b class="${s.ev >= 0 ? "text-emerald-300" : "text-rose-300"}">${studioNum(s.ev * 100, 1, true)}%</b> (se la stima è giusta).` : "Valore atteso non calcolabile: ci sono quote stimate, non quelle vere del bookmaker."}</div></div>`;
+            });
+            h += `<div class="mt-3 text-[10px] text-slate-500 leading-relaxed">Come sono ordinate: per probabilità che la schedina vinca (prodotto delle probabilità delle selezioni, partite considerate indipendenti). Dove c'è la quota vera (1X2, Over/Under) la probabilità è 90% bookmaker senza margine + 10% modello; per gli altri mercati è solo la probabilità del modello salvata nell'app, e la quota è stimata (0,95 diviso la probabilità). Per questo le schedine con quote stimate non entrano nel ROI.</div>`;
+            return h;
+        }
+
+        async function studioFiltriGenera() {
+            const btn = document.getElementById("btnFiltriGenera"), out = document.getElementById("fRisultato");
+            btn.disabled = true; btn.textContent = "Calcolo in corso…";
+            try {
+                if (!FILTRI_DATI) await studioFiltriCarica();
+                if (!FILTRI_DATI) return;
+                const o = studioFiltriLeggi();
+                const cand = studioFiltriCandidate(FILTRI_DATI.partite, o, FILTRI_DATI.acc);
+                const schedine = studioCostruisciSchedine(cand.legs, o.k, o.N, o.maxUsi, null, null);
+                studioFiltriGenerate = { opz: o, cand: cand, schedine: schedine, creataIl: new Date().toISOString() };
+                out.innerHTML = studioFiltriHtml(studioFiltriGenerate);
+                const st = document.getElementById("fStato"); if (st) st.innerHTML = "";
+                const bs = document.getElementById("btnSalvaFiltri"); if (bs) bs.disabled = !schedine.length;
+            } catch (err) {
+                console.error(err);
+                out.textContent = "Errore durante il calcolo: " + (err && err.message ? err.message : err);
+            } finally {
+                btn.disabled = false; btn.textContent = "Proponi le schedine con filtri";
+            }
+        }
+
+        // Salvataggio facoltativo, solo in studio_schedine.
+        async function studioFiltriSalva() {
+            const btn = document.getElementById("btnSalvaFiltri"), st = document.getElementById("fStato");
+            if (!studioFiltriGenerate || !studioFiltriGenerate.schedine.length) { st.innerHTML = `<div class="text-amber-400">Prima proponi le schedine.</div>`; return; }
+            btn.disabled = true;
+            try {
+                const g = studioFiltriGenerate, base = Date.now();
+                const batch = db.batch();
+                g.schedine.forEach((s, i) => {
+                    batch.set(db.collection(SCHED.raccolta).doc("s_" + base + "_" + (i + 1)), {
+                        creataIl: g.creataIl, creataIlTs: base, generatore: "filtri", selezioni: s.legs.length, pesiModello: [],
+                        filtri: { accMerc: g.opz.accMerc, accCamp: g.opz.accCamp, nMin: g.opz.nMin, quotaMin: g.opz.quotaMin, probMin: g.opz.probMin, mercati: g.opz.mercati, maxUsi: g.opz.maxUsi },
+                        probabilita: s.p, quota: s.quota, valoreAtteso: s.legs.every(l => !l.quotaStimata) ? s.ev : null,
+                        legs: s.legs.map(l => ({ matchId: l.matchId, casa: l.casa, ospite: l.ospite, campionato: l.campionato, dataOraUTC: l.dataOraUTC, mercato: l.mercato, chiaveMercato: l.chiaveMercato, esito: l.esito, p: l.p, quota: l.quota, quotaStimata: l.quotaStimata })),
+                        esito: null, valutataIl: null
+                    });
+                });
+                await batch.commit();
+                st.innerHTML = `<div class="text-emerald-300">Salvate <b>${g.schedine.length}</b> schedine nel registro dello Studio. Le trovi in "Schedine salvate" qui sotto. Dopo le partite usa "Valuta le schedine salvate".</div>`;
+                studioElencoSchedine();
+                studioFiltriGenerate = Object.assign({}, g, { schedine: [] });
+            } catch (err) {
+                console.error(err);
+                st.textContent = "Errore nel salvataggio: " + (err && err.message ? err.message : err);
+                btn.disabled = false;
+            }
+        }
+
+
         // ============================================================
         // 8) SCHEDINE PROPOSTE DALLO STUDIO
         // Usa solo cio' che lo studio ha mostrato: sul 1X2 il mercato e' il miglior stimatore,
@@ -1677,12 +2181,13 @@
 
         // Selezioni candidate: per ogni partita futura con quote, l'esito piu' probabile se supera la soglia.
         function studioSelezioniCandidate(partite, params, cal, itemsStorici, opz) {
-            const out = { legs: [], senzaQuote: 0, sotto: 0, nonCalcolabili: 0, valutate: 0, totale: partite.length, nonProgrammate: 0, giaIniziate: 0 };
+            const out = { legs: [], senzaQuote: 0, sotto: 0, nonCalcolabili: 0, valutate: 0, totale: partite.length, nonProgrammate: 0, giaIniziate: 0, escluseCampionato: 0 };
             const ora = new Date();
             partite.forEach(p => {
                 if (["TIMED", "SCHEDULED"].indexOf(p.stato) === -1) { out.nonProgrammate++; return; }
                 const dt = new Date(p.dataOraUTC || p.utcDate);
                 if (isNaN(dt.getTime()) || dt <= ora) { out.giaIniziate++; return; }
+                if (opz.campionatiSel && opz.campionatiSel.indexOf(p.campionatoCode) === -1) { out.escluseCampionato++; return; }
                 out.valutate++;
                 const mk = studioMercatoDaQuote(p.quote), q = studioQuoteGrezze(p.quote);
                 if (!mk.x12 || !q.q1) { out.senzaQuote++; return; }
@@ -1709,8 +2214,9 @@
         }
 
         // Combinazioni di k selezioni da partite diverse, ordinate per probabilita' congiunta; ogni partita e' usata al massimo maxUsi volte.
-        function studioCostruisciSchedine(legs, k, N, maxUsi) {
-            const pool = legs.slice().sort((a, b) => b.p - a.p).slice(0, k <= 3 ? 36 : (k === 4 ? 28 : 22));
+        function studioCostruisciSchedine(legs, k, N, maxUsi, qMin, qMax) {
+            const conRange = (qMin !== null && qMin !== undefined) || (qMax !== null && qMax !== undefined);
+            const pool = legs.slice().sort((a, b) => b.p - a.p).slice(0, k <= 3 ? (conRange ? 44 : 36) : (k === 4 ? (conRange ? 32 : 28) : (conRange ? 26 : 22)));
             const tutte = [];
             const idx = [];
             (function rec(start) {
@@ -1725,10 +2231,13 @@
                 }
                 for (let i = start; i < pool.length; i++) { idx.push(i); rec(i + 1); idx.pop(); }
             })(0);
-            tutte.sort((a, b) => b.p - a.p);
+            const intervallo = tutte.length ? { min: Math.min.apply(null, tutte.map(s => s.quota)), max: Math.max.apply(null, tutte.map(s => s.quota)), n: tutte.length } : null;
+            const valide = tutte.filter(s => !((qMin !== null && qMin !== undefined && s.quota < qMin) || (qMax !== null && qMax !== undefined && s.quota > qMax)));
+            valide.sort((a, b) => b.p - a.p);
             const usi = {}, scelte = [];
-            for (let i = 0; i < tutte.length && scelte.length < N; i++) {
-                const s = tutte[i];
+            scelte.intervallo = intervallo;
+            for (let i = 0; i < valide.length && scelte.length < N; i++) {
+                const s = valide[i];
                 if (s.legs.some(l => (usi[l.matchId] || 0) >= maxUsi)) continue;
                 s.legs.forEach(l => { usi[l.matchId] = (usi[l.matchId] || 0) + 1; });
                 s.ev = s.p * s.quota - 1;
@@ -1771,7 +2280,7 @@
             for (let t = 70; t >= 30; t--) {
                 const legs = tutte.filter(l => l.p >= t / 100);
                 if (legs.length < opz.k) continue;
-                const n = studioCostruisciSchedine(legs, opz.k, opz.N, opz.maxUsi).length;
+                const n = studioCostruisciSchedine(legs, opz.k, opz.N, opz.maxUsi, opz.qMin, opz.qMax).length;
                 if (n >= 1 && out.perUna === null) out.perUna = t;
                 if (n >= opz.N && out.perN === null) { out.perN = t; break; }
             }
@@ -1786,7 +2295,11 @@
                 h += `<div class="mb-1 text-slate-400">${studioEsc(x.nome)}: peso del modello <b class="text-amber-300">${Math.round(x.peso * 100)}%</b> (${studioEsc(x.origine)})</div>`;
             });
             (res.avvisi || []).forEach(a => { h += `<div class="mb-1 text-amber-400">${studioEsc(a)}</div>`; });
+            if (res.opz.campionatiSel) h += `<div class="mb-1 text-slate-400">Campionati scelti: <b class="text-amber-300">${res.opz.campionatiSel.map(c => { const x = COMPETIZIONI_ANALISI.find(y => y.cod === c); return studioEsc(x ? x.nome : c); }).join(", ")}</b> · partite escluse per campionato: ${res.cand.escluseCampionato}.</div>`;
             h += `<div class="text-slate-400 mb-2 mt-2">Partite future valutate: <b class="text-slate-200">${res.cand.valutate}</b> · senza quote: ${res.cand.senzaQuote} · sotto la soglia del ${Math.round(res.opz.soglia * 100)}%: ${res.cand.sotto} · selezioni candidate: <b class="text-slate-200">${res.cand.legs.length}</b>.</div>`;
+            if (res.opz.qMin !== null || res.opz.qMax !== null) {
+                h += `<div class="mb-1 text-slate-400">Quota totale richiesta: <b class="text-amber-300">${res.opz.qMin !== null ? "da " + studioNum(res.opz.qMin, 2) : ""}${res.opz.qMax !== null ? " a " + studioNum(res.opz.qMax, 2) : ""}</b>.${res.intervalloQuote ? ` Con ${res.opz.k} selezioni e le candidate attuali (soglia ${Math.round(res.opz.soglia * 100)}%), la quota totale possibile va da ${studioNum(res.intervalloQuote.min, 2)} a ${studioNum(res.intervalloQuote.max, 2)}.` : ""}</div>`;
+            }
             const favoriti = (res.tutte || []).slice().sort((a, b) => b.p - a.p);
             const elenco = favoriti.length ? `<details class="mt-2"><summary class="cursor-pointer text-slate-400">Tutte le partite con quote e la loro selezione più probabile (${favoriti.length})</summary>` +
                 favoriti.map(l => `<div class="py-1 border-t border-slate-800/60 text-slate-400"><span class="text-slate-200">${studioEsc(l.casa)} – ${studioEsc(l.ospite)}</span> · ${studioEsc(l.mercato)} <b class="text-amber-300">${studioEsc(l.esito)}</b> · ${studioPct(l.p, 0)} · quota ${studioNum(l.quota, 2)}</div>`).join("") + `</details>` : "";
@@ -1827,8 +2340,12 @@
                     maxUsi: Math.max(1, Math.min(3, parseInt(studioLeggi("schedUsi", "2"), 10) || 2)),
                     conX12: ["x12", "entrambi"].indexOf(studioLeggi("schedMercato", "x12")) !== -1,
                     conOU: ["ou", "entrambi"].indexOf(studioLeggi("schedMercato", "x12")) !== -1,
-                    pesoManuale: Math.max(0, Math.min(100, parseFloat(studioLeggi("schedPeso", "10")))) / 100
+                    qMin: (function () { const v = parseFloat(String(studioLeggi("schedQMin", "")).replace(",", ".")); return isNaN(v) || v <= 0 ? null : v; })(),
+                    qMax: (function () { const v = parseFloat(String(studioLeggi("schedQMax", "")).replace(",", ".")); return isNaN(v) || v <= 0 ? null : v; })(),
+                    pesoManuale: Math.max(0, Math.min(100, parseFloat(studioLeggi("schedPeso", "10")))) / 100,
+                    campionatiSel: studioCampionatiSelezionati()
                 };
+                if (opz.campionatiSel && !opz.campionatiSel.length) { out.innerHTML = `<div class="text-amber-400">Hai aperto la tabella ma non hai spuntato nessun campionato: spunta almeno un campionato.</div>`; return; }
                 if (isNaN(opz.pesoManuale)) opz.pesoManuale = SCHED.pesoModello;
                 const arch = await studioCaricaBase();
                 const recs = studioPreparaArchivio(arch, studioParametri);
@@ -1869,10 +2386,11 @@
                 const pal = await db.collection("palinsesto").doc("corrente").get();
                 const partite = (pal.exists && pal.data().partite) ? pal.data().partite : [];
                 const cand = studioSelezioniCandidate(partite, studioParametri, cal, itemsStorici, opz);
-                const schedine = studioCostruisciSchedine(cand.legs, opz.k, opz.N, opz.maxUsi);
+                const schedine = studioCostruisciSchedine(cand.legs, opz.k, opz.N, opz.maxUsi, opz.qMin, opz.qMax);
                 const tutte = studioSelezioniCandidate(partite, studioParametri, cal, itemsStorici, Object.assign({}, opz, { soglia: 0 })).legs;
                 const sugg = studioSuggerisciSoglia(tutte, opz);
-                studioSchedineGenerate = { opz: opz, tutte: tutte, sugg: sugg, cand: cand, schedine: schedine, pesi: pesi, avvisi: avvisi, creataIl: new Date().toISOString() };
+                const intervalloQuote = (function () { const sc0 = studioCostruisciSchedine(cand.legs, opz.k, 1, opz.maxUsi); return sc0.intervallo; })();
+                studioSchedineGenerate = { opz: opz, intervalloQuote: intervalloQuote, tutte: tutte, sugg: sugg, cand: cand, schedine: schedine, pesi: pesi, avvisi: avvisi, creataIl: new Date().toISOString() };
                 out.innerHTML = studioHtmlSchedine(studioSchedineGenerate);
                 if (st) st.innerHTML = "";
                 const bs = document.getElementById("btnSalvaSched"); if (bs) bs.disabled = !schedine.length;
@@ -1911,6 +2429,37 @@
             }
         }
 
+        // Esito di una singola selezione. Le schedine del generatore con filtri hanno "chiaveMercato" e
+        // si verificano con la stessa funzione dell'app (verificaAzzeccati); quelle vecchie (1X2 / Over-Under 2.5) come prima.
+        function studioEsitoLeg(leg, risultato) {
+            const r = studioParsaRisultato(risultato);
+            if (!r) return null;
+            if (leg.chiaveMercato) {
+                const compatti = {};
+                compatti[leg.chiaveMercato] = leg.esito;
+                const es = verificaAzzeccati(compatti, r.gc, r.go);
+                return es[leg.chiaveMercato] === true;
+            }
+            if (leg.mercato === "1X2") return (r.gc > r.go ? "1" : (r.gc === r.go ? "X" : "2")) === leg.esito;
+            return ((r.gc + r.go) > 2.5 ? "Over 2.5" : "Under 2.5") === leg.esito;
+        }
+
+        // Stato di una schedina salvata: vinta / persa / in attesa (come prima, in un solo punto).
+        function studioStatoSchedina(d, perId) {
+            const esiti = (d.legs || []).map(l => perId[l.matchId] ? studioEsitoLeg(l, perId[l.matchId]) : null);
+            const stato = d.esito || (esiti.some(e => e === false) ? "persa" : ((esiti.length && esiti.every(e => e !== null)) ? "vinta" : "in attesa"));
+            return { esiti: esiti, stato: stato };
+        }
+
+        // Bordo della scheda: verde se vinta, rosso se persa, neutro se in attesa.
+        function studioBordoSchedina(stato) {
+            if (stato === "vinta") return "border:2px solid #10b981;";
+            if (stato === "persa") return "border:2px solid #f43f5e;";
+            return "";
+        }
+
+        let studioElencoCorrente = [];
+
         // Elenco delle schedine salvate (sola lettura), visibile da qualunque dispositivo.
         async function studioElencoSchedine() {
             const out = document.getElementById("schedElenco");
@@ -1918,25 +2467,34 @@
             try {
                 const docs = [];
                 (await db.collection(SCHED.raccolta).get()).forEach(d => docs.push(Object.assign({ id: d.id }, d.data())));
-                if (!docs.length) { out.innerHTML = `<div class="text-slate-500">Nessuna schedina salvata finora.</div>`; return; }
+                if (!docs.length) { studioElencoCorrente = []; out.innerHTML = `<div class="text-slate-500">Nessuna schedina salvata finora.</div>`; return; }
                 const arch = []; (await db.collection("archivio_storico").get()).forEach(d => arch.push(d.data()));
                 const perId = {}; arch.forEach(r => { if (r && r.matchId !== undefined && r.risultatoReale) perId[String(r.matchId)] = r.risultatoReale; });
-                docs.sort((a, b) => (b.creataIlTs || 0) - (a.creataIlTs || 0) || String(a.id).localeCompare(String(b.id)));
+                docs.sort((a, b) => (b.creataIlTs || 0) - (a.creataIlTs || 0) || String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
                 const gruppi = {};
                 docs.forEach(d => { const k = d.creataIlTs || 0; (gruppi[k] = gruppi[k] || []).push(d); });
-                let h = `<div class="text-slate-400 mb-2">Schedine salvate: <b class="text-slate-200">${docs.length}</b> (le più recenti in alto).</div>`;
+                studioElencoCorrente = docs.map(d => ({ id: d.id, stato: studioStatoSchedina(d, perId).stato }));
+                const nV = studioElencoCorrente.filter(x => x.stato === "vinta").length, nP = studioElencoCorrente.filter(x => x.stato === "persa").length;
+                const nA = studioElencoCorrente.length - nV - nP, nS = docs.filter(d => d.giocataSisal === true).length;
+                let h = `<div class="text-slate-400 mb-2">Schedine salvate: <b class="text-slate-200">${docs.length}</b> (le più recenti in alto) · <span class="text-emerald-300">vinte ${nV}</span> · <span class="text-rose-300">perse ${nP}</span> · <span class="text-amber-300">in attesa ${nA}</span> · giocate su SISAL: <b class="text-slate-200">${nS}</b>.</div>`;
+                h += `<div class="flex flex-wrap gap-2 mb-2">
+                    <button type="button" onclick="studioEliminaGruppo('perse')" ${nP ? "" : "disabled"} class="px-3 py-2 rounded-xl bg-slate-800 border border-rose-800/60 text-rose-300 text-[11px] font-semibold cursor-pointer disabled:opacity-40">🗑 Elimina le perse (${nP})</button>
+                    <button type="button" onclick="studioEliminaGruppo('concluse')" ${(nV + nP) ? "" : "disabled"} class="px-3 py-2 rounded-xl bg-slate-800 border border-rose-800/60 text-rose-300 text-[11px] font-semibold cursor-pointer disabled:opacity-40">🗑 Elimina tutte le concluse (${nV + nP})</button></div>`;
                 Object.keys(gruppi).sort((a, b) => b - a).forEach(k => {
                     const g = gruppi[k];
-                    h += `<div class="mt-3 text-slate-300 font-semibold">Salvate il ${studioEsc(studioFormattaData(g[0].creataIl))}${g[0].pesiModello && g[0].pesiModello.length ? " · peso del modello " + g[0].pesiModello.map(x => studioEsc(x.mercato) + " " + Math.round(x.peso * 100) + "%").join(", ") : ""}</div>`;
+                    h += `<div class="mt-3 text-slate-300 font-semibold">Salvate il ${studioEsc(studioFormattaData(g[0].creataIl))}${g[0].generatore === "filtri" ? " · generatore con filtri" : ""}${g[0].pesiModello && g[0].pesiModello.length ? " · peso del modello " + g[0].pesiModello.map(x => studioEsc(x.mercato) + " " + Math.round(x.peso * 100) + "%").join(", ") : ""}</div>`;
                     g.forEach((d, i) => {
-                        const esiti = d.legs.map(l => perId[l.matchId] ? studioEsitoLeg(l, perId[l.matchId]) : null);
-                        const stato = d.esito || (esiti.some(e => e === false) ? "persa" : (esiti.every(e => e !== null) ? "vinta" : "in attesa"));
+                        const { esiti, stato } = studioStatoSchedina(d, perId);
                         const col = stato === "vinta" ? "text-emerald-300" : (stato === "persa" ? "text-rose-300" : "text-amber-300");
-                        h += `<div class="mt-2 p-3 rounded-2xl bg-slate-950/60 border border-slate-800"><div class="font-bold text-slate-100 text-sm">Schedina ${i + 1} · <span class="${col}">${stato}</span></div>`;
-                        d.legs.forEach((l, j) => {
+                        const sisal = d.giocataSisal === true;
+                        h += `<div class="mt-2 p-3 rounded-2xl bg-slate-950/60 border border-slate-800" style="${studioBordoSchedina(stato)}"><div class="font-bold text-slate-100 text-sm">Schedina ${i + 1} · <span class="${col}">${stato}</span></div>`;
+                        h += `<div class="flex flex-wrap gap-2 my-2">
+                            <button type="button" id="sisal_${studioEsc(d.id)}" data-on="${sisal ? "1" : "0"}" onclick="studioImpostaSisal('${studioEsc(d.id)}')" class="${sisal ? "bg-amber-600 text-white" : "bg-slate-800 text-slate-300 border border-slate-700"} text-[11px] font-semibold py-1.5 px-3 rounded-xl cursor-pointer">${sisal ? "✔ Giocata su SISAL" : "☐ Giocata su SISAL: no"}</button>
+                            <button type="button" onclick="studioEliminaUna('${studioEsc(d.id)}')" class="bg-slate-800 border border-rose-800/60 text-rose-300 text-[11px] font-semibold py-1.5 px-3 rounded-xl cursor-pointer">🗑 Elimina</button></div>`;
+                        (d.legs || []).forEach((l, j) => {
                             const e = esiti[j];
                             h += `<div class="py-1.5 border-t border-slate-800/60"><div class="text-slate-200 break-words">${studioEsc(l.casa)} – ${studioEsc(l.ospite)} <span class="text-[10px] text-slate-500">${studioEsc(studioFormattaData(l.dataOraUTC))}</span></div>
-                                <div class="text-slate-400">${studioEsc(l.mercato)}: <b class="text-amber-300">${studioEsc(l.esito)}</b> · quota ${studioNum(l.quota, 2)} · prob. ${studioPct(l.p, 0)} ${e === true ? '<span class="text-emerald-300">✓ azzeccata</span>' : (e === false ? '<span class="text-rose-300">✗ sbagliata</span>' : '<span class="text-slate-500">in attesa</span>')}${perId[l.matchId] ? " · risultato " + studioEsc(perId[l.matchId]) : ""}</div></div>`;
+                                <div class="text-slate-400">${studioEsc(l.mercato)}: <b class="text-amber-300">${studioEsc(l.esito)}</b> · quota ${studioNum(l.quota, 2)}${l.quotaStimata ? " <span class=\"text-amber-400\">(stimata)</span>" : ""} · prob. ${studioPct(l.p, 0)} ${e === true ? '<span class="text-emerald-300">✓ azzeccata</span>' : (e === false ? '<span class="text-rose-300">✗ sbagliata</span>' : '<span class="text-slate-500">in attesa</span>')}${perId[l.matchId] ? " · risultato " + studioEsc(perId[l.matchId]) : ""}</div></div>`;
                         });
                         h += `<div class="mt-1 pt-1 border-t border-slate-700 text-slate-300">Probabilità ${studioPct(d.probabilita)} · quota totale <b class="text-slate-100">${studioNum(d.quota, 2)}</b></div></div>`;
                     });
@@ -1948,23 +2506,62 @@
             }
         }
 
-        function studioEsitoLeg(leg, risultato) {
-            const r = studioParsaRisultato(risultato);
-            if (!r) return null;
-            if (leg.mercato === "1X2") return (r.gc > r.go ? "1" : (r.gc === r.go ? "X" : "2")) === leg.esito;
-            return ((r.gc + r.go) > 2.5 ? "Over 2.5" : "Under 2.5") === leg.esito;
+        // Flag "giocata su SISAL": un'etichetta salvata nella schedina (campo giocataSisal, solo in studio_schedine).
+        async function studioImpostaSisal(id) {
+            const btn = document.getElementById("sisal_" + id);
+            if (!btn) return;
+            const nuovo = btn.dataset.on !== "1";
+            btn.disabled = true;
+            try {
+                await db.collection(SCHED.raccolta).doc(id).set({ giocataSisal: nuovo }, { merge: true });
+                btn.dataset.on = nuovo ? "1" : "0";
+                btn.className = (nuovo ? "bg-amber-600 text-white" : "bg-slate-800 text-slate-300 border border-slate-700") + " text-[11px] font-semibold py-1.5 px-3 rounded-xl cursor-pointer";
+                btn.textContent = nuovo ? "✔ Giocata su SISAL" : "☐ Giocata su SISAL: no";
+            } catch (err) {
+                console.error(err);
+                alert("Errore nel salvataggio del flag SISAL: " + (err && err.message ? err.message : err));
+            } finally {
+                btn.disabled = false;
+            }
         }
+
+        // Eliminazione (irreversibile) SOLO nella raccolta studio_schedine, sempre dopo conferma.
+        async function studioEliminaSchedine(ids, testo) {
+            if (!ids.length) return;
+            if (!window.confirm("Stai per eliminare DEFINITIVAMENTE " + testo + ".\nL'operazione non si può annullare.\nVuoi continuare?")) return;
+            try {
+                for (let i = 0; i < ids.length; i += 400) {
+                    const batch = db.batch();
+                    ids.slice(i, i + 400).forEach(id => batch.delete(db.collection(SCHED.raccolta).doc(id)));
+                    await batch.commit();
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Errore durante l'eliminazione: " + (err && err.message ? err.message : err));
+            }
+            await studioElencoSchedine();
+        }
+        function studioEliminaUna(id) { return studioEliminaSchedine([id], "questa schedina"); }
+        function studioEliminaGruppo(quale) {
+            const ids = studioElencoCorrente.filter(x => quale === "perse" ? x.stato === "persa" : (x.stato === "persa" || x.stato === "vinta")).map(x => x.id);
+            return studioEliminaSchedine(ids, ids.length + (quale === "perse" ? " schedine perse" : " schedine concluse (vinte e perse)"));
+        }
+
+        // Valutazione: il ROI usa solo le schedine con tutte le quote vere (quelle con quote stimate non hanno un ROI reale).
         function studioValutaListaSchedine(docs, perId) {
-            const out = { tot: docs.length, chiuse: 0, vinte: 0, inAttesa: 0, attesaProb: 0, profitto: 0, perSel: {}, da: [] };
+            const out = { tot: docs.length, chiuse: 0, vinte: 0, inAttesa: 0, attesaProb: 0, profitto: 0, chiuseQuotaVera: 0, chiuseQuotaStimata: 0, perSel: {}, perGen: {}, da: [] };
             docs.forEach(d => {
                 const esiti = d.legs.map(l => perId[l.matchId] ? studioEsitoLeg(l, perId[l.matchId]) : null);
                 const perse = esiti.some(e => e === false), complete = esiti.every(e => e !== null);
                 if (!(perse || complete)) { out.inAttesa++; return; }
                 const vinta = !perse;
                 out.chiuse++; out.attesaProb += d.probabilita; if (vinta) out.vinte++;
-                out.profitto += vinta ? d.quota - 1 : -1;
+                if (d.legs.some(l => l.quotaStimata)) out.chiuseQuotaStimata++;
+                else { out.chiuseQuotaVera++; out.profitto += vinta ? d.quota - 1 : -1; }
                 const k = String(d.legs.length); const s = out.perSel[k] = out.perSel[k] || { n: 0, vinte: 0, att: 0 };
                 s.n++; s.att += d.probabilita; if (vinta) s.vinte++;
+                const gk = d.generatore === "filtri" ? "filtri" : "studio"; const g = out.perGen[gk] = out.perGen[gk] || { n: 0, vinte: 0, att: 0 };
+                g.n++; g.att += d.probabilita; if (vinta) g.vinte++;
                 if (d.id) out.da.push({ id: d.id, esito: vinta ? "vinta" : "persa" });
             });
             return out;
@@ -1987,9 +2584,15 @@
                 let h = `<div class="text-slate-300">Schedine salvate: <b>${v.tot}</b> · concluse <b>${v.chiuse}</b> · ancora in attesa <b>${v.inAttesa}</b>.</div>`;
                 if (v.chiuse) {
                     const att = v.attesaProb / v.chiuse, vin = v.vinte / v.chiuse, w = studioWilson(v.vinte, v.chiuse);
-                    h += `<div class="mt-2 text-slate-400">Vinte <b class="text-slate-200">${v.vinte}</b> su ${v.chiuse} (<b class="text-amber-300">${studioPct(vin)}</b>, da ${studioPct(w.lo, 0)} a ${studioPct(w.hi, 0)}) · probabilità stimata in media <b class="text-slate-200">${studioPct(att)}</b>.</div>
-                        <div class="text-slate-400">Giocando 1 unità a schedina: risultato <b class="${v.profitto >= 0 ? "text-emerald-300" : "text-rose-300"}">${studioNum(v.profitto, 1, true)}</b> unità · ROI <b class="${v.profitto >= 0 ? "text-emerald-300" : "text-rose-300"}">${studioNum(v.profitto / v.chiuse * 100, 1, true)}%</b>.</div>`;
+                    h += `<div class="mt-2 text-slate-400">Vinte <b class="text-slate-200">${v.vinte}</b> su ${v.chiuse} (<b class="text-amber-300">${studioPct(vin)}</b>, da ${studioPct(w.lo, 0)} a ${studioPct(w.hi, 0)}) · probabilità stimata in media <b class="text-slate-200">${studioPct(att)}</b>.</div>`;
+                    if (v.chiuseQuotaVera) h += `<div class="text-slate-400">Giocando 1 unità a schedina (solo le ${v.chiuseQuotaVera} con tutte le quote vere): risultato <b class="${v.profitto >= 0 ? "text-emerald-300" : "text-rose-300"}">${studioNum(v.profitto, 1, true)}</b> unità · ROI <b class="${v.profitto >= 0 ? "text-emerald-300" : "text-rose-300"}">${studioNum(v.profitto / v.chiuseQuotaVera * 100, 1, true)}%</b>.</div>`;
+                    if (v.chiuseQuotaStimata) h += `<div class="text-[11px] text-amber-400">${v.chiuseQuotaStimata} schedine concluse contengono quote stimate: non entrano nel ROI (la quota vera del bookmaker non c'è).</div>`;
                     Object.keys(v.perSel).sort().forEach(k => { const s = v.perSel[k]; h += `<div class="text-[11px] text-slate-500">${k} selezioni: vinte ${s.vinte} su ${s.n} (stimato ${studioPct(s.att / s.n)})</div>`; });
+                    const gks = Object.keys(v.perGen);
+                    if (gks.length > 1) {
+                        h += `<div class="mt-2 text-slate-300 font-semibold">Confronto tra i due generatori</div>`;
+                        gks.sort().forEach(gk => { const g = v.perGen[gk]; h += `<div class="text-[11px] text-slate-400">${gk === "filtri" ? "Con filtri" : "Dello Studio"}: vinte ${g.vinte} su ${g.n} (${studioPct(g.vinte / g.n)}) · stimato ${studioPct(g.att / g.n)}</div>`; });
+                    }
                     if (v.chiuse < 30) h += `<div class="mt-2 text-amber-400">Poche schedine concluse (meno di 30): i numeri non dicono ancora nulla di affidabile.</div>`;
                 }
                 out.innerHTML = h;
@@ -2003,8 +2606,10 @@
         }
 
 
+
         window.addEventListener("load", studioRiepilogoIniziale);
         window.addEventListener("load", studioElencoSchedine);
+        window.addEventListener("load", studioFiltriPopolaMercati);
 </script>
 </body>
 </html>
