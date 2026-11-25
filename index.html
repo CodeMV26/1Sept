@@ -3809,6 +3809,40 @@
             }
         }
 
+        // Bordo colorato della scheda: verde se la proposta e' VINTA, rosso se PERSA
+        // (solo dopo "Valuta le liste salvate"; le liste semplici e quelle in attesa restano neutre).
+        function bordoListaSalvata(val) {
+            if (!val || !val.schedina) return "";
+            if (val.stato === "vinta") return "border:2px solid #10b981;";
+            if (val.stato === "persa") return "border:2px solid #f43f5e;";
+            return "";
+        }
+
+        // Flag "giocata su SISAL": solo un'etichetta salvata nella lista (campo giocataSisal),
+        // non cambia nessun calcolo.
+        function sisalHtmlListaSalvata(l) {
+            const on = l.giocataSisal === true;
+            return `<div class="mb-2"><button type="button" id="sisal_${l.id}" data-on="${on ? "1" : "0"}" onclick="impostaGiocataSisal('${l.id}')" class="${on ? "bg-amber-600 text-white" : "bg-slate-800 text-slate-300 border border-slate-700"} text-[11px] font-semibold py-1.5 px-3 rounded-xl transition cursor-pointer">${on ? "✔ Giocata su SISAL" : "☐ Giocata su SISAL: no"}</button></div>`;
+        }
+
+        async function impostaGiocataSisal(id) {
+            const btn = document.getElementById("sisal_" + id);
+            if (!btn) return;
+            const nuovo = btn.dataset.on !== "1";
+            btn.disabled = true;
+            try {
+                await db.collection("liste_selezioni").doc(id).set({ giocataSisal: nuovo }, { merge: true });
+                btn.dataset.on = nuovo ? "1" : "0";
+                btn.className = (nuovo ? "bg-amber-600 text-white" : "bg-slate-800 text-slate-300 border border-slate-700") + " text-[11px] font-semibold py-1.5 px-3 rounded-xl transition cursor-pointer";
+                btn.textContent = nuovo ? "✔ Giocata su SISAL" : "☐ Giocata su SISAL: no";
+            } catch (err) {
+                console.error(err);
+                alert("Errore nel salvataggio del flag SISAL: " + err.message);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
         async function caricaListeSalvate() {
             const container = document.getElementById("listeSalvateContainer");
             if (!container) return;
@@ -3842,7 +3876,7 @@
                     `).join("");
 
                     return `
-                        <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl p-4 sm:p-5">
+                        <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl shadow-2xl backdrop-blur-xl p-4 sm:p-5" style="${bordoListaSalvata(val)}">
                             <div class="flex justify-between items-center mb-2">
                                 <div>
                                     <div class="font-bold text-slate-100 text-sm">${l.nome}</div>
@@ -3852,6 +3886,7 @@
                                     Elimina
                                 </button>
                             </div>
+                            ${l.tipo ? sisalHtmlListaSalvata(l) : ""}
                             ${val ? `<div class="mt-2 p-2 rounded-xl bg-slate-950/70 border border-slate-800 text-[11px] text-slate-300">
                                 ${val.schedina
                                     ? `Esito: <b class="${val.stato === "vinta" ? "text-emerald-400" : (val.stato === "persa" ? "text-rose-400" : "text-amber-300")}">${val.stato.toUpperCase()}</b> · selezioni azzeccate ${val.azzeccate} su ${val.righe.length}${val.attesa ? " (" + val.attesa + " in attesa)" : ""}`
@@ -4611,13 +4646,25 @@
             return null;
         }
 
+        // Le fasce sono INDIPENDENTI: una partita compare al massimo in UNA fascia.
+        // Le fasce si costruiscono nell'ordine in cui sono elencate; dopo ogni fascia
+        // le sue partite vengono tolte dalle partite disponibili per le fasce successive.
+        // Cosi' un solo pronostico sbagliato non puo' far perdere piu' schedine di fasce diverse.
         function propGeneraLunghe(palinsesto, ora) {
             const r = propOpzioniLunga(palinsesto, ora);
+            let disponibili = r.gruppi.slice();
+            let partiteUsate = 0;
             const fasce = PROP_CFG.lungaFasce.map(f => {
-                const m = propMigliorLunga(r.gruppi, f.da, f.a, PROP_CFG.lungaMinSel, f.maxSel);
-                return { da: f.da, a: f.a, maxSel: f.maxSel, multipla: m };
+                const giaUsateAPrima = partiteUsate;
+                const m = propMigliorLunga(disponibili, f.da, f.a, PROP_CFG.lungaMinSel, f.maxSel);
+                if (m) {
+                    const usate = new Set(m.legs.map(l => String(l.matchId)));
+                    disponibili = disponibili.filter(g => !g.some(o => usate.has(String(o.matchId))));
+                    partiteUsate += usate.size;
+                }
+                return { da: f.da, a: f.a, maxSel: f.maxSel, multipla: m, partiteGiaUsate: giaUsateAPrima };
             });
-            return { fasce: fasce, stat: r.stat, nPartite: r.gruppi.length };
+            return { fasce: fasce, stat: r.stat, nPartite: r.gruppi.length, partiteUsate: partiteUsate };
         }
 
         function propPctFine(x) {
@@ -4731,13 +4778,14 @@
                     contLunghe.innerHTML = "";
                 } else {
                     const st = lunghe.stat;
-                    let h = `<div class="text-[10px] text-slate-500 mb-2">Partite con quote vere utilizzabili: <b>${lunghe.nPartite}</b> · selezioni con quota ${PROP_CFG.lungaQuotaMin.toFixed(2).replace(".", ",")}–${PROP_CFG.lungaQuotaMax.toFixed(2).replace(".", ",")}: <b>${st.opzioni}</b>${st.scartateDistanza ? " · scartate per forte disaccordo modello-mercato: " + st.scartateDistanza : ""}. Probabilità: ${Math.round(PESO_MODELLO_EV * 100)}% modello + ${Math.round((1 - PESO_MODELLO_EV) * 100)}% mercato.</div>`;
+                    let h = `<div class="text-[10px] text-slate-500 mb-2">Partite con quote vere utilizzabili: <b>${lunghe.nPartite}</b> · selezioni con quota ${PROP_CFG.lungaQuotaMin.toFixed(2).replace(".", ",")}–${PROP_CFG.lungaQuotaMax.toFixed(2).replace(".", ",")}: <b>${st.opzioni}</b>${st.scartateDistanza ? " · scartate per forte disaccordo modello-mercato: " + st.scartateDistanza : ""}. Probabilità: ${Math.round(PESO_MODELLO_EV * 100)}% modello + ${Math.round((1 - PESO_MODELLO_EV) * 100)}% mercato.</div>
+                        <div class="text-[10px] text-emerald-300/90 mb-2">Fasce indipendenti: ogni partita compare in una sola fascia (le fasce si costruiscono nell'ordine mostrato, dalla più bassa). Così un solo pronostico sbagliato non fa perdere più schedine di fasce diverse.</div>`;
                     h += lunghe.fasce.map((f, i) => {
                         const titolo = `Quota ${f.da}–${f.a}`;
                         if (!f.multipla) {
                             return `<div class="rounded-2xl border border-slate-800/70 bg-slate-950/50 p-3 text-xs text-slate-400">
                                 <div class="font-bold text-fuchsia-300 uppercase text-[10px] tracking-wider mb-1">${titolo}</div>
-                                Nessuna combinazione valida con le partite di oggi (da ${PROP_CFG.lungaMinSel} a ${f.maxSel} selezioni da partite diverse, quota di ogni selezione tra ${PROP_CFG.lungaQuotaMin.toFixed(2).replace(".", ",")} e ${PROP_CFG.lungaQuotaMax.toFixed(2).replace(".", ",")}). Non la forzo.
+                                Nessuna combinazione valida con le partite di oggi (da ${PROP_CFG.lungaMinSel} a ${f.maxSel} selezioni da partite diverse, quota di ogni selezione tra ${PROP_CFG.lungaQuotaMin.toFixed(2).replace(".", ",")} e ${PROP_CFG.lungaQuotaMax.toFixed(2).replace(".", ",")}). Non la forzo.${f.partiteGiaUsate > 0 ? ` Le ${f.partiteGiaUsate} partite già usate nelle fasce precedenti non vengono riutilizzate (le fasce sono indipendenti).` : ""}
                             </div>`;
                         }
                         const m = f.multipla;
